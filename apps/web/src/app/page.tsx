@@ -231,7 +231,7 @@ export default function MarketingLandingPage() {
 
             {/* ACTION BUTTONS (DESKTOP) */}
             <div className="hidden md:flex items-center space-x-4">
-              <Link href="/(auth)/login" className="btn-ghost">
+              <Link href="/login" className="btn-ghost">
                 Log In
               </Link>
               <Link href="/onboarding" className="btn-gold flex items-center space-x-2">
@@ -295,7 +295,7 @@ export default function MarketingLandingPage() {
               </a>
             </nav>
             <div className="pt-2 border-t border-slate-800 flex flex-col space-y-3">
-              <Link href="/(auth)/login" className="btn-ghost text-center w-full">
+              <Link href="/login" className="btn-ghost text-center w-full">
                 Log In
               </Link>
               <Link href="/onboarding" className="btn-gold text-center w-full justify-center flex items-center space-x-2">
@@ -680,6 +680,103 @@ export default function MarketingLandingPage() {
                 <span>Enterprise Multi-Branch Specs</span>
                 <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* COMPETITOR COMPARISON GRID SECTION */}
+      <section className="py-16 bg-[#0B0F19]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
+            <span className="badge badge-gold">Market Comparison</span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              Why Premier Ateliers Choose YellowHouse OS
+            </h2>
+            <p className="text-slate-400 text-sm">
+              How we compare against legacy tailoring systems (Sunrise Software, Atelierware, Garment Desk).
+            </p>
+          </div>
+
+          <div className="glass-card rounded-3xl overflow-hidden border border-slate-800/80 shadow-2xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-900/40 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <th className="py-5 px-6">Core Operational Vectors</th>
+                    <th className="py-5 px-4 text-center text-yellow-400 font-extrabold bg-yellow-500/5 border-x border-yellow-500/20">YellowHouse Tailoring OS</th>
+                    <th className="py-5 px-4 text-center">Legacy ERP (Sunrise / Atelierware)</th>
+                    <th className="py-5 px-4 text-center">Order Trackers (Garment Desk)</th>
+                    <th className="py-5 px-4 text-center">Mobile Books (TailorWale)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 text-xs text-slate-300">
+                  <tr className="hover:bg-slate-900/20">
+                    <td className="py-4 px-6 font-semibold text-white">
+                      <div>CAD Body Landmark Engine</div>
+                      <div className="text-[10px] text-slate-500 font-normal mt-0.5">Interactive SVG posture & point-of-measurement mappings</div>
+                    </td>
+                    <td className="py-4 px-4 text-center bg-yellow-500/5 border-x border-yellow-500/20">
+                      <span className="text-yellow-400 font-extrabold">✓ Fully Integrated (v4.2)</span>
+                    </td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Text-Only Inputs</td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ No Measurement Tools</td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Static Notes Only</td>
+                  </tr>
+                  
+                  <tr className="hover:bg-slate-900/20">
+                    <td className="py-4 px-6 font-semibold text-white">
+                      <div>Dynamic Posture Compensation</div>
+                      <div className="text-[10px] text-slate-500 font-normal mt-0.5">Auto-corrects ease based on Stooped/Erect/Swayback profile</div>
+                    </td>
+                    <td className="py-4 px-4 text-center bg-yellow-500/5 border-x border-yellow-500/20">
+                      <span className="text-yellow-400 font-extrabold">✓ Real-time Math Engine</span>
+                    </td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Manual Calculation</td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Not Supported</td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Not Supported</td>
+                  </tr>
+
+                  <tr className="hover:bg-slate-900/20">
+                    <td className="py-4 px-6 font-semibold text-white">
+                      <div>Karigar Piece-Rate Ledger</div>
+                      <div className="text-[10px] text-slate-500 font-normal mt-0.5">Automated SAM (Standard Allowed Minutes) payout formulas</div>
+                    </td>
+                    <td className="py-4 px-4 text-center bg-yellow-500/5 border-x border-yellow-500/20">
+                      <span className="text-yellow-400 font-extrabold">✓ Dynamic Ledger</span>
+                    </td>
+                    <td className="py-4 px-4 text-center text-slate-300">✓ Barcode-Only Scan</td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Manual Payroll</td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Not Supported</td>
+                  </tr>
+
+                  <tr className="hover:bg-slate-900/20">
+                    <td className="py-4 px-6 font-semibold text-white">
+                      <div>WhatsApp Fitting delta checks</div>
+                      <div className="text-[10px] text-slate-500 font-normal mt-0.5">Client trial confirmations and advance deposit link billing</div>
+                    </td>
+                    <td className="py-4 px-4 text-center bg-yellow-500/5 border-x border-yellow-500/20">
+                      <span className="text-yellow-400 font-extrabold">✓ Native Alerts (91% Conv.)</span>
+                    </td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Basic SMS Alerts</td>
+                    <td className="py-4 px-4 text-center text-slate-300">✓ CRM Notifications</td>
+                    <td className="py-4 px-4 text-center text-slate-300">✓ Simple Alerts</td>
+                  </tr>
+
+                  <tr className="hover:bg-slate-900/20">
+                    <td className="py-4 px-6 font-semibold text-white">
+                      <div>Multi-Tenant Boutique Scaling</div>
+                      <div className="text-[10px] text-slate-500 font-normal mt-0.5">Decoupled branch management with centralized platform billing</div>
+                    </td>
+                    <td className="py-4 px-4 text-center bg-yellow-500/5 border-x border-yellow-500/20">
+                      <span className="text-yellow-400 font-extrabold">✓ Enterprise SaaS Architecture</span>
+                    </td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Single DB Installations</td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ No Multi-Branch Isolation</td>
+                    <td className="py-4 px-4 text-center text-slate-500">✗ Local Mobile Device Lock</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1165,7 +1262,7 @@ export default function MarketingLandingPage() {
                   <ArrowRight className="w-5 h-5" />
                 </button>
                 <Link
-                  href="/(auth)/login"
+                  href="/login"
                   className="btn-ghost px-8 py-4 text-base font-semibold w-full sm:w-auto flex items-center justify-center space-x-2"
                 >
                   <span>Existing Client Login</span>
