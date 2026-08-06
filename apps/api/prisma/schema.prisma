@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id               String               @id @default(uuid())
+  name             String
+  slug             String               @unique
+  plan             String               @default("starter")
+  status           String               @default("active")
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  branches         Branch[]
+  users            User[]
+  clients          Client[]
+  orders           Order[]
+  templates        MeasurementTemplate[]
+}
+
+model Branch {
+  id         String   @id @default(uuid())
+  tenantId   String
+  name       String
+  city       String
+  isPrimary  Boolean  @default(false)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users      User[]
+  orders     Order[]
+  createdAt  DateTime @default(now())
+}
+
+model User {
+  id           String    @id @default(uuid())
+  tenantId     String
+  branchId     String?
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("receptionist") // TENANT_OWNER, BRANCH_MANAGER, RECEPTIONIST, MASTER_TAILOR, KARIGAR, ACCOUNTANT
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch       Branch?   @relation(fields: [branchId], references: [id])
+  jobCards     JobCard[]
+  createdAt    DateTime  @default(now())
+}
+
+model Client {
+  id                  String                       @id @default(uuid())
+  tenantId            String
+  phone               String
+  firstName           String
+  lastName            String
+  gender              String                       // "Men" | "Women" | "Unisex"
+  preferredFit        String                       @default("Regular")
+  postureProfile      Json?                        // {"shoulder_slope": "sloping", "chest_stance": "prominent"}
+  tenant              Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  measurementVersions CustomerMeasurementVersion[]
+  orders              Order[]
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  @@unique([tenantId, phone])
+}
+
+model CustomerMeasurementVersion {
+  id             String   @id @default(uuid())
+  tenantId       String
+  clientId       String
+  versionNumber  Int      @default(1)
+  profileName    String   // e.g. "Bespoke Suit Fit 2026"
+  gender         String   // "Men" | "Women"
+  unit           String   @default("inch") // "inch" | "cm"
+  measurements   Json     // Dynamic POM key-values (e.g. chest: 42, waist: 36)
+  easeAllowances Json?
+  measuredBy     String?  // Staff Name/ID
+  isActive       Boolean  @default(true)
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+}
+
+model MeasurementTemplate {
+  id          String   @id @default(uuid())
+  tenantId    String?  // Null means system-wide global default
+  garmentName String   // e.g. "Men's Sherwani", "Women's Sari Blouse"
+  gender      String   // "Men" | "Women" | "Unisex"
+  category    String   // "Ethnic", "Western", "Couture"
+  pomSchema   Json     // List of POM definitions, landmarks, and default ease
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Order {
+  id              String       @id @default(uuid())
+  tenantId        String
+  branchId        String
+  clientId        String
+  orderNumber     String       @unique
+  state           String       @default("DRAFT") // DRAFT, QUOTATION_SENT, CONFIRMED, CUTTING, STITCHING, QC, TRIAL, READY_FOR_DELIVERY, DELIVERED, CLOSED
+  totalAmount     Float        @default(0)
+  advancePaid     Float        @default(0)
+  balanceDue      Float        @default(0)
+  targetDeliveryAt DateTime?
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branch          Branch       @relation(fields: [branchId], references: [id])
+  client          Client       @relation(fields: [clientId], references: [id])
+  items           OrderItem[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model OrderItem {
+  id                         String       @id @default(uuid())
+  orderId                    String
+  garmentType                String       // "Sherwani", "Bandhgala", "Sari Blouse", "Lehenga Choli"
+  fabricSku                  String?
+  fabricMeters               Float        @default(0)
+  unitPrice                  Float        @default(0)
+  appliedMeasurementSnapshot Json         // Immutable POM snapshot for this item
+  garmentConfiguration       Json         // Custom options (lapels, lining, zardozi embroidery details)
+  productionStage            String       @default("Fabric_Inspection")
+  order                      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  jobCards                   JobCard[]
+  trials                     OrderTrial[]
+  createdAt                  DateTime     @default(now())
+}
+
+model JobCard {
+  id               String                 @id @default(uuid())
+  orderItemId      String
+  assignedWorkerId String?
+  operationType    String                 // "CUTTING", "EMBROIDERY", "STITCHING", "FINISHING"
+  samMinutes       Float                  @default(0) // Standard Allowed Minutes
+  status           String                 @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  orderItem        OrderItem              @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  assignedWorker   User?                  @relation(fields: [assignedWorkerId], references: [id])
+  earnings         WorkerEarningsLedger[]
+  createdAt        DateTime               @default(now())
+}
+
+model WorkerEarningsLedger {
+  id              String   @id @default(uuid())
+  jobCardId       String
+  workerId        String
+  samMinutes      Float
+  minuteRate      Float
+  multiplier      Float    @default(1.0)
+  totalPayoutInr  Float
+  jobCard         JobCard  @relation(fields: [jobCardId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+}
+
+model OrderTrial {
+  id            String    @id @default(uuid())
+  orderItemId   String
+  trialNumber   Int       @default(1)
+  status        String    @default("SCHEDULED") // SCHEDULED, COMPLETED, ALTERATION_REQUIRED
+  scheduledAt   DateTime
+  observedDeltas Json?     // e.g. {"waist": -0.5, "sleeve": +0.25}
+  masterNotes   String?
+  orderItem     OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+}

@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --gold-50: #fefce8;
+    --gold-100: #fef9c3;
+    --gold-200: #fef08a;
+    --gold-300: #fde047;
+    --gold-400: #facc15;
+    --gold-500: #eab308;
+    --gold-600: #ca8a04;
+    --glass-bg: rgba(15, 23, 42, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-gold-border: rgba(234, 179, 8, 0.25);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+  }
+
+  body {
+    @apply bg-[#0B0F19] text-slate-100 antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .glass-card-gold {
+    background: rgba(20, 30, 51, 0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-gold-border);
+    box-shadow: 0 8px 32px rgba(234, 179, 8, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card-gold:hover {
+    border-color: rgba(234, 179, 8, 0.4);
+    box-shadow: 0 12px 48px rgba(234, 179, 8, 0.1);
+  }
+
+  .btn-gold {
+    @apply bg-gradient-to-r from-yellow-600 to-yellow-500 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm;
+    box-shadow: 0 4px 14px rgba(234, 179, 8, 0.25);
+    transition: all 0.2s ease;
+  }
+
+  .btn-gold:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 6px 20px rgba(234, 179, 8, 0.35);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-xl text-sm font-medium text-slate-400 border border-slate-800;
+    transition: all 0.2s ease;
+  }
+
+  .btn-ghost:hover {
+    @apply text-white bg-slate-800/50 border-slate-700;
+  }
+
+  .input-dark {
+    @apply w-full bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500;
+    transition: border-color 0.2s ease;
+  }
+
+  .input-dark:focus {
+    @apply outline-none border-yellow-500/50;
+    box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.1);
+  }
+
+  .sidebar-link {
+    @apply flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400;
+    transition: all 0.2s ease;
+  }
+
+  .sidebar-link:hover {
+    @apply text-white bg-slate-800/60;
+  }
+
+  .sidebar-link.active {
+    @apply text-yellow-400 bg-yellow-500/10 border border-yellow-500/20;
+  }
+
+  .badge {
+    @apply text-[10px] font-semibold px-2 py-0.5 rounded-md;
+  }
+
+  .badge-gold {
+    @apply bg-yellow-500/10 text-yellow-400 border border-yellow-500/20;
+  }
+
+  .badge-emerald {
+    @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20;
+  }
+
+  .badge-blue {
+    @apply bg-blue-500/10 text-blue-400 border border-blue-500/20;
+  }
+
+  .badge-amber {
+    @apply bg-amber-500/10 text-amber-400 border border-amber-500/20;
+  }
+
+  .badge-rose {
+    @apply bg-rose-500/10 text-rose-400 border border-rose-500/20;
+  }
+
+  .pom-input {
+    @apply w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-yellow-400 font-mono font-bold;
+    transition: border-color 0.2s ease;
+  }
+
+  .pom-input:focus {
+    @apply outline-none border-yellow-500/60;
+    box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.1);
+  }
+
+  .kanban-column {
+    @apply glass-card rounded-2xl p-4 border border-slate-800 space-y-3 min-h-[300px];
+  }
+
+  .kanban-card {
+    @apply bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2;
+    transition: all 0.2s ease;
+  }
+
+  .kanban-card:hover {
+    @apply border-slate-700;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  @keyframes pulse-gold {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.2); }
+    50% { box-shadow: 0 0 0 8px rgba(234, 179, 8, 0); }
+  }
+
+  .pulse-gold {
+    animation: pulse-gold 2s ease-in-out infinite;
+  }
+}

@@ -1,0 +1,14 @@
+## 2026-08-06T00:36:57Z
+Task:
+Design Milestone 2 (M2: Visual Body Landmark Diagram & Interactivity) validation rules and bidirectional state mapping for yellowhouse at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse.
+Read:
+- ORIGINAL_REQUEST.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
+- PROJECT.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
+- M1 outputs in apps/web/src/context/MeasurementEngineContext.tsx
+
+Design:
+1. Define bidirectional focus state synchronization between SVG hotspots (`focusedLandmarkId`) and form input fields (`pomId`) in apps/web/src/lib/landmark-mappings.ts.
+2. Define anatomical proportion sanity rules (e.g., Upper Bust < Full Bust, Underbust < Upper Bust, Inseam < Outseam, Neck Girth ratio) and posture offset alert triggers.
+3. Define color-coding state logic: Emerald Green (`#10B981` valid), Amber Gold (`#F59E0B` posture alert), Rose Red (`#EF4444` proportion error).
+4. Specify React component structure for `BodyLandmarkDiagram.tsx` and integration into `MeasurementEngineContainer.tsx`.
+5. Write your design blueprint to analysis.md and handoff.md in your working directory.

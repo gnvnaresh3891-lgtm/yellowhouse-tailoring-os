@@ -1,0 +1,854 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import {
+  Ruler, Eye, Save, RotateCcw, ChevronDown, ChevronUp,
+  Activity, Calculator, Clock, GitCompare, AlertCircle,
+  CheckCircle2, Info, Sparkles, History, ArrowRight, 
+  ArrowUpRight, ArrowDownRight, Minus
+} from 'lucide-react';
+
+// ============================================================
+// TYPE DEFINITIONS (inline for self-contained page)
+// ============================================================
+type Gender = 'Men' | 'Women';
+type GarmentType = 'Sherwani' | 'Suit' | 'Blouse' | 'Lehenga' | 'Anarkali' | 'Corset';
+type FitPref = 'Skinny' | 'Slim' | 'Regular' | 'Relaxed';
+type UnitSys = 'in' | 'cm';
+type ViewMode = 'front' | 'back';
+
+interface PomField {
+  id: string;
+  code: string;
+  name: string;
+  base: number;
+  min: number;
+  max: number;
+  landmarkY: number; // Y position on SVG for hotspot
+  landmarkX?: number;
+}
+
+interface VersionSnapshot {
+  id: string;
+  version: string;
+  date: string;
+  garment: GarmentType;
+  status: 'current' | 'archived';
+  pomCount: number;
+}
+
+interface FittingDelta {
+  pomName: string;
+  original: number;
+  trial1: number;
+  trial2: number;
+  delta1: number;
+  delta2: number;
+}
+
+// ============================================================
+// GARMENT-SPECIFIC POM SCHEMAS
+// ============================================================
+const POM_SCHEMAS: Record<GarmentType, PomField[]> = {
+  Sherwani: [
+    { id: 'sh-01', code: 'SH-01', name: 'Chest Girth', base: 40, min: 32, max: 56, landmarkY: 200 },
+    { id: 'sh-02', code: 'SH-02', name: 'Waist Girth', base: 34, min: 26, max: 50, landmarkY: 280 },
+    { id: 'sh-03', code: 'SH-03', name: 'Shoulder Width', base: 18.5, min: 15, max: 22, landmarkY: 140 },
+    { id: 'sh-04', code: 'SH-04', name: 'Sleeve Length', base: 25, min: 22, max: 28, landmarkY: 300, landmarkX: 120 },
+    { id: 'sh-05', code: 'SH-05', name: 'Sherwani Length', base: 42, min: 36, max: 48, landmarkY: 450 },
+    { id: 'sh-06', code: 'SH-06', name: 'Neck Girth', base: 15.5, min: 13, max: 19, landmarkY: 120 },
+    { id: 'sh-07', code: 'SH-07', name: 'Bicep Girth', base: 13, min: 10, max: 18, landmarkY: 220, landmarkX: 130 },
+    { id: 'sh-08', code: 'SH-08', name: 'Hip Girth', base: 40, min: 34, max: 52, landmarkY: 360 },
+  ],
+  Suit: [
+    { id: 'su-01', code: 'SU-01', name: 'Chest Girth', base: 40, min: 32, max: 56, landmarkY: 200 },
+    { id: 'su-02', code: 'SU-02', name: 'Waist Girth', base: 34, min: 26, max: 50, landmarkY: 280 },
+    { id: 'su-03', code: 'SU-03', name: 'Shoulder Width', base: 18, min: 15, max: 22, landmarkY: 140 },
+    { id: 'su-04', code: 'SU-04', name: 'Sleeve Length', base: 25.5, min: 22, max: 28, landmarkY: 300, landmarkX: 120 },
+    { id: 'su-05', code: 'SU-05', name: 'Jacket Length', base: 30, min: 26, max: 34, landmarkY: 400 },
+    { id: 'su-06', code: 'SU-06', name: 'Neck Girth', base: 15.5, min: 13, max: 19, landmarkY: 120 },
+    { id: 'su-07', code: 'SU-07', name: 'Trouser Waist', base: 34, min: 26, max: 48, landmarkY: 360 },
+    { id: 'su-08', code: 'SU-08', name: 'Trouser Outseam', base: 42, min: 36, max: 48, landmarkY: 550 },
+    { id: 'su-09', code: 'SU-09', name: 'Trouser Inseam', base: 32, min: 28, max: 36, landmarkY: 580, landmarkX: 220 },
+  ],
+  Blouse: [
+    { id: 'bl-01', code: 'BL-01', name: 'Bust Girth', base: 36, min: 28, max: 48, landmarkY: 210 },
+    { id: 'bl-02', code: 'BL-02', name: 'Under-Bust Girth', base: 32, min: 26, max: 42, landmarkY: 240 },
+    { id: 'bl-03', code: 'BL-03', name: 'Waist Girth', base: 30, min: 24, max: 44, landmarkY: 280 },
+    { id: 'bl-04', code: 'BL-04', name: 'Shoulder Width', base: 14, min: 12, max: 17, landmarkY: 140 },
+    { id: 'bl-05', code: 'BL-05', name: 'Bust Apex Distance', base: 7.5, min: 6, max: 10, landmarkY: 200, landmarkX: 170 },
+    { id: 'bl-06', code: 'BL-06', name: 'Front Neck Depth', base: 8, min: 5, max: 12, landmarkY: 135 },
+    { id: 'bl-07', code: 'BL-07', name: 'Back Neck Depth', base: 2, min: 1, max: 4, landmarkY: 125 },
+    { id: 'bl-08', code: 'BL-08', name: 'Sleeve Length', base: 10, min: 4, max: 24, landmarkY: 250, landmarkX: 130 },
+    { id: 'bl-09', code: 'BL-09', name: 'Blouse Length', base: 15, min: 12, max: 20, landmarkY: 330 },
+  ],
+  Lehenga: [
+    { id: 'lh-01', code: 'LH-01', name: 'Waist Girth', base: 30, min: 24, max: 44, landmarkY: 280 },
+    { id: 'lh-02', code: 'LH-02', name: 'Hip Girth', base: 38, min: 32, max: 50, landmarkY: 360 },
+    { id: 'lh-03', code: 'LH-03', name: 'Lehenga Length', base: 42, min: 36, max: 48, landmarkY: 550 },
+    { id: 'lh-04', code: 'LH-04', name: 'Flare Circumference', base: 120, min: 80, max: 200, landmarkY: 650 },
+    { id: 'lh-05', code: 'LH-05', name: 'Kali Panel Count', base: 12, min: 8, max: 24, landmarkY: 500 },
+    { id: 'lh-06', code: 'LH-06', name: 'Cancan Height', base: 6, min: 0, max: 12, landmarkY: 620 },
+  ],
+  Anarkali: [
+    { id: 'an-01', code: 'AN-01', name: 'Bust Girth', base: 36, min: 28, max: 48, landmarkY: 210 },
+    { id: 'an-02', code: 'AN-02', name: 'Waist Girth', base: 30, min: 24, max: 44, landmarkY: 280 },
+    { id: 'an-03', code: 'AN-03', name: 'Hip Girth', base: 38, min: 32, max: 50, landmarkY: 360 },
+    { id: 'an-04', code: 'AN-04', name: 'Anarkali Length', base: 52, min: 42, max: 58, landmarkY: 600 },
+    { id: 'an-05', code: 'AN-05', name: 'Shoulder Width', base: 14.5, min: 12, max: 17, landmarkY: 140 },
+    { id: 'an-06', code: 'AN-06', name: 'Sleeve Length', base: 22, min: 8, max: 26, landmarkY: 280, landmarkX: 120 },
+    { id: 'an-07', code: 'AN-07', name: 'Flare Width', base: 90, min: 60, max: 150, landmarkY: 650 },
+  ],
+  Corset: [
+    { id: 'co-01', code: 'CO-01', name: 'Bust Girth', base: 34, min: 28, max: 46, landmarkY: 210 },
+    { id: 'co-02', code: 'CO-02', name: 'Under-Bust Girth', base: 30, min: 24, max: 40, landmarkY: 240 },
+    { id: 'co-03', code: 'CO-03', name: 'Waist Girth (Cinched)', base: 26, min: 22, max: 38, landmarkY: 280 },
+    { id: 'co-04', code: 'CO-04', name: 'Hip Girth', base: 38, min: 32, max: 50, landmarkY: 360 },
+    { id: 'co-05', code: 'CO-05', name: 'Corset Length CF', base: 13, min: 10, max: 16, landmarkY: 300 },
+    { id: 'co-06', code: 'CO-06', name: 'Corset Length CB', base: 14, min: 11, max: 17, landmarkY: 310 },
+    { id: 'co-07', code: 'CO-07', name: 'Bust Apex Distance', base: 7.5, min: 6, max: 10, landmarkY: 200, landmarkX: 170 },
+  ],
+};
+
+const GARMENT_GENDER: Record<GarmentType, Gender> = {
+  Sherwani: 'Men', Suit: 'Men',
+  Blouse: 'Women', Lehenga: 'Women', Anarkali: 'Women', Corset: 'Women',
+};
+
+const MENS_GARMENTS: GarmentType[] = ['Sherwani', 'Suit'];
+const WOMENS_GARMENTS: GarmentType[] = ['Blouse', 'Lehenga', 'Anarkali', 'Corset'];
+
+// Version history mock
+const versionHistory: VersionSnapshot[] = [
+  { id: 'v3', version: 'v3.0', date: 'Aug 5, 2026', garment: 'Sherwani', status: 'current', pomCount: 8 },
+  { id: 'v2', version: 'v2.0', date: 'Jul 20, 2026', garment: 'Sherwani', status: 'archived', pomCount: 8 },
+  { id: 'v1', version: 'v1.0', date: 'Jun 12, 2026', garment: 'Suit', status: 'archived', pomCount: 9 },
+];
+
+// Fitting trial mock data
+const fittingDeltas: FittingDelta[] = [
+  { pomName: 'Chest Girth', original: 42.5, trial1: 42.0, trial2: 42.25, delta1: -0.5, delta2: -0.25 },
+  { pomName: 'Waist Girth', original: 35.0, trial1: 35.5, trial2: 35.25, delta1: +0.5, delta2: +0.25 },
+  { pomName: 'Shoulder Width', original: 18.5, trial1: 18.5, trial2: 18.5, delta1: 0, delta2: 0 },
+  { pomName: 'Sleeve Length', original: 25.0, trial1: 24.5, trial2: 25.0, delta1: -0.5, delta2: 0 },
+  { pomName: 'Sherwani Length', original: 42.0, trial1: 42.0, trial2: 42.0, delta1: 0, delta2: 0 },
+  { pomName: 'Neck Girth', original: 15.75, trial1: 16.0, trial2: 15.75, delta1: +0.25, delta2: 0 },
+];
+
+// ============================================================
+// SVG BODY SILHOUETTE COMPONENT (INLINE)
+// ============================================================
+function BodySilhouetteSvg({
+  gender, viewMode, activePoms, focusedId, measurements, onSelectHotspot, onHoverHotspot
+}: {
+  gender: Gender;
+  viewMode: ViewMode;
+  activePoms: PomField[];
+  focusedId: string | null;
+  measurements: Record<string, number>;
+  onSelectHotspot: (id: string) => void;
+  onHoverHotspot: (id: string | null) => void;
+}) {
+  return (
+    <div className="relative flex flex-col items-center justify-center p-4 bg-slate-950/90 rounded-2xl border border-slate-800 shadow-2xl">
+      <svg viewBox="0 0 400 800" className="w-full max-w-[340px] h-auto select-none" style={{ filter: 'drop-shadow(0px 8px 20px rgba(0,0,0,0.5))' }}>
+        <defs>
+          <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#F59E0B" floodOpacity="0.9" />
+          </filter>
+          <linearGradient id="body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#1E293B" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#0F172A" stopOpacity="0.98" />
+          </linearGradient>
+          <pattern id="grid-pat" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#475569" strokeWidth="0.4" />
+          </pattern>
+        </defs>
+
+        {/* Grid */}
+        <rect width="400" height="800" fill="url(#grid-pat)" className="opacity-10" />
+
+        {/* Silhouette */}
+        {gender === 'Men' ? (
+          viewMode === 'front' ? (
+            <g className="fill-[url(#body-grad)] stroke-slate-600 stroke-[1.75]">
+              <path d="M 175 65 C 175 40, 225 40, 225 65 C 225 85, 215 95, 208 100 L 208 120 L 192 120 L 192 100 C 185 95, 175 85, 175 65 Z" />
+              <path d="M 192 120 Q 200 130 208 120" className="fill-none stroke-slate-500 stroke-[1.5]" />
+              <path d="M 192 120 C 170 122, 140 128, 130 135 C 122 142, 115 190, 112 230 C 108 270, 102 330, 98 375 L 110 378 C 115 335, 122 280, 128 240 C 135 242, 142 240, 145 220 C 148 195, 148 185, 150 180 C 152 230, 153 280, 152 330 C 150 350, 145 370, 145 400 L 160 410 C 165 405, 185 410, 200 410 C 215 410, 235 405, 240 410 L 255 400 C 255 370, 250 350, 248 330 C 247 280, 248 230, 250 180 C 252 185, 252 195, 255 220 C 258 240, 265 242, 272 240 C 278 280, 285 335, 290 378 L 302 375 C 298 330, 292 270, 288 230 C 285 190, 278 142, 270 135 C 260 128, 230 122, 208 120 Z" />
+              <line x1="145" y1="190" x2="255" y2="190" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
+              <line x1="152" y1="280" x2="248" y2="280" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
+              <line x1="145" y1="360" x2="255" y2="360" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
+              <path d="M 160 410 C 158 450, 155 520, 153 590 C 152 640, 154 700, 154 740 L 176 740 C 176 700, 178 640, 177 590 C 176 520, 182 460, 195 415 Z" />
+              <path d="M 240 410 C 242 450, 245 520, 247 590 C 248 640, 246 700, 246 740 L 224 740 C 224 700, 222 640, 223 590 C 224 520, 218 460, 205 415 Z" />
+            </g>
+          ) : (
+            <g className="fill-[url(#body-grad)] stroke-slate-600 stroke-[1.75]">
+              <path d="M 175 65 C 175 40, 225 40, 225 65 C 225 85, 215 95, 208 100 L 208 120 L 192 120 L 192 100 C 185 95, 175 85, 175 65 Z" />
+              <circle cx="200" cy="115" r="4" className="fill-gold-400/80 stroke-gold-300 stroke-[1]" />
+              <path d="M 192 120 C 170 122, 140 128, 130 135 C 122 142, 115 190, 112 230 C 108 270, 102 330, 98 375 L 110 378 C 115 335, 122 280, 128 240 C 135 242, 142 240, 145 220 C 148 195, 148 185, 150 180 C 152 230, 153 280, 152 330 C 150 350, 145 370, 145 400 L 160 410 C 165 405, 185 410, 200 410 C 215 410, 235 405, 240 410 L 255 400 C 255 370, 250 350, 248 330 C 247 280, 248 230, 250 180 C 252 185, 252 195, 255 220 C 258 240, 265 242, 272 240 C 278 280, 285 335, 290 378 L 302 375 C 298 330, 292 270, 288 230 C 285 190, 278 142, 270 135 C 260 128, 230 122, 208 120 Z" />
+              <line x1="200" y1="115" x2="200" y2="410" className="stroke-slate-600/40 stroke-[1] stroke-dasharray-[4_4]" />
+              <path d="M 160 170 Q 200 180 240 170" className="fill-none stroke-slate-600/50 stroke-[1.2] stroke-dasharray-[3_3]" />
+              <path d="M 160 410 C 158 450, 155 520, 153 590 C 152 640, 154 700, 154 740 L 176 740 C 176 700, 178 640, 177 590 C 176 520, 182 460, 195 415 Z" />
+              <path d="M 240 410 C 242 450, 245 520, 247 590 C 248 640, 246 700, 246 740 L 224 740 C 224 700, 222 640, 223 590 C 224 520, 218 460, 205 415 Z" />
+            </g>
+          )
+        ) : (
+          viewMode === 'front' ? (
+            <g className="fill-[url(#body-grad)] stroke-slate-600 stroke-[1.75]">
+              <path d="M 178 62 C 175 35, 225 35, 222 62 C 220 82, 212 92, 206 98 L 206 118 L 194 118 L 194 98 C 188 92, 180 82, 178 62 Z" />
+              <path d="M 194 118 C 175 120, 150 126, 140 135 C 132 142, 126 185, 122 220 C 118 255, 114 315, 110 360 L 120 362 C 124 322, 128 268, 134 230 C 140 232, 146 228, 148 210 C 150 190, 146 178, 148 175 C 152 205, 160 215, 170 215 C 180 215, 188 205, 192 195 C 196 205, 204 215, 214 215 C 224 215, 232 205, 236 175 C 238 178, 234 190, 236 210 C 238 228, 244 232, 250 230 C 256 268, 260 322, 264 362 L 274 360 C 270 315, 266 255, 262 220 C 258 185, 252 142, 244 135 C 234 126, 209 120, 194 118 Z" />
+              <circle cx="170" cy="205" r="14" className="fill-none stroke-slate-500/50 stroke-[1] stroke-dasharray-[2_2]" />
+              <circle cx="230" cy="205" r="14" className="fill-none stroke-slate-500/50 stroke-[1] stroke-dasharray-[2_2]" />
+              <line x1="148" y1="175" x2="252" y2="175" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
+              <line x1="150" y1="230" x2="250" y2="230" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
+              <line x1="155" y1="275" x2="245" y2="275" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
+              <line x1="142" y1="365" x2="258" y2="365" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
+              <path d="M 155 275 C 148 310, 142 345, 142 365 C 142 410, 152 480, 154 570 C 155 630, 156 700, 156 738 L 174 738 C 174 700, 175 630, 175 570 C 176 480, 180 430, 195 380 Z" />
+              <path d="M 245 275 C 252 310, 258 345, 258 365 C 258 410, 248 480, 246 570 C 245 630, 244 700, 244 738 L 226 738 C 226 700, 225 630, 225 570 C 224 480, 220 430, 205 380 Z" />
+            </g>
+          ) : (
+            <g className="fill-[url(#body-grad)] stroke-slate-600 stroke-[1.75]">
+              <path d="M 178 62 C 175 35, 225 35, 222 62 C 220 82, 212 92, 206 98 L 206 118 L 194 118 L 194 98 C 188 92, 180 82, 178 62 Z" />
+              <path d="M 194 118 C 175 120, 150 126, 140 135 C 132 142, 126 185, 122 220 C 118 255, 114 315, 110 360 L 120 362 C 124 322, 128 268, 134 230 C 140 232, 146 228, 148 210 C 150 190, 146 178, 148 175 C 152 205, 160 215, 170 215 C 180 215, 188 205, 192 195 C 196 205, 204 215, 214 215 C 224 215, 232 205, 236 175 C 238 178, 234 190, 236 210 C 238 228, 244 232, 250 230 C 256 268, 260 322, 264 362 L 274 360 C 270 315, 266 255, 262 220 C 258 185, 252 142, 244 135 C 234 126, 209 120, 194 118 Z" />
+              <line x1="200" y1="118" x2="200" y2="380" className="stroke-slate-600/40 stroke-[1] stroke-dasharray-[4_4]" />
+              <line x1="155" y1="275" x2="245" y2="275" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
+              <path d="M 155 275 C 148 310, 142 345, 142 365 C 142 410, 152 480, 154 570 C 155 630, 156 700, 156 738 L 174 738 C 174 700, 175 630, 175 570 C 176 480, 180 430, 195 380 Z" />
+              <path d="M 245 275 C 252 310, 258 345, 258 365 C 258 410, 248 480, 246 570 C 245 630, 244 700, 244 738 L 226 738 C 226 700, 225 630, 225 570 C 224 480, 220 430, 205 380 Z" />
+            </g>
+          )
+        )}
+
+        {/* Hotspot Nodes */}
+        {activePoms.map((pom) => {
+          const x = pom.landmarkX ?? 200;
+          const y = pom.landmarkY;
+          const isFocused = focusedId === pom.id;
+          const r = 9;
+          const val = measurements[pom.id] ?? pom.base;
+
+          return (
+            <g
+              key={pom.id}
+              className="cursor-pointer"
+              onClick={() => onSelectHotspot(pom.id)}
+              onMouseEnter={() => onHoverHotspot(pom.id)}
+              onMouseLeave={() => onHoverHotspot(null)}
+            >
+              <circle cx={x} cy={y} r={r + 12} fill="transparent" />
+              {isFocused && (
+                <circle cx={x} cy={y} r={r + 6} fill="none" stroke="#F59E0B" strokeWidth="2" opacity="0.7">
+                  <animate attributeName="r" values={`${r + 4};${r + 14};${r + 4}`} dur="2s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.8;0.1;0.8" dur="2s" repeatCount="indefinite" />
+                </circle>
+              )}
+              {isFocused && (
+                <line x1={x - 40} y1={y} x2={x + 40} y2={y} stroke="#F59E0B" strokeWidth="2" strokeDasharray="4 4" filter="url(#glow-gold)" />
+              )}
+              <circle cx={x} cy={y} r={isFocused ? r + 3 : r} fill={isFocused ? '#F59E0B' : '#10B981'} stroke={isFocused ? '#FFF' : '#0F172A'} strokeWidth={isFocused ? '3' : '2'} className="transition-all duration-300" />
+              <circle cx={x} cy={y} r={isFocused ? 4 : 3} fill="#FFF" />
+              <text x={x} y={y - r - 6} textAnchor="middle" className="text-[8px] font-mono font-bold fill-slate-300" style={{ textShadow: '0px 1px 3px rgba(0,0,0,0.9)' }}>
+                {pom.code}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Floating detail */}
+      {focusedId && (() => {
+        const pom = activePoms.find(p => p.id === focusedId);
+        if (!pom) return null;
+        const val = measurements[pom.id] ?? pom.base;
+        return (
+          <div className="absolute bottom-3 left-3 right-3 bg-slate-900/95 border border-slate-700/80 rounded-xl p-3 shadow-2xl backdrop-blur-md flex items-center justify-between text-xs text-white z-20">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 rounded-full bg-gold-500 animate-pulse flex-shrink-0" />
+              <div>
+                <span className="font-mono font-bold text-amber-400 mr-2">{pom.code}</span>
+                <span className="font-semibold text-slate-200">{pom.name}</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] text-slate-400 block uppercase font-mono">Value</span>
+              <span className="font-mono font-bold text-sm text-amber-300">{val}&quot;</span>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN MEASUREMENTS WORKSPACE PAGE
+// ============================================================
+export default function MeasurementsPage() {
+  const [selectedGender, setSelectedGender] = useState<Gender>('Men');
+  const [selectedGarment, setSelectedGarment] = useState<GarmentType>('Sherwani');
+  const [viewMode, setViewMode] = useState<ViewMode>('front');
+  const [fitPref, setFitPref] = useState<FitPref>('Regular');
+  const [unitSystem, setUnitSystem] = useState<UnitSys>('in');
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showTrials, setShowTrials] = useState(false);
+
+  // Posture state
+  const [shoulderSlope, setShoulderSlope] = useState<'Normal' | 'Sloped' | 'Square'>('Normal');
+  const [chestStance, setChestStance] = useState<'Normal' | 'Forward' | 'Barrel'>('Normal');
+  const [backPosture, setBackPosture] = useState<'Normal' | 'Stooped' | 'Erect'>('Normal');
+  const [heelHeight, setHeelHeight] = useState<number>(0);
+
+  // Measurements state
+  const activePoms = POM_SCHEMAS[selectedGarment];
+  const [measurements, setMeasurements] = useState<Record<string, number>>(() => {
+    const init: Record<string, number> = {};
+    for (const g of Object.values(POM_SCHEMAS)) {
+      for (const p of g) { init[p.id] = p.base; }
+    }
+    return init;
+  });
+
+  const convertVal = (v: number) => unitSystem === 'cm' ? Number((v * 2.54).toFixed(1)) : v;
+  const unitLabel = unitSystem === 'cm' ? 'cm' : 'in';
+
+  // Switch gender resets garment
+  const handleGenderChange = (g: Gender) => {
+    setSelectedGender(g);
+    setSelectedGarment(g === 'Men' ? 'Sherwani' : 'Blouse');
+    setFocusedId(null);
+  };
+
+  const handleGarmentChange = (g: GarmentType) => {
+    setSelectedGarment(g);
+    setSelectedGender(GARMENT_GENDER[g]);
+    setFocusedId(null);
+  };
+
+  const handleMeasurementChange = (pomId: string, val: number) => {
+    const inVal = unitSystem === 'cm' ? Number((val / 2.54).toFixed(2)) : val;
+    setMeasurements(prev => ({ ...prev, [pomId]: inVal }));
+  };
+
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, string> = {};
+    for (const pom of activePoms) {
+      const v = measurements[pom.id] ?? pom.base;
+      if (v < pom.min || v > pom.max) {
+        errors[pom.id] = `Value ${v}" outside range (${pom.min}" – ${pom.max}")`;
+      }
+    }
+    return errors;
+  }, [activePoms, measurements]);
+
+  const isValid = Object.keys(validationErrors).length === 0;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center space-x-3">
+            <Ruler className="w-6 h-6 text-gold-400" />
+            <span>Measurement Workspace</span>
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">Interactive body measurement engine with posture profiling</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold border flex items-center space-x-2 transition-all ${
+              showHistory ? 'bg-gold-500/10 border-gold-500/30 text-gold-400' : 'border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Version History</span>
+          </button>
+          <button
+            onClick={() => setShowTrials(!showTrials)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold border flex items-center space-x-2 transition-all ${
+              showTrials ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+            }`}
+          >
+            <GitCompare className="w-3.5 h-3.5" />
+            <span>Fitting Trials</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Control Bar */}
+      <div className="glass-card rounded-2xl border border-slate-800/60 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Gender Toggle */}
+          <div className="flex items-center bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 text-xs">
+            {(['Men', 'Women'] as Gender[]).map((g) => (
+              <button
+                key={g}
+                onClick={() => handleGenderChange(g)}
+                className={`px-4 py-1.5 rounded-lg font-semibold transition-all ${
+                  selectedGender === g ? 'bg-gold-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+
+          {/* Garment Type */}
+          <div className="flex flex-wrap gap-1.5">
+            {(selectedGender === 'Men' ? MENS_GARMENTS : WOMENS_GARMENTS).map((g) => (
+              <button
+                key={g}
+                onClick={() => handleGarmentChange(g)}
+                className={`px-3.5 py-1.5 text-xs rounded-xl border font-semibold transition-all ${
+                  selectedGarment === g
+                    ? 'bg-gradient-to-r from-gold-600 to-gold-500 text-slate-950 border-gold-400 shadow-md shadow-gold-500/10'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-6 w-px bg-slate-800 hidden md:block" />
+
+          {/* Fit Preference */}
+          <div className="flex items-center bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 text-xs">
+            {(['Skinny', 'Slim', 'Regular', 'Relaxed'] as FitPref[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFitPref(f)}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                  fitPref === f ? 'bg-gold-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Unit Toggle */}
+          <div className="flex items-center bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 text-xs">
+            <button
+              onClick={() => setUnitSystem('in')}
+              className={`px-3 py-1 rounded-lg font-semibold transition-all ${unitSystem === 'in' ? 'bg-gold-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+            >
+              Inches
+            </button>
+            <button
+              onClick={() => setUnitSystem('cm')}
+              className={`px-3 py-1 rounded-lg font-semibold transition-all ${unitSystem === 'cm' ? 'bg-gold-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+            >
+              Metric
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Workspace Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        {/* LEFT: SVG Body Diagram (5 cols) */}
+        <div className="xl:col-span-5 space-y-4">
+          {/* View Toggle */}
+          <div className="glass-card rounded-2xl border border-slate-800/60 p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-white flex items-center space-x-2">
+                  <Eye className="w-4 h-4 text-amber-400" />
+                  <span>2D Body Landmark Diagram</span>
+                </h3>
+                <p className="text-[10px] text-slate-500 capitalize mt-0.5">
+                  {selectedGender} Silhouette — {selectedGarment} ({viewMode} view)
+                </p>
+              </div>
+              <div className="flex items-center bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 text-xs">
+                <button
+                  onClick={() => setViewMode('front')}
+                  className={`px-3 py-1 rounded-lg font-semibold transition-all ${viewMode === 'front' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Front
+                </button>
+                <button
+                  onClick={() => setViewMode('back')}
+                  className={`px-3 py-1 rounded-lg font-semibold transition-all ${viewMode === 'back' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+
+            <BodySilhouetteSvg
+              gender={selectedGender}
+              viewMode={viewMode}
+              activePoms={activePoms}
+              focusedId={focusedId}
+              measurements={measurements}
+              onSelectHotspot={setFocusedId}
+              onHoverHotspot={setFocusedId}
+            />
+
+            {/* Legend */}
+            <div className="flex items-center justify-between text-[10px] pt-2 border-t border-slate-800/60">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_4px_#10B981]" />
+                  <span className="text-slate-400">Valid</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_4px_#F59E0B]" />
+                  <span className="text-slate-400">Focused</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_4px_#EF4444]" />
+                  <span className="text-slate-400">Error</span>
+                </div>
+              </div>
+              <span className="text-slate-600 font-mono">Canvas 0 0 400 800</span>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: POM Form + Posture (7 cols) */}
+        <div className="xl:col-span-7 space-y-6">
+          {/* POM Input Form */}
+          <div className="glass-card rounded-2xl border border-slate-800/60 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+              <div>
+                <h3 className="font-bold text-sm text-white flex items-center space-x-2">
+                  <Ruler className="w-4 h-4 text-gold-400" />
+                  <span>POM Input — {selectedGarment}</span>
+                </h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">{activePoms.length} measurement points • {unitLabel} units</p>
+              </div>
+              <button
+                onClick={() => {
+                  const reset: Record<string, number> = {};
+                  activePoms.forEach(p => { reset[p.id] = p.base; });
+                  setMeasurements(prev => ({ ...prev, ...reset }));
+                }}
+                className="p-2 bg-slate-900/60 border border-slate-800 rounded-xl text-slate-400 hover:text-white hover:border-slate-700 transition-all"
+                title="Reset to defaults"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {activePoms.map((pom) => {
+                const rawVal = measurements[pom.id] ?? pom.base;
+                const displayVal = convertVal(rawVal);
+                const hasError = !!validationErrors[pom.id];
+                const isFocused = focusedId === pom.id;
+
+                return (
+                  <div
+                    key={pom.id}
+                    className={`p-3.5 rounded-xl border transition-all duration-300 ${
+                      isFocused
+                        ? 'bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/40 shadow-lg shadow-amber-500/10'
+                        : hasError
+                        ? 'bg-rose-500/5 border-rose-500/60'
+                        : 'bg-slate-900/50 border-slate-800/60 hover:border-slate-700'
+                    }`}
+                    onMouseEnter={() => setFocusedId(pom.id)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] font-mono text-gold-400 font-bold px-1.5 py-0.5 rounded bg-gold-500/10 border border-gold-500/20">
+                          {pom.code}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-200">{pom.name}</span>
+                      </div>
+                      {hasError && <AlertCircle className="w-3.5 h-3.5 text-rose-400" />}
+                      {!hasError && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/50" />}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="number"
+                        step={unitSystem === 'cm' ? '0.5' : '0.25'}
+                        value={displayVal}
+                        onFocus={() => setFocusedId(pom.id)}
+                        onChange={(e) => handleMeasurementChange(pom.id, parseFloat(e.target.value) || 0)}
+                        className={`flex-1 bg-slate-950/80 border rounded-lg px-3 py-1.5 text-sm font-mono font-bold text-gold-400 focus:outline-none transition-all ${
+                          hasError ? 'border-rose-500 focus:border-rose-400' : 'border-slate-800 focus:border-gold-500'
+                        }`}
+                      />
+                      <span className="text-[10px] text-slate-500 font-mono w-6">{unitLabel}</span>
+                    </div>
+
+                    {hasError && (
+                      <p className="text-[10px] text-rose-400 mt-1.5 flex items-center">
+                        <AlertCircle className="w-3 h-3 mr-1 flex-shrink-0" />
+                        {validationErrors[pom.id]}
+                      </p>
+                    )}
+                    <p className="text-[9px] text-slate-600 mt-1">
+                      Range: {convertVal(pom.min)} – {convertVal(pom.max)} {unitLabel}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Save Button */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800/60">
+              <div className="flex items-center space-x-2 text-xs">
+                {isValid ? (
+                  <span className="text-emerald-400 flex items-center font-medium">
+                    <CheckCircle2 className="w-4 h-4 mr-1" /> All values valid
+                  </span>
+                ) : (
+                  <span className="text-rose-400 flex items-center font-medium">
+                    <AlertCircle className="w-4 h-4 mr-1" /> {Object.keys(validationErrors).length} errors
+                  </span>
+                )}
+              </div>
+              <button
+                disabled={!isValid}
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg flex items-center space-x-2 transition-all ${
+                  isValid
+                    ? 'bg-gradient-to-r from-gold-600 to-gold-500 text-slate-950 hover:brightness-110 shadow-gold-500/20'
+                    : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                <Save className="w-4 h-4" />
+                <span>Save Snapshot</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Posture Profile Panel */}
+          <div className="glass-card rounded-2xl border border-slate-800/60 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+              <div className="flex items-center space-x-2">
+                <Activity className="w-4 h-4 text-gold-400" />
+                <h3 className="font-bold text-sm text-white">Posture Profile Modifiers</h3>
+              </div>
+              {(shoulderSlope !== 'Normal' || chestStance !== 'Normal' || backPosture !== 'Normal' || heelHeight > 0) && (
+                <span className="text-[10px] bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2.5 py-0.5 rounded-full font-mono font-semibold flex items-center">
+                  <Sparkles className="w-3 h-3 mr-1" /> Active Modifiers
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Shoulder Slope */}
+              <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
+                <label className="text-xs font-semibold text-slate-300">Shoulder Slope</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(['Normal', 'Sloped', 'Square'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setShoulderSlope(opt)}
+                      className={`p-2 rounded-lg text-[10px] font-semibold border transition-all ${
+                        shoulderSlope === opt
+                          ? 'bg-gradient-to-r from-gold-600 to-gold-500 text-slate-950 border-gold-400'
+                          : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chest Stance */}
+              <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
+                <label className="text-xs font-semibold text-slate-300">Chest Stance</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(['Normal', 'Forward', 'Barrel'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setChestStance(opt)}
+                      className={`p-2 rounded-lg text-[10px] font-semibold border transition-all ${
+                        chestStance === opt
+                          ? 'bg-gradient-to-r from-gold-600 to-gold-500 text-slate-950 border-gold-400'
+                          : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Back Posture */}
+              <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
+                <label className="text-xs font-semibold text-slate-300">Back Posture</label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(['Normal', 'Stooped', 'Erect'] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setBackPosture(opt)}
+                      className={`p-2 rounded-lg text-[10px] font-semibold border transition-all ${
+                        backPosture === opt
+                          ? 'bg-gradient-to-r from-gold-600 to-gold-500 text-slate-950 border-gold-400'
+                          : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Heel Height (Women only) */}
+              <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
+                <label className="text-xs font-semibold text-slate-300">
+                  Heel Height {selectedGender === 'Women' ? '' : '(N/A)'}
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[0, 1, 2, 3].map((h) => (
+                    <button
+                      key={h}
+                      onClick={() => setHeelHeight(h)}
+                      disabled={selectedGender === 'Men'}
+                      className={`p-2 rounded-lg text-[10px] font-semibold border transition-all ${
+                        selectedGender === 'Men'
+                          ? 'bg-slate-950/30 text-slate-700 border-slate-800/40 cursor-not-allowed'
+                          : heelHeight === h
+                          ? 'bg-gradient-to-r from-gold-600 to-gold-500 text-slate-950 border-gold-400'
+                          : 'bg-slate-950/60 text-slate-400 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {h}&quot;
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Version History Sidebar (Conditional) */}
+      {showHistory && (
+        <div className="glass-card rounded-2xl border border-slate-800/60 p-6 animate-fade-in-up">
+          <div className="flex items-center justify-between border-b border-slate-800/60 pb-3 mb-4">
+            <div className="flex items-center space-x-2">
+              <History className="w-4 h-4 text-gold-400" />
+              <h3 className="font-bold text-sm text-white">Measurement Version History</h3>
+            </div>
+            <button onClick={() => setShowHistory(false)} className="text-slate-500 hover:text-white text-xs transition-colors">
+              Close
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {versionHistory.map((v) => (
+              <div
+                key={v.id}
+                className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                  v.status === 'current'
+                    ? 'bg-gold-500/5 border-gold-500/30 shadow-md shadow-gold-500/5'
+                    : 'bg-slate-900/50 border-slate-800/60 hover:border-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full ${
+                      v.status === 'current' ? 'bg-gold-500/10 text-gold-400 border border-gold-500/30' : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      {v.version}
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-200">{v.garment}</p>
+                      <p className="text-[10px] text-slate-500 flex items-center space-x-1 mt-0.5">
+                        <Clock className="w-3 h-3" />
+                        <span>{v.date}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-500">{v.pomCount} POMs</span>
+                    {v.status === 'current' && (
+                      <p className="text-[10px] text-emerald-400 font-semibold mt-0.5">Current</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Fitting Trial Delta Comparison (Conditional) */}
+      {showTrials && (
+        <div className="glass-card rounded-2xl border border-slate-800/60 p-6 animate-fade-in-up">
+          <div className="flex items-center justify-between border-b border-slate-800/60 pb-3 mb-4">
+            <div className="flex items-center space-x-2">
+              <GitCompare className="w-4 h-4 text-blue-400" />
+              <h3 className="font-bold text-sm text-white">Fitting Trial Delta Comparison</h3>
+            </div>
+            <button onClick={() => setShowTrials(false)} className="text-slate-500 hover:text-white text-xs transition-colors">
+              Close
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800/60">
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">POM</th>
+                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-gold-400 uppercase tracking-wider">Original</th>
+                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Trial 1</th>
+                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Trial 2</th>
+                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Δ1</th>
+                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Δ2</th>
+                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {fittingDeltas.map((fd, i) => {
+                  const getDeltaColor = (d: number) => {
+                    if (d === 0) return 'text-emerald-400';
+                    if (Math.abs(d) <= 0.25) return 'text-amber-400';
+                    return 'text-rose-400';
+                  };
+                  const getDeltaIcon = (d: number) => {
+                    if (d === 0) return <Minus className="w-3 h-3" />;
+                    if (d > 0) return <ArrowUpRight className="w-3 h-3" />;
+                    return <ArrowDownRight className="w-3 h-3" />;
+                  };
+                  const getStatus = (d: number) => {
+                    if (Math.abs(d) === 0) return { text: 'Perfect', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
+                    if (Math.abs(d) <= 0.25) return { text: 'Tolerance', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' };
+                    return { text: 'Alteration', color: 'text-rose-400 bg-rose-500/10 border-rose-500/30' };
+                  };
+                  const status = getStatus(fd.delta2);
+
+                  return (
+                    <tr key={i} className="border-b border-slate-800/30 last:border-0 table-row-hover">
+                      <td className="px-4 py-3 text-xs font-semibold text-slate-300">{fd.pomName}</td>
+                      <td className="px-4 py-3 text-center font-mono text-xs text-gold-400 font-bold">{fd.original}&quot;</td>
+                      <td className="px-4 py-3 text-center font-mono text-xs text-blue-400">{fd.trial1}&quot;</td>
+                      <td className="px-4 py-3 text-center font-mono text-xs text-purple-400">{fd.trial2}&quot;</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`font-mono text-xs font-semibold flex items-center justify-center space-x-1 ${getDeltaColor(fd.delta1)}`}>
+                          {getDeltaIcon(fd.delta1)}
+                          <span>{fd.delta1 > 0 ? '+' : ''}{fd.delta1}&quot;</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`font-mono text-xs font-semibold flex items-center justify-center space-x-1 ${getDeltaColor(fd.delta2)}`}>
+                          {getDeltaIcon(fd.delta2)}
+                          <span>{fd.delta2 > 0 ? '+' : ''}{fd.delta2}&quot;</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${status.color}`}>
+                          {status.text}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
