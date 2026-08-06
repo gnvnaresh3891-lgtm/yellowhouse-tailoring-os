@@ -158,7 +158,7 @@ export default function RegisterPage() {
 
           <div className="space-y-3 pt-2">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/dashboard')}
               className="btn-gold w-full flex items-center justify-center space-x-2 py-3"
             >
               <span>Proceed to Atelier Dashboard</span>

@@ -356,7 +356,7 @@ export default function MultiTenantOnboardingPage() {
             <div className="pt-4 flex justify-center max-w-md mx-auto">
               <button
                 type="button"
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/dashboard')}
                 className="btn-gold w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2"
               >
                 <span>Go to Dashboard</span>

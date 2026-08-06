@@ -161,7 +161,7 @@ export default function LoginPage() {
       if (role === 'SYSTEM_ADMIN') {
         router.push('/admin');
       } else {
-        router.push('/');
+        router.push('/dashboard');
       }
     }, 600);
   };
@@ -193,7 +193,7 @@ export default function LoginPage() {
       if (demo.role === 'SYSTEM_ADMIN') {
         router.push('/admin');
       } else {
-        router.push('/');
+        router.push('/dashboard');
       }
     }, 400);
   };
@@ -251,7 +251,7 @@ export default function LoginPage() {
 
           <div className="space-y-3 pt-2">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/dashboard')}
               className="btn-gold w-full flex items-center justify-center space-x-2 py-3"
             >
               <span>Go to Atelier Dashboard</span>

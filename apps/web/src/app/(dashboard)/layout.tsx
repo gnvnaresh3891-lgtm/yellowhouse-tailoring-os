@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/measurements', label: 'Measurements', icon: Ruler },
   { href: '/orders', label: 'Orders', icon: ShoppingBag },
@@ -98,7 +98,7 @@ export default function DashboardLayout({
         {/* Logo */}
         <div className="p-6 border-b border-slate-800/80 flex items-center justify-between">
           <Link
-            href="/"
+            href="/dashboard"
             onClick={() => setMobileMenuOpen(false)}
             className="flex items-center space-x-3 group"
           >
@@ -129,8 +129,8 @@ export default function DashboardLayout({
           </p>
           {filteredNavItems.map((item) => {
             const isActive =
-              item.href === '/'
-                ? pathname === '/'
+              item.href === '/dashboard'
+                ? pathname === '/dashboard'
                 : pathname === item.href || pathname.startsWith(item.href + '/');
             const Icon = item.icon;
 
