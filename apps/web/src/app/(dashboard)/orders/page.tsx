@@ -45,6 +45,9 @@ export interface OrderItemRow {
   fabricSku: string;
   fabricMeters: number;
   unitPrice: number;
+  fabricImage?: string;
+  liningImage?: string;
+  materialNotes?: string;
 }
 
 export interface Order {
@@ -902,6 +905,123 @@ export default function OrderManagementPage() {
                             value={item.unitPrice}
                             onChange={(e) => handleUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
                             className="input-dark text-xs font-mono font-semibold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* FABRIC SWATCH & MATERIAL ATTACHMENTS SECTION */}
+                    <div className="border-t border-slate-800/60 pt-3 mt-3 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fabric & Lining Attachments</span>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Simulate uploading custom fabric photo
+                              handleUpdateItem(item.id, 'fabricImage', 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=150');
+                              showNotification("Uploaded custom fabric swatch successfully!");
+                            }}
+                            className="btn-ghost py-1 px-2.5 text-[10px] flex items-center space-x-1"
+                          >
+                            <span>+ Fabric Photo</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Simulate uploading custom lining photo
+                              handleUpdateItem(item.id, 'liningImage', 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=150');
+                              showNotification("Uploaded custom lining photo successfully!");
+                            }}
+                            className="btn-ghost py-1 px-2.5 text-[10px] flex items-center space-x-1"
+                          >
+                            <span>+ Lining Photo</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* Selected Fabric Preset / Thumbnail */}
+                        <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+                          <span className="text-[9px] uppercase font-bold text-slate-500">Fabric Swatch Preview</span>
+                          <div className="flex items-center space-x-3">
+                            {item.fabricImage ? (
+                              <div className="relative w-12 h-12 rounded bg-slate-950 overflow-hidden border border-slate-800 shrink-0">
+                                <img src={item.fabricImage} alt="Fabric Swatch" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateItem(item.id, 'fabricImage', '')}
+                                  className="absolute top-0 right-0 bg-black/60 text-white p-0.5 rounded-bl hover:bg-black/90"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded bg-slate-950 border border-slate-850 flex items-center justify-center text-slate-600 shrink-0">
+                                <Shirt className="w-5 h-5 opacity-30" />
+                              </div>
+                            )}
+                            <div className="flex-1 space-y-1">
+                              <select
+                                onChange={(e) => handleUpdateItem(item.id, 'fabricImage', e.target.value)}
+                                value={item.fabricImage || ''}
+                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] text-slate-300 w-full focus:outline-none focus:border-yellow-500/50"
+                              >
+                                <option value="">Choose Swatch Preset</option>
+                                <option value="https://images.unsplash.com/photo-1590736969955-71cb94801759?w=150">Crimson Silk Velvet</option>
+                                <option value="https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=150">Emerald Green Velvet</option>
+                                <option value="https://images.unsplash.com/photo-1544816155-12df9643f363?w=150">Royal Blue Brocade</option>
+                                <option value="https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=150">Ivory Gold Jacquard</option>
+                              </select>
+                              <p className="text-[8px] text-slate-500">Pick preset or click "+ Fabric Photo"</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Selected Lining / Accessories Swatch */}
+                        <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
+                          <span className="text-[9px] uppercase font-bold text-slate-500">Lining / Accs Preview</span>
+                          <div className="flex items-center space-x-3">
+                            {item.liningImage ? (
+                              <div className="relative w-12 h-12 rounded bg-slate-950 overflow-hidden border border-slate-800 shrink-0">
+                                <img src={item.liningImage} alt="Lining Swatch" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateItem(item.id, 'liningImage', '')}
+                                  className="absolute top-0 right-0 bg-black/60 text-white p-0.5 rounded-bl hover:bg-black/90"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded bg-slate-950 border border-slate-850 flex items-center justify-center text-slate-600 shrink-0">
+                                <Tag className="w-5 h-5 opacity-30" />
+                              </div>
+                            )}
+                            <div className="flex-1 space-y-1">
+                              <select
+                                onChange={(e) => handleUpdateItem(item.id, 'liningImage', e.target.value)}
+                                value={item.liningImage || ''}
+                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] text-slate-300 w-full focus:outline-none focus:border-yellow-500/50"
+                              >
+                                <option value="">Choose Lining Preset</option>
+                                <option value="https://images.unsplash.com/photo-1544816155-12df9643f363?w=150">Gold Zari Threads</option>
+                                <option value="https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=150">Satin Silk Lining</option>
+                                <option value="https://images.unsplash.com/photo-1590736969955-71cb94801759?w=150">Premium Brass Buttons</option>
+                              </select>
+                              <p className="text-[8px] text-slate-500">Pick preset or click "+ Lining Photo"</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Materials Notes details input */}
+                        <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-1 flex flex-col justify-between">
+                          <label className="text-[9px] uppercase font-bold text-slate-500">Trim & Material Specs</label>
+                          <textarea
+                            placeholder="Specify buttons, zipper, laces, canvas collar reinforcement specs..."
+                            value={item.materialNotes || ''}
+                            onChange={(e) => handleUpdateItem(item.id, 'materialNotes', e.target.value)}
+                            className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-[10px] text-slate-200 placeholder-slate-600 w-full h-11 focus:outline-none focus:border-yellow-500/50 resize-none"
                           />
                         </div>
                       </div>
