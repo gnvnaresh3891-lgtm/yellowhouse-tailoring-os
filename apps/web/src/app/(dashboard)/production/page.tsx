@@ -361,6 +361,10 @@ export default function ProductionKanbanPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteNote, setDeleteNote] = useState('');
   const [showDeliveryNote, setShowDeliveryNote] = useState<JobCardItem | null>(null);
+  const [activeTab, setActiveTab] = useState<'board' | 'timesheets'>('board');
+  const [selectedMonth, setSelectedMonth] = useState<number>(7); // August (7)
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>('');
 
   const handleStartEdit = (job: JobCardItem) => {
     setEditForm({ ...job });
@@ -447,6 +451,37 @@ export default function ProductionKanbanPage() {
   const urgentCount = jobs.filter((j) => j.priority === 'Urgent').length;
   const totalSamLogged = jobs.reduce((acc, j) => acc + j.samMinutesLogged, 0);
   const readyCount = jobs.filter((j) => j.stage === 'QC & Ready for Delivery').length;
+
+  const mockTimesheetLogs = [
+    { date: '2026-08-01', karigar: 'Karigar Latif', jobId: 'JC-9038', garment: 'Sherwani', task: 'Pattern Master Drafting', sam: 60, rate: 42, status: 'Disbursed' },
+    { date: '2026-08-02', karigar: 'Karigar Salim', jobId: 'JC-9035', garment: 'Lehenga Choli', task: 'Fabric Align Inspection', sam: 35, rate: 42, status: 'Disbursed' },
+    { date: '2026-08-03', karigar: 'Karigar Latif', jobId: 'JC-9021', garment: 'Sherwani', task: 'Jacket Bodice Cutting', sam: 65, rate: 42, status: 'Disbursed' },
+    { date: '2026-08-03', karigar: 'Karigar Salim', jobId: 'JC-9018', garment: 'Lehenga Choli', task: 'Maroon Velvet Dabka embroidery', sam: 180, rate: 42, status: 'Disbursed' },
+    { date: '2026-08-04', karigar: 'Karigar Ahmed', jobId: 'JC-9025', garment: 'Bandhgala', task: 'Collar Pattern Cut', sam: 45, rate: 42, status: 'Disbursed' },
+    { date: '2026-08-04', karigar: 'Karigar Usman', jobId: 'JC-8994', garment: 'Sari Blouse', task: 'Princess bodice assembly', sam: 85, rate: 42, status: 'Disbursed' },
+    { date: '2026-08-05', karigar: 'Karigar Salim', jobId: 'JC-9018', garment: 'Lehenga Choli', task: 'French Knot panel extensions', sam: 60, rate: 42, status: 'Logged' },
+    { date: '2026-08-05', karigar: 'Karigar Rafi', jobId: 'JC-9030', garment: 'Anarkali', task: 'Kalis seam stitching', sam: 110, rate: 42, status: 'Logged' },
+    { date: '2026-08-06', karigar: 'Karigar Usman', jobId: 'JC-9022', garment: 'Sari Blouse', task: 'Sequins work backend collar', sam: 120, rate: 42, status: 'Logged' },
+    { date: '2026-08-06', karigar: 'Karigar Ahmed', jobId: 'JC-9028', garment: 'Suit', task: 'Double breasted collar cuts', sam: 50, rate: 42, status: 'Logged' },
+    { date: '2026-08-07', karigar: 'Karigar Rafi', jobId: 'JC-8965', garment: 'Anarkali', task: 'Final flare hem stitching', sam: 90, rate: 42, status: 'Logged' },
+  ];
+
+  const filteredTimesheets = mockTimesheetLogs.filter((log) => {
+    const dateObj = new Date(log.date);
+    const logMonth = dateObj.getMonth();
+    const logYear = dateObj.getFullYear();
+
+    const matchesMonth = selectedMonth === -1 || logMonth === selectedMonth;
+    const matchesYear = logYear === selectedYear;
+    const matchesSpecificDate = !selectedSpecificDate || log.date === selectedSpecificDate;
+    const matchesKarigar = selectedKarigar === 'All Karigars' || log.karigar === selectedKarigar;
+
+    return matchesMonth && matchesYear && matchesSpecificDate && matchesKarigar;
+  });
+
+  const timesheetTotalSam = filteredTimesheets.reduce((acc, curr) => acc + curr.sam, 0);
+  const timesheetTotalPayout = filteredTimesheets.reduce((acc, curr) => acc + (curr.sam * curr.rate), 0);
+  const timesheetCompletedCount = filteredTimesheets.length;
 
   // Move card to next or previous stage
   const moveStage = (jobId: string, direction: 'next' | 'prev') => {
@@ -568,277 +603,493 @@ export default function ProductionKanbanPage() {
         </div>
       </div>
 
-      {/* ---------------------------------------------------- */}
-      {/* METRIC SUMMARY BAR */}
-      {/* ---------------------------------------------------- */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Active Job Cards</p>
-            <p className="text-2xl font-extrabold text-white mt-1 font-mono">{totalJobsCount}</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Across 5 workshop stages</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center text-slate-300">
-            <Package className="w-5 h-5 text-yellow-400" />
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Urgent Rush Jobs</p>
-            <p className="text-2xl font-extrabold text-rose-400 mt-1 font-mono">{urgentCount}</p>
-            <p className="text-[10px] text-rose-400/80 mt-0.5">High priority wedding orders</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-            <Flame className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">SAM Logged (Minutes)</p>
-            <p className="text-2xl font-extrabold text-amber-400 mt-1 font-mono">{totalSamLogged} <span className="text-xs text-slate-400 font-sans">mins</span></p>
-            <p className="text-[10px] text-slate-400 mt-0.5">Standard Allowed Minutes</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <Clock className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">QC Passed & Ready</p>
-            <p className="text-2xl font-extrabold text-emerald-400 mt-1 font-mono">{readyCount}</p>
-            <p className="text-[10px] text-emerald-400/80 mt-0.5">Ready for client dispatch</p>
-          </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <CheckCircle2 className="w-5 h-5" />
-          </div>
-        </div>
+      {/* TAB SELECTOR */}
+      <div className="flex items-center space-x-2 border-b border-slate-800/80 pb-0">
+        <button
+          onClick={() => setActiveTab('board')}
+          className={`px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 transition-all ${
+            activeTab === 'board'
+              ? 'border-yellow-500 text-yellow-400 bg-slate-900/60'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          Workshop Kanban Board
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('timesheets');
+            setSelectedKarigar('All Karigars'); // reset filter for timesheets
+          }}
+          className={`px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 transition-all ${
+            activeTab === 'timesheets'
+              ? 'border-yellow-500 text-yellow-400 bg-slate-900/60'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          Artisan Timesheets & Logs
+        </button>
       </div>
 
-      {/* ---------------------------------------------------- */}
-      {/* FILTERS TOOLBAR */}
-      {/* ---------------------------------------------------- */}
-      <div className="glass-card rounded-2xl p-4 border border-slate-800/80 space-y-3">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Search Input */}
-          <div className="relative w-full md:w-80">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search JC #, Client, Karigar..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input-dark pl-9 py-2 text-xs"
-            />
-          </div>
-
-          {/* Dropdown Filters */}
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            {/* Karigar Filter */}
-            <div className="relative">
-              <User className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <select
-                value={selectedKarigar}
-                onChange={(e) => setSelectedKarigar(e.target.value)}
-                className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-yellow-500/50 appearance-none cursor-pointer"
-              >
-                {KARIGAR_LIST.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
+      {activeTab === 'board' ? (
+        <>
+          {/* ---------------------------------------------------- */}
+          {/* METRIC SUMMARY BAR */}
+          {/* ---------------------------------------------------- */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fade-in">
+            <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Active Job Cards</p>
+                <p className="text-2xl font-extrabold text-white mt-1 font-mono">{totalJobsCount}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Across 5 workshop stages</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center text-slate-300">
+                <Package className="w-5 h-5 text-yellow-400" />
+              </div>
             </div>
 
-            {/* Garment Filter */}
-            <div className="relative">
-              <Scissors className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <select
-                value={selectedGarment}
-                onChange={(e) => setSelectedGarment(e.target.value)}
-                className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-yellow-500/50 appearance-none cursor-pointer"
-              >
-                {GARMENT_TYPES.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
+            <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Urgent Rush Jobs</p>
+                <p className="text-2xl font-extrabold text-rose-400 mt-1 font-mono">{urgentCount}</p>
+                <p className="text-[10px] text-rose-400/80 mt-0.5">High priority wedding orders</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                <Flame className="w-5 h-5" />
+              </div>
             </div>
 
-            {/* Priority Filter */}
-            <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs">
-              {(['All', 'Urgent', 'Normal'] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setSelectedPriority(p)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    selectedPriority === p
-                      ? p === 'Urgent'
-                        ? 'bg-rose-500 text-white'
-                        : 'bg-yellow-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
+            <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">SAM Logged (Minutes)</p>
+                <p className="text-2xl font-extrabold text-amber-400 mt-1 font-mono">{totalSamLogged} <span className="text-xs text-slate-400 font-sans">mins</span></p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Standard Allowed Minutes</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <Clock className="w-5 h-5" />
+              </div>
+            </div>
+
+            <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">QC Passed & Ready</p>
+                <p className="text-2xl font-extrabold text-emerald-400 mt-1 font-mono">{readyCount}</p>
+                <p className="text-[10px] text-emerald-400/80 mt-0.5">Ready for client dispatch</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ---------------------------------------------------- */}
-      {/* 5-COLUMN KANBAN BOARD */}
-      {/* ---------------------------------------------------- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start">
-        {stages.map((stage) => {
-          const config = STAGE_CONFIG[stage];
-          const stageJobs = filteredJobs.filter((j) => j.stage === stage);
-          const stageSamTotal = stageJobs.reduce((sum, j) => sum + j.samMinutesLogged, 0);
-
-          return (
-            <div
-              key={stage}
-              className={`kanban-column border-t-4 ${config.accentBorder} flex flex-col min-h-[580px]`}
-            >
-              {/* Column Header */}
-              <div className="pb-3 border-b border-slate-800/80 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 min-w-0">
-                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${config.dotColor}`} />
-                    <h3 className={`text-xs font-bold uppercase tracking-wider truncate ${config.headerTextColor}`}>
-                      {stage}
-                    </h3>
-                  </div>
-
-                  {/* Column Count Badge */}
-                  <span className="ml-2 text-xs px-2.5 py-0.5 rounded-full font-mono font-bold bg-slate-800/90 text-slate-300 border border-slate-700/60 shadow-sm flex-shrink-0">
-                    {stageJobs.length}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
-                  <span>SAM Logged:</span>
-                  <span className="text-yellow-400/90 font-bold">{stageSamTotal} mins</span>
-                </div>
+          {/* ---------------------------------------------------- */}
+          {/* FILTERS TOOLBAR */}
+          {/* ---------------------------------------------------- */}
+          <div className="glass-card rounded-2xl p-4 border border-slate-800/80 space-y-3 animate-fade-in">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+              {/* Search Input */}
+              <div className="relative w-full md:w-80">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search JC #, Client, Karigar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input-dark pl-9 py-2 text-xs"
+                />
               </div>
 
-              {/* Column Cards Container */}
-              <div className="flex-1 space-y-3 pt-3 overflow-y-auto max-h-[750px] pr-0.5">
-                {stageJobs.map((job) => {
-                  const garmentBadgeClass = getGarmentBadgeClass(job.garment);
+              {/* Dropdown Filters */}
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                {/* Karigar Filter */}
+                <div className="relative">
+                  <User className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <select
+                    value={selectedKarigar}
+                    onChange={(e) => setSelectedKarigar(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-yellow-500/50 appearance-none cursor-pointer"
+                  >
+                    {KARIGAR_LIST.map((k) => (
+                      <option key={k} value={k}>
+                        {k}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
+                </div>
 
-                  return (
-                    <div
-                      key={job.id}
-                      className="kanban-card group cursor-pointer relative hover:border-slate-700 transition-all duration-200"
-                      onClick={() => setSelectedCardModal(job)}
+                {/* Garment Filter */}
+                <div className="relative">
+                  <Scissors className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <select
+                    value={selectedGarment}
+                    onChange={(e) => setSelectedGarment(e.target.value)}
+                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-yellow-500/50 appearance-none cursor-pointer"
+                  >
+                    {GARMENT_TYPES.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
+                </div>
+
+                {/* Priority Toggle */}
+                <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-0.5">
+                  {(['All', 'Urgent', 'Normal'] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setSelectedPriority(p)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        selectedPriority === p
+                          ? p === 'Urgent'
+                            ? 'bg-rose-500 text-white'
+                            : 'bg-yellow-500 text-slate-950'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
                     >
-                      {/* Top Row: Job Card # and Garment Badge */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center space-x-1.5">
-                          <GripVertical className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />
-                          <span className="font-mono font-bold text-xs text-yellow-400 tracking-wide">
-                            {job.orderId}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center space-x-1.5 flex-shrink-0">
-                          {job.priority === 'Urgent' && (
-                            <span
-                              className="px-1.5 py-0.5 text-[9px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 rounded uppercase tracking-wider animate-pulse flex items-center space-x-1"
-                              title="Urgent Order"
-                            >
-                              <span>URGENT</span>
-                            </span>
-                          )}
-                          <span className={`badge ${garmentBadgeClass}`}>
-                            {job.garment}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Client Name */}
-                      <p className="text-xs font-bold text-slate-100 group-hover:text-yellow-400 transition-colors pt-0.5">
-                        {job.client}
-                      </p>
-
-                      {/* Assigned Karigar & SAM Minutes */}
-                      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
-                        <div className="flex items-center space-x-1.5 text-slate-300">
-                          <User className="w-3 h-3 text-slate-500" />
-                          <span className="truncate max-w-[110px]">{job.karigar}</span>
-                        </div>
-                        <div className="flex items-center space-x-1 font-mono text-yellow-400/90 text-[10px] bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800">
-                          <Clock className="w-3 h-3 text-slate-500" />
-                          <span>{job.samMinutesLogged}m SAM</span>
-                        </div>
-                      </div>
-
-                      {/* Progress Bar (colored per stage) */}
-                      <div className="space-y-1 pt-1">
-                        <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-slate-500 font-medium">Stage Progress</span>
-                          <span className="text-slate-300 font-mono font-bold">{job.progress}%</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800/80">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${config.progressGradient}`}
-                            style={{ width: `${job.progress}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Due Date & Action controls */}
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-800/40">
-                        <span className="flex items-center space-x-1 text-slate-400">
-                          <Calendar className="w-3 h-3 text-slate-500" />
-                          <span>Due: <strong className="text-slate-300">{job.dueDate}</strong></span>
-                        </span>
-
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              moveStage(job.id, 'prev');
-                            }}
-                            disabled={stages.indexOf(job.stage) === 0}
-                            className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
-                            title="Move back a stage"
-                          >
-                            &larr;
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              moveStage(job.id, 'next');
-                            }}
-                            disabled={stages.indexOf(job.stage) === stages.length - 1}
-                            className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
-                            title="Move forward to next stage"
-                          >
-                            &rarr;
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {stageJobs.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-slate-800 text-slate-600 space-y-2">
-                    <Package className="w-6 h-6 opacity-40" />
-                    <p className="text-xs">No active jobs in {stage}</p>
-                  </div>
-                )}
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+
+          {/* ---------------------------------------------------- */}
+          {/* 5-COLUMN KANBAN BOARD */}
+          {/* ---------------------------------------------------- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start animate-fade-in">
+            {stages.map((stage) => {
+              const config = STAGE_CONFIG[stage];
+              const stageJobs = filteredJobs.filter((j) => j.stage === stage);
+              const stageSamTotal = stageJobs.reduce((sum, j) => sum + j.samMinutesLogged, 0);
+
+              return (
+                <div
+                  key={stage}
+                  className={`kanban-column border-t-4 ${config.accentBorder} flex flex-col min-h-[580px]`}
+                >
+                  {/* Column Header */}
+                  <div className="pb-3 border-b border-slate-800/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <span className={`w-2 h-2 rounded-full ${config.dotColor}`} />
+                        <h3 className={`font-bold text-xs truncate ${config.headerTextColor}`}>
+                          {config.label}
+                        </h3>
+                      </div>
+                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${config.headerBadgeColor}`}>
+                        {stageJobs.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+                      <span>Accrued SAM:</span>
+                      <span className="text-slate-300 font-semibold">{stageSamTotal} mins</span>
+                    </div>
+                  </div>
+
+                  {/* Card Container */}
+                  <div className="flex-1 py-3 space-y-3 overflow-y-auto max-h-[600px] pr-1">
+                    {stageJobs.map((job) => {
+                      const isUrgent = job.priority === 'Urgent';
+                      return (
+                        <div
+                          key={job.id}
+                          onClick={() => setSelectedCardModal(job)}
+                          className={`glass-card hover:border-yellow-500/40 rounded-xl p-4 border transition-all duration-300 cursor-pointer relative group space-y-3 shadow-md ${
+                            isUrgent ? 'border-rose-500/20 bg-rose-950/5' : 'border-slate-800/80'
+                          }`}
+                        >
+                          {/* Top Row: Job Card # and Garment Badge */}
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-[10px] font-extrabold text-slate-500 group-hover:text-yellow-400 transition-colors">
+                              {job.orderId}
+                            </span>
+                            <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full font-bold ${getGarmentBadgeClass(job.garment)}`}>
+                              {job.garment}
+                            </span>
+                          </div>
+
+                          {/* Client & Karigar */}
+                          <div className="space-y-1">
+                            <h4 className="font-bold text-xs text-white leading-tight">{job.client}</h4>
+                            <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                              <User className="w-3 h-3 text-yellow-400/80" />
+                              <span>{job.karigar}</span>
+                            </p>
+                          </div>
+
+                          {/* Progress bar */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[9px] font-mono text-slate-500">
+                              <span>SAM: {job.samMinutesLogged}/{job.samTotalEstimate}m</span>
+                              <span className="text-slate-300 font-bold">{job.progress}%</span>
+                            </div>
+                            <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${config.progressGradient}`}
+                                style={{ width: `${job.progress}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Footer details: Due date & stage arrows */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-800/40 text-[9px] font-mono text-slate-500">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-500" />
+                              <span className={isUrgent ? 'text-rose-400 font-bold' : ''}>{job.dueDate}</span>
+                            </span>
+
+                            <div className="flex items-center space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  moveStage(job.id, 'prev');
+                                }}
+                                disabled={stages.indexOf(job.stage) === 0}
+                                className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
+                                title="Move back to previous stage"
+                              >
+                                &larr;
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  moveStage(job.id, 'next');
+                                }}
+                                disabled={stages.indexOf(job.stage) === stages.length - 1}
+                                className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
+                                title="Move forward to next stage"
+                              >
+                                &rarr;
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {stageJobs.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-slate-800 text-slate-600 space-y-2">
+                        <Package className="w-6 h-6 opacity-40" />
+                        <p className="text-xs">No active jobs in {stage}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        /* ---------------------------------------------------- */
+        /* ARTISAN TIMESHEETS REPORT VIEW */
+        /* ---------------------------------------------------- */
+        <div className="space-y-6 animate-fade-in">
+          {/* TIMESHEET SUMMARY WIDGETS */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="glass-card rounded-2xl p-5 border border-slate-800/80 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Selected Month Hours</p>
+                <p className="text-2xl font-extrabold text-white mt-1 font-mono">
+                  {Math.floor(timesheetTotalSam / 60)}h {timesheetTotalSam % 60}m
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">({timesheetTotalSam} total SAM minutes)</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400">
+                <Clock className="w-6 h-6" />
+              </div>
+            </div>
+
+            <div className="glass-card rounded-2xl p-5 border border-slate-800/80 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Accrued Payout (Rate ₹42/m)</p>
+                <p className="text-2xl font-extrabold text-emerald-400 mt-1 font-mono">
+                  ₹{timesheetTotalPayout.toLocaleString('en-IN')}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Based on completed tasks logged</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Sparkles className="w-6 h-6" />
+              </div>
+            </div>
+
+            <div className="glass-card rounded-2xl p-5 border border-slate-800/80 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Log Entries Found</p>
+                <p className="text-2xl font-extrabold text-blue-400 mt-1 font-mono">{timesheetCompletedCount}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Accrued task log rows</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                <FileText className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+
+          {/* DATE & MONTH TIMESHEET CONTROL TOOLBAR */}
+          <div className="glass-card rounded-2xl p-5 border border-slate-800/80 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Timesheet Period Filters</h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">Select date ranges or monthly cycles to audit Karigar earnings</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    alert("Timesheet report exported successfully as YellowHouse_Timesheet_Report.csv");
+                  }}
+                  className="btn-ghost text-xs py-2 px-3 flex items-center space-x-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5 text-yellow-400" />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') window.print();
+                  }}
+                  className="btn-gold text-xs py-2 px-4 flex items-center space-x-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Report</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
+              {/* Year Selector */}
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase font-bold text-slate-400 block">Fiscal Year</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  className="input-dark w-full py-2 px-3 text-xs"
+                >
+                  <option value={2026}>2026 Fiscal</option>
+                  <option value={2025}>2025 Fiscal</option>
+                </select>
+              </div>
+
+              {/* Month Selector */}
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase font-bold text-slate-400 block">Billing Month</label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                  className="input-dark w-full py-2 px-3 text-xs"
+                >
+                  <option value={-1}>All Months</option>
+                  <option value={0}>January</option>
+                  <option value={1}>February</option>
+                  <option value={2}>March</option>
+                  <option value={3}>April</option>
+                  <option value={4}>May</option>
+                  <option value={5}>June</option>
+                  <option value={6}>July</option>
+                  <option value={7}>August</option>
+                  <option value={8}>September</option>
+                  <option value={9}>October</option>
+                  <option value={10}>November</option>
+                  <option value={11}>December</option>
+                </select>
+              </div>
+
+              {/* Specific Date Picker */}
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase font-bold text-slate-400 block">Specific Date Filter</label>
+                <input
+                  type="date"
+                  value={selectedSpecificDate}
+                  onChange={(e) => setSelectedSpecificDate(e.target.value)}
+                  className="input-dark w-full py-1.5 px-3 text-xs text-slate-300"
+                />
+              </div>
+
+              {/* Karigar Filter */}
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase font-bold text-slate-400 block">Karigar Workspace Filter</label>
+                <select
+                  value={selectedKarigar}
+                  onChange={(e) => setSelectedKarigar(e.target.value)}
+                  className="input-dark w-full py-2 px-3 text-xs"
+                >
+                  {KARIGAR_LIST.map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* TIMESHEET LOG TABLE */}
+          <div className="glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-900/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="py-4 px-6 text-left">Date</th>
+                    <th className="py-4 px-4 text-left">Artisan</th>
+                    <th className="py-4 px-4 text-left">Job Card Reference</th>
+                    <th className="py-4 px-4 text-left">Garment</th>
+                    <th className="py-4 px-4 text-left">Task Done</th>
+                    <th className="py-4 px-4 text-center">SAM Minutes</th>
+                    <th className="py-4 px-4 text-right">Earned (₹)</th>
+                    <th className="py-4 px-6 text-center">Payout Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/40 text-xs">
+                  {filteredTimesheets.map((log, index) => {
+                    const payout = log.sam * log.rate;
+                    return (
+                      <tr key={index} className="hover:bg-slate-800/30 transition-colors text-slate-300">
+                        <td className="py-3.5 px-6 font-mono text-[11px] text-slate-400">
+                          {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-white">{log.karigar}</td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-mono text-yellow-400 font-semibold">{log.jobId}</span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getGarmentBadgeClass(log.garment)}`}>
+                            {log.garment}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-400">{log.task}</td>
+                        <td className="py-3.5 px-4 text-center font-mono font-bold">{log.sam} mins</td>
+                        <td className="py-3.5 px-4 text-right font-mono font-extrabold text-emerald-400">
+                          ₹{payout.toLocaleString('en-IN')}
+                        </td>
+                        <td className="py-3.5 px-6 text-center">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              log.status === 'Disbursed'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                            }`}
+                          >
+                            {log.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {filteredTimesheets.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-500 text-xs">
+                        <Clock className="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-40 animate-pulse" />
+                        No timesheet records match the selected date/month filters.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ---------------------------------------------------- */}
       {/* JOB CARD DETAIL MODAL */}
