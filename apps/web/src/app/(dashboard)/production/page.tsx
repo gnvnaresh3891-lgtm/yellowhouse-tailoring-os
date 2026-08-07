@@ -365,6 +365,7 @@ export default function ProductionKanbanPage() {
   const [selectedMonth, setSelectedMonth] = useState<number>(7); // August (7)
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>('');
+  const [timesheetViewMode, setTimesheetViewMode] = useState<'calendar' | 'table'>('calendar');
 
   const handleStartEdit = (job: JobCardItem) => {
     setEditForm({ ...job });
@@ -482,6 +483,53 @@ export default function ProductionKanbanPage() {
   const timesheetTotalSam = filteredTimesheets.reduce((acc, curr) => acc + curr.sam, 0);
   const timesheetTotalPayout = filteredTimesheets.reduce((acc, curr) => acc + (curr.sam * curr.rate), 0);
   const timesheetCompletedCount = filteredTimesheets.length;
+
+  const getCalendarDays = () => {
+    const activeMonth = selectedMonth === -1 ? 7 : selectedMonth;
+    const firstDayIndex = new Date(selectedYear, activeMonth, 1).getDay();
+    const numDays = new Date(selectedYear, activeMonth + 1, 0).getDate();
+    const days: { dateStr: string; dayNum: number; isCurrentMonth: boolean }[] = [];
+
+    const prevMonthYear = activeMonth === 0 ? selectedYear - 1 : selectedYear;
+    const prevMonthVal = activeMonth === 0 ? 11 : activeMonth - 1;
+    const prevNumDays = new Date(prevMonthYear, prevMonthVal + 1, 0).getDate();
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const d = prevNumDays - i;
+      const mStr = String(prevMonthVal + 1).padStart(2, '0');
+      const dStr = String(d).padStart(2, '0');
+      days.push({
+        dateStr: `${prevMonthYear}-${mStr}-${dStr}`,
+        dayNum: d,
+        isCurrentMonth: false
+      });
+    }
+
+    for (let i = 1; i <= numDays; i++) {
+      const mStr = String(activeMonth + 1).padStart(2, '0');
+      const dStr = String(i).padStart(2, '0');
+      days.push({
+        dateStr: `${selectedYear}-${mStr}-${dStr}`,
+        dayNum: i,
+        isCurrentMonth: true
+      });
+    }
+
+    const nextMonthYear = activeMonth === 11 ? selectedYear + 1 : selectedYear;
+    const nextMonthVal = activeMonth === 11 ? 0 : activeMonth + 1;
+    let nextPaddingCount = 1;
+    while (days.length < 42) {
+      const mStr = String(nextMonthVal + 1).padStart(2, '0');
+      const dStr = String(nextPaddingCount).padStart(2, '0');
+      days.push({
+        dateStr: `${nextMonthYear}-${mStr}-${dStr}`,
+        dayNum: nextPaddingCount,
+        isCurrentMonth: false
+      });
+      nextPaddingCount++;
+    }
+
+    return days;
+  };
 
   // Move card to next or previous stage
   const moveStage = (jobId: string, direction: 'next' | 'prev') => {
@@ -1021,73 +1069,232 @@ export default function ProductionKanbanPage() {
                 </select>
               </div>
             </div>
-          </div>
 
-          {/* TIMESHEET LOG TABLE */}
-          <div className="glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-800 bg-slate-900/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-4 px-6 text-left">Date</th>
-                    <th className="py-4 px-4 text-left">Artisan</th>
-                    <th className="py-4 px-4 text-left">Job Card Reference</th>
-                    <th className="py-4 px-4 text-left">Garment</th>
-                    <th className="py-4 px-4 text-left">Task Done</th>
-                    <th className="py-4 px-4 text-center">SAM Minutes</th>
-                    <th className="py-4 px-4 text-right">Earned (₹)</th>
-                    <th className="py-4 px-6 text-center">Payout Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/40 text-xs">
-                  {filteredTimesheets.map((log, index) => {
-                    const payout = log.sam * log.rate;
-                    return (
-                      <tr key={index} className="hover:bg-slate-800/30 transition-colors text-slate-300">
-                        <td className="py-3.5 px-6 font-mono text-[11px] text-slate-400">
-                          {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-white">{log.karigar}</td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-mono text-yellow-400 font-semibold">{log.jobId}</span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getGarmentBadgeClass(log.garment)}`}>
-                            {log.garment}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-400">{log.task}</td>
-                        <td className="py-3.5 px-4 text-center font-mono font-bold">{log.sam} mins</td>
-                        <td className="py-3.5 px-4 text-right font-mono font-extrabold text-emerald-400">
-                          ₹{payout.toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-3.5 px-6 text-center">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                              log.status === 'Disbursed'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                            }`}
-                          >
-                            {log.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-
-                  {filteredTimesheets.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-500 text-xs">
-                        <Clock className="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-40 animate-pulse" />
-                        No timesheet records match the selected date/month filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            {/* TIMESHEET VIEW MODE TOGGLER */}
+            <div className="flex items-center justify-between border-t border-slate-800/80 pt-3">
+              <span className="text-[10px] text-slate-400 font-bold uppercase">Layout Mode</span>
+              <div className="flex items-center bg-slate-900 p-0.5 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setTimesheetViewMode('calendar')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    timesheetViewMode === 'calendar' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Calendar Month View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimesheetViewMode('table')}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                    timesheetViewMode === 'table' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Audit List Table
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* RENDERING EITHER CALENDAR VIEW OR TABLE VIEW */}
+          {timesheetViewMode === 'calendar' ? (
+            /* ---------------------------------------------------- */
+            /* CALENDAR MONTH VIEW (FullCalendar Demo Style) */
+            /* ---------------------------------------------------- */
+            <div className="glass-card rounded-2xl border border-slate-800/80 p-5 space-y-4 shadow-xl animate-fade-in">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  {selectedMonth === -1 ? 'August' : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedYear}
+                </h4>
+                <div className="text-[10px] text-slate-500 font-mono">
+                  Click a cell to set Specific Date Filter
+                </div>
+              </div>
+
+              {/* Calendar Grid Header */}
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-800/60">
+                <div>Sun</div>
+                <div>Mon</div>
+                <div>Tue</div>
+                <div>Wed</div>
+                <div>Thu</div>
+                <div>Fri</div>
+                <div>Sat</div>
+              </div>
+
+              {/* Calendar Days 6-Row Grid */}
+              <div className="grid grid-cols-7 gap-1">
+                {getCalendarDays().map((day, idx) => {
+                  const dayLogs = mockTimesheetLogs.filter((l) => l.date === day.dateStr && (selectedKarigar === 'All Karigars' || l.karigar === selectedKarigar));
+                  const dayTotalSam = dayLogs.reduce((acc, curr) => acc + curr.sam, 0);
+                  const isSelected = selectedSpecificDate === day.dateStr;
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => {
+                        setSelectedSpecificDate(isSelected ? '' : day.dateStr);
+                      }}
+                      className={`min-h-[90px] p-2 rounded-xl border flex flex-col justify-between transition-all cursor-pointer relative select-none ${
+                        !day.isCurrentMonth
+                          ? 'bg-slate-950/20 border-slate-900/40 opacity-30'
+                          : isSelected
+                          ? 'bg-yellow-500/10 border-yellow-500/80 shadow-md'
+                          : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
+                      }`}
+                    >
+                      {/* Day Number and daily sum badge */}
+                      <div className="flex items-start justify-between">
+                        <span className={`text-xs font-bold font-mono ${day.isCurrentMonth ? (isSelected ? 'text-yellow-400' : 'text-slate-300') : 'text-slate-600'}`}>
+                          {day.dayNum}
+                        </span>
+                        {dayTotalSam > 0 && (
+                          <span className="text-[8px] bg-yellow-500/10 text-yellow-400 font-mono px-1 rounded border border-yellow-500/20">
+                            {dayTotalSam}m
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Log lists inside cell */}
+                      <div className="mt-1.5 space-y-1 overflow-y-auto max-h-[50px] pr-0.5 scrollbar-thin">
+                        {dayLogs.map((log, lIdx) => (
+                          <div
+                            key={lIdx}
+                            title={`${log.karigar}: ${log.task}`}
+                            className={`text-[8px] px-1 py-0.5 rounded flex items-center justify-between font-medium leading-none ${
+                              log.status === 'Disbursed'
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}
+                          >
+                            <span className="truncate max-w-[45px] font-bold">{log.karigar.split(' ')[1]}</span>
+                            <span className="font-mono opacity-80">{log.sam}m</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            /* ---------------------------------------------------- */
+            /* AUDIT LIST TABLE VIEW */
+            /* ---------------------------------------------------- */
+            <div className="glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl animate-fade-in">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-900/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="py-4 px-6 text-left">Date</th>
+                      <th className="py-4 px-4 text-left">Artisan</th>
+                      <th className="py-4 px-4 text-left">Job Card Reference</th>
+                      <th className="py-4 px-4 text-left">Garment</th>
+                      <th className="py-4 px-4 text-left">Task Done</th>
+                      <th className="py-4 px-4 text-center">SAM Minutes</th>
+                      <th className="py-4 px-4 text-right">Earned (₹)</th>
+                      <th className="py-4 px-6 text-center">Payout Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/40 text-xs">
+                    {filteredTimesheets.map((log, index) => {
+                      const payout = log.sam * log.rate;
+                      return (
+                        <tr key={index} className="hover:bg-slate-800/30 transition-colors text-slate-300">
+                          <td className="py-3.5 px-6 font-mono text-[11px] text-slate-400">
+                            {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-white">{log.karigar}</td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-mono text-yellow-400 font-semibold">{log.jobId}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getGarmentBadgeClass(log.garment)}`}>
+                              {log.garment}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-400">{log.task}</td>
+                          <td className="py-3.5 px-4 text-center font-mono font-bold">{log.sam} mins</td>
+                          <td className="py-3.5 px-4 text-right font-mono font-extrabold text-emerald-400">
+                            ₹{payout.toLocaleString('en-IN')}
+                          </td>
+                          <td className="py-3.5 px-6 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                log.status === 'Disbursed'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                              }`}
+                            >
+                              {log.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {filteredTimesheets.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-slate-500 text-xs">
+                          <Clock className="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-40 animate-pulse" />
+                          No timesheet records match the selected date/month filters.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Selected Day Logs Drawer Details (Always visible below Calendar to list detailed tasks of selected cell date) */}
+          {timesheetViewMode === 'calendar' && selectedSpecificDate && (
+            <div className="glass-card rounded-2xl border border-slate-800/80 p-5 space-y-3 shadow-md animate-fade-in">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  Daily Contributions: {new Date(selectedSpecificDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={() => setSelectedSpecificDate('')}
+                  className="text-[10px] text-yellow-400 hover:underline"
+                >
+                  Show All Month Logs
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-slate-500 font-semibold border-b border-slate-800/60 pb-1">
+                      <th className="pb-2">Artisan</th>
+                      <th className="pb-2">Job ID</th>
+                      <th className="pb-2">Garment</th>
+                      <th className="pb-2">Task Contribution</th>
+                      <th className="pb-2 text-center">SAM Min</th>
+                      <th className="pb-2 text-right">Earned</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/40 text-slate-300">
+                    {filteredTimesheets.map((log, index) => (
+                      <tr key={index} className="hover:bg-slate-800/30">
+                        <td className="py-2.5 font-bold text-slate-200">{log.karigar}</td>
+                        <td className="py-2.5 font-mono text-yellow-400">{log.jobId}</td>
+                        <td className="py-2.5">{log.garment}</td>
+                        <td className="py-2.5 text-slate-400">{log.task}</td>
+                        <td className="py-2.5 text-center font-mono">{log.sam}m</td>
+                        <td className="py-2.5 text-right font-mono text-emerald-400 font-bold">₹{(log.sam * log.rate).toLocaleString('en-IN')}</td>
+                      </tr>
+                    ))}
+                    {filteredTimesheets.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-slate-500">No logs for this specific date.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
