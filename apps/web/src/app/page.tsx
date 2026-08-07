@@ -408,51 +408,103 @@ export default function MarketingLandingPage() {
               </div>
 
               {/* INTERACTIVE SVG GARMENT LANDMARKS */}
-              <div className="relative w-full max-w-sm h-96 flex items-center justify-center bg-slate-900/90 rounded-xl border border-slate-800/80 p-4">
-                <svg viewBox="0 0 400 450" className="w-full h-full filter drop-shadow-lg">
-                  {/* GARMENT OUTLINE SKETCH */}
-                  <path
-                    d="M 120 80 L 160 70 L 200 65 L 240 70 L 280 80 L 320 180 L 285 190 L 265 130 L 265 240 L 255 380 L 145 380 L 135 240 L 135 130 L 115 190 Z"
-                    fill="none"
-                    stroke="#334155"
-                    strokeWidth="2.5"
-                    strokeDasharray="4 4"
-                  />
+              <div className="relative w-full max-w-sm h-[450px] flex items-center justify-center bg-[#0B0F19] rounded-xl border border-slate-800 shadow-2xl p-4 overflow-hidden">
+                {/* Background Glows */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 blur-[40px] pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-500/10 blur-[40px] pointer-events-none" />
+                
+                <svg viewBox="0 0 400 450" className="w-full h-full relative z-10 filter drop-shadow-lg">
+                  <defs>
+                    <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+                      <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#38BDF8" floodOpacity="0.8" />
+                    </filter>
+                    <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
+                      <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#F59E0B" floodOpacity="0.9" />
+                    </filter>
+                    <linearGradient id="body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#1E293B" stopOpacity="0.7" />
+                      <stop offset="100%" stopColor="#020617" stopOpacity="0.9" />
+                    </linearGradient>
+                    <pattern id="cad-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <rect width="20" height="20" fill="none" />
+                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1E293B" strokeWidth="0.5" />
+                    </pattern>
+                  </defs>
 
-                  {/* JACKET LAPEL & SEAM MAPPING */}
-                  <path d="M 160 70 L 200 170 L 240 70" fill="none" stroke="#EAB308" strokeWidth="2" opacity="0.6" />
-                  <path d="M 200 170 L 200 380" fill="none" stroke="#EAB308" strokeWidth="1.5" opacity="0.4" />
-                  <circle cx="200" cy="230" r="4" fill="#EAB308" />
+                  {/* Base Blueprint Grid */}
+                  <rect width="400" height="450" fill="url(#cad-grid)" className="opacity-50" />
+
+                  {/* Mannequin Base Form */}
+                  <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
+                    {/* Neck */}
+                    <path d="M 175 0 L 175 40 C 175 55, 225 55, 225 40 L 225 0 Z" opacity="0.4" />
+                    {/* Shoulders & Torso & Legs Segment */}
+                    <path d="M 192 40 C 165 45, 135 55, 125 70 C 115 85, 110 130, 108 160 C 105 200, 105 250, 108 300 C 112 305, 118 305, 120 300 C 122 260, 125 215, 130 170 C 135 170, 142 165, 145 150 C 148 130, 148 115, 150 110 C 150 170, 150 210, 148 270 C 145 300, 145 320, 145 335 C 140 390, 135 450, 130 450 C 130 450, 150 450, 155 450 C 160 390, 170 340, 180 260 C 185 210, 195 180, 200 165 C 205 180, 215 210, 220 260 C 230 340, 240 390, 245 450 C 255 450, 270 450, 270 450 C 265 450, 260 390, 255 335 C 255 320, 255 300, 252 270 C 250 210, 250 170, 250 110 C 252 115, 252 130, 255 150 C 258 165, 265 170, 270 170 C 275 215, 278 260, 280 300 C 282 305, 288 305, 292 300 C 295 250, 295 200, 292 160 C 290 130, 285 85, 275 70 C 265 55, 235 45, 208 40 Z" />
+                  </g>
+
+                  {/* JACKET LAPEL & SEAM MAPPING Overlay */}
+                  <g opacity="0.8">
+                    {/* Lapel */}
+                    <path d="M 165 45 L 200 160 L 235 45" fill="none" stroke="#F59E0B" strokeWidth="2" strokeDasharray="2 2" />
+                    <path d="M 165 45 L 140 100 L 200 160" fill="none" stroke="#F59E0B" strokeWidth="1.5" />
+                    <path d="M 235 45 L 260 100 L 200 160" fill="none" stroke="#F59E0B" strokeWidth="1.5" />
+                    
+                    {/* Front Seam */}
+                    <path d="M 200 160 L 200 330" fill="none" stroke="#F59E0B" strokeWidth="2" />
+                    <circle cx="200" cy="230" r="4" fill="#F59E0B" />
+                    <circle cx="200" cy="280" r="4" fill="#F59E0B" />
+
+                    {/* Pocket */}
+                    <rect x="220" y="220" width="35" height="5" fill="#F59E0B" opacity="0.6" />
+                  </g>
+
+                  {/* CAD Horizontal Guidelines for Active Landmark */}
+                  {activeLandmark && (
+                    <g className="opacity-80">
+                      <line x1="0" y1={activeLandmark.cy} x2="400" y2={activeLandmark.cy} stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="6 4" filter="url(#glow-cyan)" />
+                      <line x1={activeLandmark.cx} y1="0" x2={activeLandmark.cx} y2="450" stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="6 4" filter="url(#glow-cyan)" />
+                    </g>
+                  )}
 
                   {/* LANDMARK HOTSPOTS */}
                   {LANDMARKS.map((lm) => {
                     const isSelected = activeLandmark.id === lm.id;
+                    const r = 8;
                     return (
                       <g
                         key={lm.id}
                         className="cursor-pointer transition-all duration-300"
                         onClick={() => setActiveLandmark(lm)}
                       >
+                        <circle cx={lm.cx} cy={lm.cy} r={r + 14} fill="transparent" />
+                        {isSelected && (
+                          <>
+                            {/* Concentric Radar Pulses */}
+                            <circle cx={lm.cx} cy={lm.cy} r={r + 8} fill="none" stroke="#F59E0B" strokeWidth="1.5" opacity="0.8">
+                              <animate attributeName="r" values={`${r + 4};${r + 20};${r + 4}`} dur="2s" repeatCount="indefinite" />
+                              <animate attributeName="opacity" values="0.8;0;0.8" dur="2s" repeatCount="indefinite" />
+                            </circle>
+                            <circle cx={lm.cx} cy={lm.cy} r={r + 12} fill="none" stroke="#F59E0B" strokeWidth="1" opacity="0.5">
+                              <animate attributeName="r" values={`${r + 8};${r + 28};${r + 8}`} dur="2s" begin="0.5s" repeatCount="indefinite" />
+                              <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" begin="0.5s" repeatCount="indefinite" />
+                            </circle>
+                          </>
+                        )}
                         <circle
                           cx={lm.cx}
                           cy={lm.cy}
-                          r={isSelected ? 14 : 8}
-                          className={isSelected ? 'fill-yellow-500/30 stroke-yellow-400 animate-pulse' : 'fill-slate-800/80 stroke-yellow-500/60'}
-                          strokeWidth="2"
+                          r={isSelected ? r + 3 : r}
+                          className={isSelected ? 'fill-amber-500 stroke-white' : 'fill-emerald-500 stroke-slate-900'}
+                          strokeWidth={isSelected ? '2.5' : '1.5'}
+                          filter={isSelected ? 'url(#glow-gold)' : ''}
                         />
-                        <circle
-                          cx={lm.cx}
-                          cy={lm.cy}
-                          r={isSelected ? 6 : 4}
-                          className={isSelected ? 'fill-yellow-400' : 'fill-slate-300'}
-                        />
+                        <circle cx={lm.cx} cy={lm.cy} r={isSelected ? 3 : 2} fill="#FFFFFF" />
                         <text
-                          x={lm.cx + (lm.cx > 200 ? 16 : -16)}
+                          x={lm.cx + (lm.cx > 200 ? 18 : -18)}
                           y={lm.cy + 4}
                           textAnchor={lm.cx > 200 ? 'start' : 'end'}
-                          fill={isSelected ? '#FACC15' : '#94A3B8'}
-                          fontSize="11"
-                          fontWeight={isSelected ? 'bold' : 'normal'}
+                          className={`text-[11px] font-mono font-bold ${isSelected ? 'fill-amber-400' : 'fill-slate-400'}`}
+                          style={{ textShadow: '0px 2px 4px rgba(0,0,0,0.9)' }}
                         >
                           {lm.name.split(' ')[0]}
                         </text>
@@ -462,9 +514,9 @@ export default function MarketingLandingPage() {
                 </svg>
 
                 {/* INSTRUCTION OVERLAY */}
-                <div className="absolute bottom-3 left-3 right-3 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-                  <span>💡 Click points to inspect posture deltas</span>
-                  <span className="text-yellow-400 font-semibold">{activeLandmark.name}</span>
+                <div className="absolute bottom-3 left-3 right-3 bg-slate-950/80 backdrop-blur-md px-3 py-2 rounded-lg border border-amber-500/30 text-[11px] text-slate-300 flex items-center justify-between shadow-lg">
+                  <span className="flex items-center space-x-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /><span>Inspect Posture Deltas</span></span>
+                  <span className="text-amber-400 font-bold font-mono tracking-wide">{activeLandmark.name.split(' ')[0]}</span>
                 </div>
               </div>
             </div>

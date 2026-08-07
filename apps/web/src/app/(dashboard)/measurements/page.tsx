@@ -150,70 +150,102 @@ function BodySilhouetteSvg({
   onHoverHotspot: (id: string | null) => void;
 }) {
   return (
-    <div className="relative flex flex-col items-center justify-center p-4 bg-slate-950/90 rounded-2xl border border-slate-800 shadow-2xl">
-      <svg viewBox="0 0 400 800" className="w-full max-w-[340px] h-auto select-none" style={{ filter: 'drop-shadow(0px 8px 20px rgba(0,0,0,0.5))' }}>
+    <div className="relative flex flex-col items-center justify-center p-4 bg-[#0B0F19] rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+      {/* Background Glows */}
+      <div className="absolute top-1/4 -left-10 w-32 h-32 bg-cyan-500/10 blur-[40px] pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-10 w-32 h-32 bg-amber-500/10 blur-[40px] pointer-events-none" />
+      
+      <svg viewBox="0 0 400 800" className="w-full max-w-[340px] h-auto select-none relative z-10" style={{ filter: 'drop-shadow(0px 8px 20px rgba(0,0,0,0.7))' }}>
         <defs>
+          <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#38BDF8" floodOpacity="0.8" />
+          </filter>
           <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#F59E0B" floodOpacity="0.9" />
           </filter>
           <linearGradient id="body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#1E293B" stopOpacity="0.95" />
-            <stop offset="100%" stopColor="#0F172A" stopOpacity="0.98" />
+            <stop offset="0%" stopColor="#1E293B" stopOpacity="0.8" />
+            <stop offset="50%" stopColor="#0F172A" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#020617" stopOpacity="0.95" />
           </linearGradient>
-          <pattern id="grid-pat" width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#475569" strokeWidth="0.4" />
+          <pattern id="cad-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <rect width="20" height="20" fill="none" />
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1E293B" strokeWidth="0.5" />
+          </pattern>
+          <pattern id="cad-grid-large" width="100" height="100" patternUnits="userSpaceOnUse">
+            <rect width="100" height="100" fill="url(#cad-grid)" />
+            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#334155" strokeWidth="1" opacity="0.5" />
           </pattern>
         </defs>
 
-        {/* Grid */}
-        <rect width="400" height="800" fill="url(#grid-pat)" className="opacity-10" />
+        {/* Base Blueprint Grid */}
+        <rect width="400" height="800" fill="url(#cad-grid-large)" className="opacity-40" />
 
-        {/* Silhouette */}
+        {/* CAD Horizontal Alignment Lasers */}
+        <g className="opacity-50">
+          <line x1="0" y1="120" x2="400" y2="120" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+          <text x="10" y="115" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Neck Base Line</text>
+
+          <line x1="0" y1="200" x2="400" y2="200" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+          <text x="10" y="195" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Chest Datum</text>
+
+          <line x1="0" y1="280" x2="400" y2="280" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+          <text x="10" y="275" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Natural Waistline</text>
+
+          <line x1="0" y1="360" x2="400" y2="360" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+          <text x="10" y="355" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Seat Height</text>
+          
+          <line x1="0" y1="550" x2="400" y2="550" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+          <text x="10" y="545" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Outseam Boundary</text>
+        </g>
+
+        {/* Mannequin Silhouette */}
         {gender === 'Men' ? (
           viewMode === 'front' ? (
-            <g className="fill-[url(#body-grad)] stroke-slate-600 stroke-[1.75]">
-              <path d="M 175 65 C 175 40, 225 40, 225 65 C 225 85, 215 95, 208 100 L 208 120 L 192 120 L 192 100 C 185 95, 175 85, 175 65 Z" />
-              <path d="M 192 120 Q 200 130 208 120" className="fill-none stroke-slate-500 stroke-[1.5]" />
-              <path d="M 192 120 C 170 122, 140 128, 130 135 C 122 142, 115 190, 112 230 C 108 270, 102 330, 98 375 L 110 378 C 115 335, 122 280, 128 240 C 135 242, 142 240, 145 220 C 148 195, 148 185, 150 180 C 152 230, 153 280, 152 330 C 150 350, 145 370, 145 400 L 160 410 C 165 405, 185 410, 200 410 C 215 410, 235 405, 240 410 L 255 400 C 255 370, 250 350, 248 330 C 247 280, 248 230, 250 180 C 252 185, 252 195, 255 220 C 258 240, 265 242, 272 240 C 278 280, 285 335, 290 378 L 302 375 C 298 330, 292 270, 288 230 C 285 190, 278 142, 270 135 C 260 128, 230 122, 208 120 Z" />
-              <line x1="145" y1="190" x2="255" y2="190" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
-              <line x1="152" y1="280" x2="248" y2="280" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
-              <line x1="145" y1="360" x2="255" y2="360" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
-              <path d="M 160 410 C 158 450, 155 520, 153 590 C 152 640, 154 700, 154 740 L 176 740 C 176 700, 178 640, 177 590 C 176 520, 182 460, 195 415 Z" />
-              <path d="M 240 410 C 242 450, 245 520, 247 590 C 248 640, 246 700, 246 740 L 224 740 C 224 700, 222 640, 223 590 C 224 520, 218 460, 205 415 Z" />
+            <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
+              {/* Head & Neck */}
+              <path d="M 175 65 C 175 30, 225 30, 225 65 C 225 85, 212 95, 208 105 L 208 120 L 192 120 L 192 105 C 188 95, 175 85, 175 65 Z" />
+              {/* Torso & Legs */}
+              <path d="M 192 120 C 165 120, 135 125, 125 140 C 115 155, 110 200, 108 230 C 105 270, 105 320, 108 370 C 112 375, 118 375, 120 370 C 122 330, 125 285, 130 240 C 135 240, 142 235, 145 220 C 148 200, 148 185, 150 180 C 150 240, 150 280, 148 340 C 145 370, 145 390, 145 405 C 140 460, 135 550, 130 630 C 125 700, 120 750, 120 760 C 130 765, 145 765, 155 760 C 160 700, 170 600, 180 500 C 185 450, 195 420, 200 405 C 205 420, 215 450, 220 500 C 230 600, 240 700, 245 760 C 255 765, 270 765, 280 760 C 280 750, 275 700, 270 630 C 265 550, 260 460, 255 405 C 255 390, 255 370, 252 340 C 250 280, 250 240, 250 180 C 252 185, 252 200, 255 220 C 258 235, 265 240, 270 240 C 275 285, 278 330, 280 370 C 282 375, 288 375, 292 370 C 295 320, 295 270, 292 230 C 290 200, 285 155, 275 140 C 265 125, 235 120, 208 120 Z" />
+              {/* Chest Curves */}
+              <path d="M 155 170 C 170 185, 190 190, 200 190 C 210 190, 230 185, 245 170" fill="none" stroke="#334155" strokeWidth="1" />
+              {/* Collarbone */}
+              <path d="M 160 135 Q 200 150 240 135" fill="none" stroke="#334155" strokeWidth="1" />
             </g>
           ) : (
-            <g className="fill-[url(#body-grad)] stroke-slate-600 stroke-[1.75]">
-              <path d="M 175 65 C 175 40, 225 40, 225 65 C 225 85, 215 95, 208 100 L 208 120 L 192 120 L 192 100 C 185 95, 175 85, 175 65 Z" />
-              <circle cx="200" cy="115" r="4" className="fill-gold-400/80 stroke-gold-300 stroke-[1]" />
-              <path d="M 192 120 C 170 122, 140 128, 130 135 C 122 142, 115 190, 112 230 C 108 270, 102 330, 98 375 L 110 378 C 115 335, 122 280, 128 240 C 135 242, 142 240, 145 220 C 148 195, 148 185, 150 180 C 152 230, 153 280, 152 330 C 150 350, 145 370, 145 400 L 160 410 C 165 405, 185 410, 200 410 C 215 410, 235 405, 240 410 L 255 400 C 255 370, 250 350, 248 330 C 247 280, 248 230, 250 180 C 252 185, 252 195, 255 220 C 258 240, 265 242, 272 240 C 278 280, 285 335, 290 378 L 302 375 C 298 330, 292 270, 288 230 C 285 190, 278 142, 270 135 C 260 128, 230 122, 208 120 Z" />
-              <line x1="200" y1="115" x2="200" y2="410" className="stroke-slate-600/40 stroke-[1] stroke-dasharray-[4_4]" />
-              <path d="M 160 170 Q 200 180 240 170" className="fill-none stroke-slate-600/50 stroke-[1.2] stroke-dasharray-[3_3]" />
-              <path d="M 160 410 C 158 450, 155 520, 153 590 C 152 640, 154 700, 154 740 L 176 740 C 176 700, 178 640, 177 590 C 176 520, 182 460, 195 415 Z" />
-              <path d="M 240 410 C 242 450, 245 520, 247 590 C 248 640, 246 700, 246 740 L 224 740 C 224 700, 222 640, 223 590 C 224 520, 218 460, 205 415 Z" />
+            <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
+              {/* Head & Neck Back */}
+              <path d="M 175 65 C 175 30, 225 30, 225 65 C 225 85, 212 95, 208 105 L 208 120 L 192 120 L 192 105 C 188 95, 175 85, 175 65 Z" />
+              {/* Torso & Legs Back */}
+              <path d="M 192 120 C 165 120, 135 125, 125 140 C 115 155, 110 200, 108 230 C 105 270, 105 320, 108 370 C 112 375, 118 375, 120 370 C 122 330, 125 285, 130 240 C 135 240, 142 235, 145 220 C 148 200, 148 185, 150 180 C 150 240, 150 280, 148 340 C 145 370, 145 390, 145 405 C 140 460, 135 550, 130 630 C 125 700, 120 750, 120 760 C 130 765, 145 765, 155 760 C 160 700, 170 600, 180 500 C 185 450, 195 420, 200 405 C 205 420, 215 450, 220 500 C 230 600, 240 700, 245 760 C 255 765, 270 765, 280 760 C 280 750, 275 700, 270 630 C 265 550, 260 460, 255 405 C 255 390, 255 370, 252 340 C 250 280, 250 240, 250 180 C 252 185, 252 200, 255 220 C 258 235, 265 240, 270 240 C 275 285, 278 330, 280 370 C 282 375, 288 375, 292 370 C 295 320, 295 270, 292 230 C 290 200, 285 155, 275 140 C 265 125, 235 120, 208 120 Z" />
+              {/* Back center seam */}
+              <line x1="200" y1="120" x2="200" y2="390" stroke="#334155" strokeWidth="1" strokeDasharray="4 4" />
+              {/* Shoulder Blades */}
+              <path d="M 160 160 C 170 170, 185 175, 195 160" fill="none" stroke="#334155" strokeWidth="1" />
+              <path d="M 240 160 C 230 170, 215 175, 205 160" fill="none" stroke="#334155" strokeWidth="1" />
             </g>
           )
         ) : (
           viewMode === 'front' ? (
-            <g className="fill-[url(#body-grad)] stroke-slate-600 stroke-[1.75]">
-              <path d="M 178 62 C 175 35, 225 35, 222 62 C 220 82, 212 92, 206 98 L 206 118 L 194 118 L 194 98 C 188 92, 180 82, 178 62 Z" />
-              <path d="M 194 118 C 175 120, 150 126, 140 135 C 132 142, 126 185, 122 220 C 118 255, 114 315, 110 360 L 120 362 C 124 322, 128 268, 134 230 C 140 232, 146 228, 148 210 C 150 190, 146 178, 148 175 C 152 205, 160 215, 170 215 C 180 215, 188 205, 192 195 C 196 205, 204 215, 214 215 C 224 215, 232 205, 236 175 C 238 178, 234 190, 236 210 C 238 228, 244 232, 250 230 C 256 268, 260 322, 264 362 L 274 360 C 270 315, 266 255, 262 220 C 258 185, 252 142, 244 135 C 234 126, 209 120, 194 118 Z" />
-              <circle cx="170" cy="205" r="14" className="fill-none stroke-slate-500/50 stroke-[1] stroke-dasharray-[2_2]" />
-              <circle cx="230" cy="205" r="14" className="fill-none stroke-slate-500/50 stroke-[1] stroke-dasharray-[2_2]" />
-              <line x1="148" y1="175" x2="252" y2="175" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
-              <line x1="150" y1="230" x2="250" y2="230" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
-              <line x1="155" y1="275" x2="245" y2="275" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
-              <line x1="142" y1="365" x2="258" y2="365" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
-              <path d="M 155 275 C 148 310, 142 345, 142 365 C 142 410, 152 480, 154 570 C 155 630, 156 700, 156 738 L 174 738 C 174 700, 175 630, 175 570 C 176 480, 180 430, 195 380 Z" />
-              <path d="M 245 275 C 252 310, 258 345, 258 365 C 258 410, 248 480, 246 570 C 245 630, 244 700, 244 738 L 226 738 C 226 700, 225 630, 225 570 C 224 480, 220 430, 205 380 Z" />
+            <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
+              {/* Head & Neck Female */}
+              <path d="M 178 62 C 178 35, 222 35, 222 62 C 222 80, 210 90, 206 102 L 206 118 L 194 118 L 194 102 C 190 90, 178 80, 178 62 Z" />
+              {/* Torso & Legs Female */}
+              <path d="M 194 118 C 175 118, 145 125, 135 135 C 125 145, 115 195, 112 220 C 108 260, 108 310, 112 355 C 115 362, 122 362, 125 355 C 128 320, 132 270, 138 230 C 142 230, 145 225, 148 210 C 150 195, 148 185, 150 180 C 152 230, 155 260, 158 290 C 160 320, 158 370, 158 400 C 155 450, 145 540, 140 620 C 135 690, 130 740, 130 750 C 138 755, 150 755, 158 750 C 165 690, 175 580, 185 480 C 190 430, 195 400, 200 390 C 205 400, 210 430, 215 480 C 225 580, 235 690, 242 750 C 250 755, 262 755, 270 750 C 270 740, 265 690, 260 620 C 255 540, 245 450, 242 400 C 242 370, 240 320, 242 290 C 245 260, 248 230, 250 180 C 252 185, 250 195, 252 210 C 255 225, 258 230, 262 230 C 268 270, 272 320, 275 355 C 278 362, 285 362, 288 355 C 292 310, 292 260, 288 220 C 285 195, 275 145, 265 135 C 255 125, 225 118, 206 118 Z" />
+              {/* Bust Curves */}
+              <path d="M 155 170 C 165 210, 190 220, 200 200 C 210 220, 235 210, 245 170" fill="none" stroke="#334155" strokeWidth="1" />
+              {/* Hip definition */}
+              <path d="M 155 300 C 145 330, 145 360, 158 390" fill="none" stroke="#334155" strokeWidth="1" opacity="0.6" />
+              <path d="M 245 300 C 255 330, 255 360, 242 390" fill="none" stroke="#334155" strokeWidth="1" opacity="0.6" />
             </g>
           ) : (
-            <g className="fill-[url(#body-grad)] stroke-slate-600 stroke-[1.75]">
-              <path d="M 178 62 C 175 35, 225 35, 222 62 C 220 82, 212 92, 206 98 L 206 118 L 194 118 L 194 98 C 188 92, 180 82, 178 62 Z" />
-              <path d="M 194 118 C 175 120, 150 126, 140 135 C 132 142, 126 185, 122 220 C 118 255, 114 315, 110 360 L 120 362 C 124 322, 128 268, 134 230 C 140 232, 146 228, 148 210 C 150 190, 146 178, 148 175 C 152 205, 160 215, 170 215 C 180 215, 188 205, 192 195 C 196 205, 204 215, 214 215 C 224 215, 232 205, 236 175 C 238 178, 234 190, 236 210 C 238 228, 244 232, 250 230 C 256 268, 260 322, 264 362 L 274 360 C 270 315, 266 255, 262 220 C 258 185, 252 142, 244 135 C 234 126, 209 120, 194 118 Z" />
-              <line x1="200" y1="118" x2="200" y2="380" className="stroke-slate-600/40 stroke-[1] stroke-dasharray-[4_4]" />
-              <line x1="155" y1="275" x2="245" y2="275" className="stroke-slate-600/50 stroke-[1] stroke-dasharray-[3_3]" />
-              <path d="M 155 275 C 148 310, 142 345, 142 365 C 142 410, 152 480, 154 570 C 155 630, 156 700, 156 738 L 174 738 C 174 700, 175 630, 175 570 C 176 480, 180 430, 195 380 Z" />
-              <path d="M 245 275 C 252 310, 258 345, 258 365 C 258 410, 248 480, 246 570 C 245 630, 244 700, 244 738 L 226 738 C 226 700, 225 630, 225 570 C 224 480, 220 430, 205 380 Z" />
+            <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
+              {/* Head & Neck Female Back */}
+              <path d="M 178 62 C 178 35, 222 35, 222 62 C 222 80, 210 90, 206 102 L 206 118 L 194 118 L 194 102 C 190 90, 178 80, 178 62 Z" />
+              {/* Torso & Legs Female Back */}
+              <path d="M 194 118 C 175 118, 145 125, 135 135 C 125 145, 115 195, 112 220 C 108 260, 108 310, 112 355 C 115 362, 122 362, 125 355 C 128 320, 132 270, 138 230 C 142 230, 145 225, 148 210 C 150 195, 148 185, 150 180 C 152 230, 155 260, 158 290 C 160 320, 158 370, 158 400 C 155 450, 145 540, 140 620 C 135 690, 130 740, 130 750 C 138 755, 150 755, 158 750 C 165 690, 175 580, 185 480 C 190 430, 195 400, 200 390 C 205 400, 210 430, 215 480 C 225 580, 235 690, 242 750 C 250 755, 262 755, 270 750 C 270 740, 265 690, 260 620 C 255 540, 245 450, 242 400 C 242 370, 240 320, 242 290 C 245 260, 248 230, 250 180 C 252 185, 250 195, 252 210 C 255 225, 258 230, 262 230 C 268 270, 272 320, 275 355 C 278 362, 285 362, 288 355 C 292 310, 292 260, 288 220 C 285 195, 275 145, 265 135 C 255 125, 225 118, 206 118 Z" />
+              {/* Back center seam */}
+              <line x1="200" y1="120" x2="200" y2="380" stroke="#334155" strokeWidth="1" strokeDasharray="4 4" />
             </g>
           )
         )}
@@ -223,7 +255,7 @@ function BodySilhouetteSvg({
           const x = pom.landmarkX ?? 200;
           const y = pom.landmarkY;
           const isFocused = focusedId === pom.id;
-          const r = 9;
+          const r = 8;
           const val = measurements[pom.id] ?? pom.base;
 
           return (
@@ -234,19 +266,28 @@ function BodySilhouetteSvg({
               onMouseEnter={() => onHoverHotspot(pom.id)}
               onMouseLeave={() => onHoverHotspot(null)}
             >
-              <circle cx={x} cy={y} r={r + 12} fill="transparent" />
+              <circle cx={x} cy={y} r={r + 14} fill="transparent" />
               {isFocused && (
-                <circle cx={x} cy={y} r={r + 6} fill="none" stroke="#F59E0B" strokeWidth="2" opacity="0.7">
-                  <animate attributeName="r" values={`${r + 4};${r + 14};${r + 4}`} dur="2s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.8;0.1;0.8" dur="2s" repeatCount="indefinite" />
-                </circle>
+                <>
+                  {/* Concentric Radar Pulses */}
+                  <circle cx={x} cy={y} r={r + 8} fill="none" stroke="#F59E0B" strokeWidth="1.5" opacity="0.8">
+                    <animate attributeName="r" values={`${r + 4};${r + 20};${r + 4}`} dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.8;0;0.8" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                  <circle cx={x} cy={y} r={r + 12} fill="none" stroke="#F59E0B" strokeWidth="1" opacity="0.5">
+                    <animate attributeName="r" values={`${r + 8};${r + 28};${r + 8}`} dur="2s" begin="0.5s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" begin="0.5s" repeatCount="indefinite" />
+                  </circle>
+                  
+                  {/* Glowing Laser Crosshairs to Edges */}
+                  <line x1="0" y1={y} x2="400" y2={y} stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="6 4" filter="url(#glow-cyan)" opacity="0.8" />
+                  <line x1={x} y1="0" x2={x} y2="800" stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="6 4" filter="url(#glow-cyan)" opacity="0.8" />
+                </>
               )}
-              {isFocused && (
-                <line x1={x - 40} y1={y} x2={x + 40} y2={y} stroke="#F59E0B" strokeWidth="2" strokeDasharray="4 4" filter="url(#glow-gold)" />
-              )}
-              <circle cx={x} cy={y} r={isFocused ? r + 3 : r} fill={isFocused ? '#F59E0B' : '#10B981'} stroke={isFocused ? '#FFF' : '#0F172A'} strokeWidth={isFocused ? '3' : '2'} className="transition-all duration-300" />
-              <circle cx={x} cy={y} r={isFocused ? 4 : 3} fill="#FFF" />
-              <text x={x} y={y - r - 6} textAnchor="middle" className="text-[8px] font-mono font-bold fill-slate-300" style={{ textShadow: '0px 1px 3px rgba(0,0,0,0.9)' }}>
+              {/* Hotspot Base */}
+              <circle cx={x} cy={y} r={isFocused ? r + 3 : r} fill={isFocused ? '#F59E0B' : '#10B981'} stroke={isFocused ? '#FFFFFF' : '#020617'} strokeWidth={isFocused ? '2.5' : '1.5'} filter={isFocused ? 'url(#glow-gold)' : ''} className="transition-all duration-300" />
+              <circle cx={x} cy={y} r={isFocused ? 3 : 2} fill="#FFFFFF" />
+              <text x={x + 15} y={y + 4} className={`text-[10px] font-mono font-bold ${isFocused ? 'fill-amber-400' : 'fill-slate-400'}`} style={{ textShadow: '0px 2px 4px rgba(0,0,0,0.9)' }}>
                 {pom.code}
               </text>
             </g>
@@ -254,23 +295,21 @@ function BodySilhouetteSvg({
         })}
       </svg>
 
-      {/* Floating detail */}
+      {/* Floating Detail */}
       {focusedId && (() => {
         const pom = activePoms.find(p => p.id === focusedId);
         if (!pom) return null;
         const val = measurements[pom.id] ?? pom.base;
         return (
-          <div className="absolute bottom-3 left-3 right-3 bg-slate-900/95 border border-slate-700/80 rounded-xl p-3 shadow-2xl backdrop-blur-md flex items-center justify-between text-xs text-white z-20">
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 rounded-full bg-gold-500 animate-pulse flex-shrink-0" />
-              <div>
-                <span className="font-mono font-bold text-amber-400 mr-2">{pom.code}</span>
-                <span className="font-semibold text-slate-200">{pom.name}</span>
-              </div>
+          <div className="absolute bottom-4 right-4 bg-[#0B0F19]/95 border border-amber-500/50 rounded-xl p-3 shadow-[0_8px_32px_rgba(245,158,11,0.2)] backdrop-blur-md flex flex-col min-w-[140px] z-20">
+            <div className="flex items-center space-x-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="font-mono font-bold text-amber-400 text-[10px] uppercase tracking-wider">{pom.code}</span>
             </div>
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 block uppercase font-mono">Value</span>
-              <span className="font-mono font-bold text-sm text-amber-300">{val}&quot;</span>
+            <span className="font-semibold text-slate-200 text-xs mb-1">{pom.name}</span>
+            <div className="text-right mt-1 border-t border-slate-700/50 pt-1">
+              <span className="text-[9px] text-slate-400 uppercase font-mono tracking-widest block">Value</span>
+              <span className="font-mono font-bold text-lg text-white">{val}&quot;</span>
             </div>
           </div>
         );
