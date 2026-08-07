@@ -35,6 +35,9 @@ export interface JobCardItem {
   stage: KanbanStage;
   fabricDetails?: string;
   notes?: string;
+  rack?: string;
+  barcodeEnabled?: boolean;
+  qrCodeEnabled?: boolean;
 }
 
 // Stage Configuration mapping to design system styles
@@ -1532,6 +1535,105 @@ export default function ProductionKanbanPage() {
                     <p className="text-slate-300 italic">{selectedCardModal.notes}</p>
                   </div>
                 )}
+
+                {/* TRACKING, BARCODES, QR CODES & RACK ASSIGNMENT */}
+                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                    <span className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider">Storage & Scan Logistics</span>
+                    <span className="text-[9px] text-slate-500 font-mono">Optional RFID/Rack tracking</span>
+                  </div>
+
+                  {/* Rack Selector & Info */}
+                  <div className="grid grid-cols-2 gap-3 items-center">
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase font-bold text-slate-500 block">Assigned Storage Rack</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Rack A-12, Hanger 4"
+                        value={selectedCardModal.rack || ''}
+                        onChange={(e) => {
+                          const updatedRack = e.target.value;
+                          const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, rack: updatedRack } : j);
+                          setJobs(updatedJobs);
+                          localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+                          setSelectedCardModal({ ...selectedCardModal, rack: updatedRack });
+                        }}
+                        className="input-dark w-full py-1 px-2.5 text-xs text-slate-200"
+                      />
+                    </div>
+                    <div className="flex gap-4 items-center justify-end">
+                      {/* Barcode/QR Toggles */}
+                      <label className="flex items-center space-x-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!selectedCardModal.barcodeEnabled}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, barcodeEnabled: val } : j);
+                            setJobs(updatedJobs);
+                            localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+                            setSelectedCardModal({ ...selectedCardModal, barcodeEnabled: val });
+                          }}
+                          className="rounded border-slate-800 bg-slate-900 text-yellow-500 focus:ring-0 w-3 h-3 animate-fade-in"
+                        />
+                        <span className="text-[9px] text-slate-400 font-bold uppercase select-none">Barcode</span>
+                      </label>
+
+                      <label className="flex items-center space-x-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!selectedCardModal.qrCodeEnabled}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, qrCodeEnabled: val } : j);
+                            setJobs(updatedJobs);
+                            localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+                            setSelectedCardModal({ ...selectedCardModal, qrCodeEnabled: val });
+                          }}
+                          className="rounded border-slate-800 bg-slate-900 text-yellow-500 focus:ring-0 w-3 h-3 animate-fade-in"
+                        />
+                        <span className="text-[9px] text-slate-400 font-bold uppercase select-none">QR Code</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Render Mock Barcode / QR Code if enabled */}
+                  <div className="flex items-center justify-around gap-4 pt-2 border-t border-slate-800/40">
+                    {/* Mock Barcode */}
+                    {selectedCardModal.barcodeEnabled ? (
+                      <div className="bg-white p-2 rounded flex flex-col items-center justify-center space-y-1 shadow-md border border-slate-700">
+                        <div className="flex items-end space-x-[1px] h-8">
+                          {[2, 1, 3, 1, 2, 4, 1, 2, 3, 1, 2, 1, 4, 2, 1, 3, 2, 1].map((width, idx) => (
+                            <div
+                              key={idx}
+                              style={{ width: `${width}px` }}
+                              className="bg-black h-full"
+                            />
+                          ))}
+                        </div>
+                        <span className="font-mono text-[8px] text-slate-900 tracking-widest">{selectedCardModal.orderId}</span>
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-slate-600 italic">Barcode tracking deactivated</div>
+                    )}
+
+                    {/* Mock QR Code */}
+                    {selectedCardModal.qrCodeEnabled ? (
+                      <div className="bg-white p-2 rounded flex flex-col items-center justify-center space-y-1 shadow-md border border-slate-700">
+                        <div className="w-10 h-10 border border-black p-0.5 grid grid-cols-5 gap-0.5">
+                          <div className="bg-black"></div><div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div><div className="bg-black"></div>
+                          <div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div>
+                          <div className="bg-white"></div><div className="bg-black"></div><div className="bg-black"></div><div className="bg-black"></div><div className="bg-white"></div>
+                          <div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div>
+                          <div className="bg-black"></div><div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div><div className="bg-black"></div>
+                        </div>
+                        <span className="font-mono text-[8px] text-slate-900 uppercase">Scan Details</span>
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-slate-600 italic">QR tracking deactivated</div>
+                    )}
+                  </div>
+                </div>
 
                 {/* INTERACTIVE ACTIONS ROW */}
                 <div className="flex items-center justify-between border-t border-slate-800 pt-3 mt-4">
