@@ -5,7 +5,8 @@ import {
   Layers, Scissors, Sparkles, Package, CheckCircle2,
   Clock, User, AlertCircle, GripVertical, Filter,
   Eye, Search, Plus, ArrowRight, X, SlidersHorizontal,
-  ChevronRight, Calendar, AlertTriangle, ShieldCheck, Flame
+  ChevronRight, Calendar, AlertTriangle, ShieldCheck, Flame,
+  Trash2, Edit2, FileText, Printer
 } from 'lucide-react';
 
 // ============================================================
@@ -355,6 +356,48 @@ export default function ProductionKanbanPage() {
   const [selectedGarment, setSelectedGarment] = useState('All Garments');
   const [selectedPriority, setSelectedPriority] = useState<'All' | 'Urgent' | 'Normal'>('All');
   const [selectedCardModal, setSelectedCardModal] = useState<JobCardItem | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<JobCardItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteNote, setDeleteNote] = useState('');
+  const [showDeliveryNote, setShowDeliveryNote] = useState<JobCardItem | null>(null);
+
+  const handleStartEdit = (job: JobCardItem) => {
+    setEditForm({ ...job });
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editForm) return;
+    const updatedJobs = jobs.map((j) => (j.id === editForm.id ? editForm : j));
+    setJobs(updatedJobs);
+    localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+    setSelectedCardModal(editForm);
+    setIsEditing(false);
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    if (!deleteNote.trim()) return;
+    const jobToDelete = jobs.find((j) => j.id === jobId);
+    const updatedJobs = jobs.filter((j) => j.id !== jobId);
+    setJobs(updatedJobs);
+    localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+
+    const logEntry = {
+      jobId,
+      client: jobToDelete?.client,
+      garment: jobToDelete?.garment,
+      reason: deleteNote,
+      deletedAt: new Date().toISOString(),
+    };
+    const currentLogs = JSON.parse(localStorage.getItem('yh_deleted_jobs_log') || '[]');
+    currentLogs.push(logEntry);
+    localStorage.setItem('yh_deleted_jobs_log', JSON.stringify(currentLogs));
+
+    setIsDeleting(false);
+    setDeleteNote('');
+    setSelectedCardModal(null);
+  };
 
   const stages: KanbanStage[] = [
     'Fabric Inspection',
@@ -817,79 +860,369 @@ export default function ProductionKanbanPage() {
                 </div>
               </div>
               <button
-                onClick={() => setSelectedCardModal(null)}
+                onClick={() => {
+                  setSelectedCardModal(null);
+                  setIsEditing(false);
+                  setIsDeleting(false);
+                }}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Body Details */}
-            <div className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase">Assigned Karigar</span>
-                  <p className="font-bold text-white flex items-center space-x-1.5">
-                    <User className="w-3.5 h-3.5 text-yellow-400" />
-                    <span>{selectedCardModal.karigar}</span>
+            {/* DELETE MODE PANEL */}
+            {isDeleting ? (
+              <div className="space-y-4 animate-fade-in">
+                <div className="bg-rose-500/10 border border-rose-500/30 p-4 rounded-xl space-y-2 text-xs">
+                  <h4 className="font-bold text-rose-400 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4" />
+                    Confirm Job Deletion
+                  </h4>
+                  <p className="text-slate-300">
+                    Deleting this card will remove it permanently from the production pipeline. A reason is required to log this deletion in your atelier audit history.
                   </p>
                 </div>
 
-                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase">SAM Minutes Logged</span>
-                  <p className="font-mono font-bold text-amber-400 flex items-center space-x-1.5">
-                    <Clock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{selectedCardModal.samMinutesLogged} / {selectedCardModal.samTotalEstimate} mins</span>
-                  </p>
+                <div className="space-y-2 text-xs">
+                  <label className="text-slate-400 font-semibold uppercase block text-[10px]">Reason for Deletion *</label>
+                  <textarea
+                    placeholder="Enter reason (e.g. Order canceled by client, fabric out of stock, measurement revision...)"
+                    value={deleteNote}
+                    onChange={(e) => setDeleteNote(e.target.value)}
+                    className="input-dark w-full h-24 text-xs p-3 focus:border-rose-500"
+                    required
+                  />
                 </div>
-              </div>
 
-              <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase">Current Stage</span>
-                  <span className="text-xs font-bold text-yellow-400">{selectedCardModal.stage}</span>
-                </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center justify-end gap-3 pt-2">
                   <button
-                    onClick={() => moveStage(selectedCardModal.id, 'prev')}
-                    disabled={stages.indexOf(selectedCardModal.stage) === 0}
-                    className="btn-ghost text-xs py-1 px-3 disabled:opacity-40"
+                    onClick={() => {
+                      setIsDeleting(false);
+                      setDeleteNote('');
+                    }}
+                    className="btn-ghost px-4 py-2 text-xs"
                   >
-                    &larr; Previous Stage
+                    Cancel
                   </button>
                   <button
-                    onClick={() => moveStage(selectedCardModal.id, 'next')}
-                    disabled={stages.indexOf(selectedCardModal.stage) === stages.length - 1}
-                    className="btn-gold text-xs py-1 px-3 disabled:opacity-40"
+                    onClick={() => handleDeleteJob(selectedCardModal.id)}
+                    disabled={!deleteNote.trim()}
+                    className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-1.5 disabled:opacity-40"
                   >
-                    Next Stage &rarr;
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Confirm Deletion
                   </button>
                 </div>
               </div>
-
-              {selectedCardModal.fabricDetails && (
-                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase">Fabric Specification</span>
-                  <p className="text-slate-200">{selectedCardModal.fabricDetails}</p>
+            ) : isEditing && editForm ? (
+              /* EDITING MODE FORM */
+              <div className="space-y-4 text-xs animate-fade-in">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Client Name</label>
+                    <input
+                      type="text"
+                      value={editForm.client}
+                      onChange={(e) => setEditForm({ ...editForm, client: e.target.value })}
+                      className="input-dark w-full py-2 px-3 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Garment Type</label>
+                    <input
+                      type="text"
+                      value={editForm.garment}
+                      onChange={(e) => setEditForm({ ...editForm, garment: e.target.value })}
+                      className="input-dark w-full py-2 px-3 text-xs"
+                    />
+                  </div>
                 </div>
-              )}
 
-              {selectedCardModal.notes && (
-                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase">Tailoring Notes</span>
-                  <p className="text-slate-300 italic">{selectedCardModal.notes}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Assigned Karigar</label>
+                    <input
+                      type="text"
+                      value={editForm.karigar}
+                      onChange={(e) => setEditForm({ ...editForm, karigar: e.target.value })}
+                      className="input-dark w-full py-2 px-3 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Target Due Date</label>
+                    <input
+                      type="text"
+                      value={editForm.dueDate}
+                      onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
+                      className="input-dark w-full py-2 px-3 text-xs"
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Total SAM (Est.)</label>
+                    <input
+                      type="number"
+                      value={editForm.samTotalEstimate}
+                      onChange={(e) => setEditForm({ ...editForm, samTotalEstimate: parseInt(e.target.value) || 0 })}
+                      className="input-dark w-full py-2 px-3 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Priority</label>
+                    <select
+                      value={editForm.priority}
+                      onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as Priority })}
+                      className="input-dark w-full py-2 px-3 text-xs"
+                    >
+                      <option value="Normal">Normal</option>
+                      <option value="Urgent">Urgent</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Fabric Specification</label>
+                  <input
+                    type="text"
+                    value={editForm.fabricDetails || ''}
+                    onChange={(e) => setEditForm({ ...editForm, fabricDetails: e.target.value })}
+                    className="input-dark w-full py-2 px-3 text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Tailoring Notes</label>
+                  <textarea
+                    value={editForm.notes || ''}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    className="input-dark w-full h-16 p-2 text-xs"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="btn-ghost px-4 py-2 text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="btn-gold px-4 py-2 text-xs"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* STANDARD DETAIL VIEW */
+              <div className="space-y-4 text-xs animate-fade-in">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Assigned Karigar</span>
+                    <p className="font-bold text-white flex items-center space-x-1.5">
+                      <User className="w-3.5 h-3.5 text-yellow-400" />
+                      <span>{selectedCardModal.karigar}</span>
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase">SAM Minutes Logged</span>
+                    <p className="font-mono font-bold text-amber-400 flex items-center space-x-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{selectedCardModal.samMinutesLogged} / {selectedCardModal.samTotalEstimate} mins</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Current Stage</span>
+                    <span className="text-xs font-bold text-yellow-400">{selectedCardModal.stage}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => moveStage(selectedCardModal.id, 'prev')}
+                      disabled={stages.indexOf(selectedCardModal.stage) === 0}
+                      className="btn-ghost text-[11px] py-1 px-3 disabled:opacity-40"
+                    >
+                      &larr; Previous Stage
+                    </button>
+                    <button
+                      onClick={() => moveStage(selectedCardModal.id, 'next')}
+                      disabled={stages.indexOf(selectedCardModal.stage) === stages.length - 1}
+                      className="btn-gold text-[11px] py-1 px-3 disabled:opacity-40"
+                    >
+                      Next Stage &rarr;
+                    </button>
+                  </div>
+                </div>
+
+                {selectedCardModal.fabricDetails && (
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Fabric Specification</span>
+                    <p className="text-slate-200">{selectedCardModal.fabricDetails}</p>
+                  </div>
+                )}
+
+                {selectedCardModal.notes && (
+                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Tailoring Notes</span>
+                    <p className="text-slate-300 italic">{selectedCardModal.notes}</p>
+                  </div>
+                )}
+
+                {/* INTERACTIVE ACTIONS ROW */}
+                <div className="flex items-center justify-between border-t border-slate-800 pt-3 mt-4">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleStartEdit(selectedCardModal)}
+                      className="btn-ghost py-1.5 px-3 flex items-center space-x-1 hover:border-yellow-500/40 text-slate-300 hover:text-white"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-yellow-400" />
+                      <span>Edit Details</span>
+                    </button>
+                    <button
+                      onClick={() => setIsDeleting(true)}
+                      className="btn-ghost py-1.5 px-3 flex items-center space-x-1 hover:border-rose-500/40 text-slate-400 hover:text-rose-400"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Delete Job</span>
+                    </button>
+                  </div>
+
+                  {selectedCardModal.stage === 'QC & Ready for Delivery' && (
+                    <button
+                      onClick={() => setShowDeliveryNote(selectedCardModal)}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-xl flex items-center space-x-1 text-xs"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Delivery Note</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Modal Footer */}
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-slate-500">Target Delivery Date: <strong className="text-slate-200">{selectedCardModal.dueDate}</strong></span>
+            {!isEditing && !isDeleting && (
+              <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+                <span className="text-slate-500">Target Delivery Date: <strong className="text-slate-200">{selectedCardModal.dueDate}</strong></span>
+                <button
+                  onClick={() => setSelectedCardModal(null)}
+                  className="btn-ghost text-xs py-1.5 px-4"
+                >
+                  Close Window
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* DELIVERY NOTE MODAL */}
+      {/* ---------------------------------------------------- */}
+      {showDeliveryNote && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-white text-slate-900 rounded-2xl max-w-xl w-full p-8 space-y-6 shadow-2xl relative font-sans">
+            <button
+              onClick={() => setShowDeliveryNote(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Delivery Note Brand Header */}
+            <div className="flex items-start justify-between border-b-2 border-slate-200 pb-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-extrabold text-slate-900 uppercase tracking-tight flex items-center gap-1.5">
+                  <Scissors className="w-5 h-5 text-yellow-600" />
+                  YellowHouse Atelier
+                </h2>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  12 Savile Row, London / Flagship Boutique New Delhi<br />
+                  Support: billing@yellowhouse.app | +91 98765 43210
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full text-[10px] uppercase">
+                  Ready for Delivery
+                </span>
+                <p className="font-mono text-xs text-slate-500 mt-2 font-bold">{showDeliveryNote.orderId}</p>
+              </div>
+            </div>
+
+            {/* Delivery Note Metadata */}
+            <div className="grid grid-cols-2 gap-4 text-xs border-b border-slate-100 pb-4">
+              <div className="space-y-2">
+                <p className="text-slate-500">CLIENT DETAILS</p>
+                <div className="font-bold text-slate-900 space-y-0.5">
+                  <p>{showDeliveryNote.client}</p>
+                  <p className="font-normal text-slate-500">Premium Bespoke Client</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-slate-500">ORDER INFORMATION</p>
+                <div className="font-mono text-slate-900 space-y-0.5">
+                  <p>Garment: <strong>{showDeliveryNote.garment}</strong></p>
+                  <p>Ready Date: <strong>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Fabric Specs & Tailoring Specifications */}
+            <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs">
+              <div>
+                <h4 className="font-bold text-slate-800 uppercase text-[9px] mb-1">Fabric Specifications</h4>
+                <p className="text-slate-700 leading-relaxed font-medium">
+                  {showDeliveryNote.fabricDetails || 'Selected high-grade raw boutique wool - matching client selections'}
+                </p>
+              </div>
+              <div className="pt-2 border-t border-slate-200">
+                <h4 className="font-bold text-slate-800 uppercase text-[9px] mb-1">Pattern & Fitments Details</h4>
+                <p className="text-slate-600 italic">
+                  {showDeliveryNote.notes || 'Handmade custom lapels, bespoke patterns seeded in workshop. Standard sleeve adjustments.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Delivery Receipt Layout Footer */}
+            <div className="flex items-center justify-between pt-4 border-t-2 border-dashed border-slate-200">
+              <div className="space-y-1">
+                {/* Visual Barcode representation for custom delivery scanning */}
+                <div className="bg-slate-900 text-white font-mono text-[9px] px-3 py-1 tracking-[0.3em] font-black rounded select-none flex items-center justify-center">
+                  ||| | | ||| || ||| | |||
+                </div>
+                <p className="text-[8px] text-center text-slate-400 font-mono">SCANNABLE ORDER TOKEN</p>
+              </div>
+              <div className="text-right text-[10px] text-slate-500 space-y-1">
+                <p>Tailor Signature: __________________</p>
+                <p className="text-[9px]">Verified by {showDeliveryNote.karigar}</p>
+              </div>
+            </div>
+
+            {/* Action Row */}
+            <div className="flex items-center justify-end gap-3 pt-2">
               <button
-                onClick={() => setSelectedCardModal(null)}
-                className="btn-ghost text-xs py-1.5 px-4"
+                onClick={() => setShowDeliveryNote(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-5 rounded-xl text-xs transition-colors"
               >
-                Close Window
+                Close Receipt
+              </button>
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.print();
+                  }
+                }}
+                className="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 px-5 rounded-xl text-xs flex items-center gap-1.5 transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Delivery Note</span>
               </button>
             </div>
           </div>
