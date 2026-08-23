@@ -27,7 +27,8 @@ import {
   Check,
   Tag,
   AlertCircle,
-  Printer
+  Printer,
+  UserPlus
 } from 'lucide-react';
 import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
 import { syncOrderToJobsStorage, logActivity, calculatePaymentStatus, calculateBalance } from '@/lib/state-sync-utils';
@@ -208,6 +209,7 @@ const garmentOptions: { label: string; value: string; defaultMeters: number; def
 
 export default function OrderManagementPage() {
   const { formatCurrency } = useCurrency();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'active' | 'create'>('active');
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState('');
@@ -231,17 +233,37 @@ export default function OrderManagementPage() {
   }, []);
 
   // Dynamic customer list from yh_customers with fallback
-  const activeCustomers = useMemo(() => {
+  const [customersList, setCustomersList] = useState<any[]>(customerList);
+
+  useEffect(() => {
     try {
       const stored = getLocalStorage<any[]>('yh_customers', customerList);
-      return Array.isArray(stored) && stored.length > 0 ? stored : customerList;
-    } catch (e) {
-      return customerList;
+      if (Array.isArray(stored) && stored.length > 0) {
+        setCustomersList(stored);
+      } else {
+        setCustomersList(customerList);
+      }
+    } catch {
+      setCustomersList(customerList);
     }
   }, []);
 
+  const activeCustomers = customersList;
+
   // Form State for Create Order
   const [selectedClientId, setSelectedClientId] = useState<string>(customerList[0].id);
+  const [isQuickAddCustomerOpen, setIsQuickAddCustomerOpen] = useState(false);
+  const [newQuickCustomer, setNewQuickCustomer] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    gender: 'Men' as 'Men' | 'Women',
+    preferredFit: 'Slim Bespoke',
+    isVip: false,
+    notes: ''
+  });
+  const [quickCustomerError, setQuickCustomerError] = useState('');
+
   const [dueDate, setDueDate] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 14);
@@ -457,6 +479,67 @@ export default function OrderManagementPage() {
       setItems(order.items);
     }
     setActiveTab('create');
+  };
+
+  const handleQuickAddCustomerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setQuickCustomerError('');
+
+    if (!newQuickCustomer.name.trim()) {
+      setQuickCustomerError('Customer name is required.');
+      return;
+    }
+    if (!newQuickCustomer.phone.trim()) {
+      setQuickCustomerError('Phone number is required.');
+      return;
+    }
+
+    const newId = `CUST-${String(customersList.length + 1).padStart(3, '0')}`;
+    const initials = newQuickCustomer.name
+      .split(' ')
+      .map(w => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+
+    const createdCustomer = {
+      id: newId,
+      name: newQuickCustomer.name.trim(),
+      phone: newQuickCustomer.phone.trim(),
+      email: newQuickCustomer.email.trim() || undefined,
+      gender: newQuickCustomer.gender,
+      preferredFit: newQuickCustomer.preferredFit,
+      isVip: newQuickCustomer.isVip,
+      measurementsCount: 0,
+      lastVisit: 'Just now',
+      initials: initials || 'CL',
+      notes: newQuickCustomer.notes.trim() || undefined
+    };
+
+    const updated = [createdCustomer, ...customersList];
+    setCustomersList(updated);
+    setLocalStorage('yh_customers', updated);
+    
+    // Auto-select this newly created customer for the current order
+    setSelectedClientId(newId);
+    
+    logActivity({
+      type: 'customer_added',
+      message: `New customer registered: ${createdCustomer.name}`,
+      entityId: newId
+    });
+
+    setIsQuickAddCustomerOpen(false);
+    setNewQuickCustomer({
+      name: '',
+      phone: '',
+      email: '',
+      gender: 'Men',
+      preferredFit: 'Slim Bespoke',
+      isVip: false,
+      notes: ''
+    });
+    toast.success(`Client ${createdCustomer.name} added and selected!`);
   };
 
   const handleConfirmDelete = () => {
@@ -1123,7 +1206,17 @@ export default function OrderManagementPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Client Name *</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300">Client Name *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickAddCustomerOpen(true)}
+                      className="text-[11px] font-semibold text-gold-400 hover:text-gold-300 flex items-center space-x-1 cursor-pointer transition-colors"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>+ Add New Client</span>
+                    </button>
+                  </div>
                   <select
                     value={selectedClientId}
                     onChange={(e) => setSelectedClientId(e.target.value)}
@@ -1716,6 +1809,152 @@ export default function OrderManagementPage() {
                 <span>Print Document</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK ADD CUSTOMER MODAL */}
+      {isQuickAddCustomerOpen && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-card max-w-lg w-full rounded-2xl border border-gold-500/30 p-6 space-y-5 shadow-2xl animate-scale-up">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-gold-500/10 border border-gold-500/20 text-gold-400">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Add New Client Profile</h3>
+                  <p className="text-xs text-slate-400">Instantly create client and attach to current order</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsQuickAddCustomerOpen(false);
+                  setQuickCustomerError('');
+                }}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {quickCustomerError && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{quickCustomerError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleQuickAddCustomerSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">Client Full Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Deepika Padukone"
+                  value={newQuickCustomer.name}
+                  onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, name: e.target.value })}
+                  className="input-dark text-xs py-2 px-3 w-full"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Phone Number *</label>
+                  <input
+                    type="tel"
+                    placeholder="+91 98765 43210"
+                    value={newQuickCustomer.phone}
+                    onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, phone: e.target.value })}
+                    className="input-dark text-xs py-2 px-3 w-full"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Email Address (Optional)</label>
+                  <input
+                    type="email"
+                    placeholder="client@atelier.com"
+                    value={newQuickCustomer.email}
+                    onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, email: e.target.value })}
+                    className="input-dark text-xs py-2 px-3 w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Gender / Department</label>
+                  <select
+                    value={newQuickCustomer.gender}
+                    onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, gender: e.target.value as any })}
+                    className="input-dark text-xs py-2 px-3 w-full"
+                  >
+                    <option value="Men" className="bg-slate-900 text-white">Men (Bespoke Suit/Sherwani)</option>
+                    <option value="Women" className="bg-slate-900 text-white">Women (Couture/Blouse/Lehenga)</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300">Fit Preference</label>
+                  <select
+                    value={newQuickCustomer.preferredFit}
+                    onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, preferredFit: e.target.value })}
+                    className="input-dark text-xs py-2 px-3 w-full"
+                  >
+                    <option value="Slim Bespoke" className="bg-slate-900 text-white">Slim Bespoke</option>
+                    <option value="Regular Tailored" className="bg-slate-900 text-white">Regular Tailored</option>
+                    <option value="Relaxed Royal" className="bg-slate-900 text-white">Relaxed Royal</option>
+                    <option value="Comfort Traditional" className="bg-slate-900 text-white">Comfort Traditional</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="quickIsVip"
+                  checked={newQuickCustomer.isVip}
+                  onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, isVip: e.target.checked })}
+                  className="rounded border-slate-700 bg-slate-900 text-gold-500 focus:ring-gold-500/20 cursor-pointer"
+                />
+                <label htmlFor="quickIsVip" className="text-xs font-semibold text-gold-400 cursor-pointer flex items-center space-x-1">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Mark as VIP Atelier Patron</span>
+                </label>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">Special Fitting Notes (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Shoulder slope, preferred fabric feel, styling requests..."
+                  value={newQuickCustomer.notes}
+                  onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, notes: e.target.value })}
+                  className="input-dark text-xs py-2 px-3 w-full resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsQuickAddCustomerOpen(false);
+                    setQuickCustomerError('');
+                  }}
+                  className="btn-ghost text-xs py-2 px-4 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-gold text-xs py-2 px-5 cursor-pointer flex items-center space-x-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Add & Select Client</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
