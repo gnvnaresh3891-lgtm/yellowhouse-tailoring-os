@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { fetchApi } from '@/lib/api';
 import { slugify, isValidSlug } from '@/lib/slug';
+import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
+import { Tooltip } from '@/components/Tooltip';
 import type {
   SlugCheckerState,
   SlugCheckResponse,
@@ -82,6 +84,18 @@ const TEMPLATE_OPTIONS: TemplateItem[] = [
   },
 ];
 
+interface OnboardingFormDraft {
+  step: 1 | 2 | 3;
+  boutiqueName: string;
+  slug: string;
+  isSlugManuallyEdited: boolean;
+  city: string;
+  phone: string;
+  templates: string[];
+  ownerName: string;
+  email: string;
+}
+
 export default function MultiTenantOnboardingPage() {
   const router = useRouter();
 
@@ -112,6 +126,42 @@ export default function MultiTenantOnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    const draft = getLocalStorage<OnboardingFormDraft | null>('yh_onboarding_draft', null);
+    if (draft && typeof draft === 'object') {
+      if (draft.step) setStep(draft.step);
+      setFormState((prev) => ({
+        ...prev,
+        boutiqueName: draft.boutiqueName || prev.boutiqueName,
+        slug: draft.slug || prev.slug,
+        isSlugManuallyEdited: draft.isSlugManuallyEdited ?? prev.isSlugManuallyEdited,
+        city: draft.city || prev.city,
+        phone: draft.phone || prev.phone,
+        templates: Array.isArray(draft.templates) && draft.templates.length > 0 ? draft.templates : prev.templates,
+        ownerName: draft.ownerName || prev.ownerName,
+        email: draft.email || prev.email,
+      }));
+    }
+  }, []);
+
+  // Dynamic draft autosave
+  useEffect(() => {
+    if (isSuccess) return;
+    const draft: OnboardingFormDraft = {
+      step,
+      boutiqueName: formState.boutiqueName,
+      slug: formState.slug,
+      isSlugManuallyEdited: formState.isSlugManuallyEdited,
+      city: formState.city,
+      phone: formState.phone,
+      templates: formState.templates,
+      ownerName: formState.ownerName,
+      email: formState.email,
+    };
+    setLocalStorage('yh_onboarding_draft', draft);
+  }, [step, formState, isSuccess]);
 
   const handleBoutiqueNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -279,49 +329,21 @@ export default function MultiTenantOnboardingPage() {
             },
             loggedInAt: new Date().toISOString(),
           };
-          localStorage.setItem('yh_auth_user', JSON.stringify(authObject));
+          setLocalStorage('yh_auth_user', authObject);
           document.cookie = `jwt_token=${res.token}; path=/; max-age=86400; SameSite=Lax`;
           if (res.tenant?.id) {
             document.cookie = `x-tenant-id=${res.tenant.id}; path=/; max-age=86400; SameSite=Lax`;
           }
         }
+        removeLocalStorage('yh_onboarding_draft');
         setIsSuccess(true);
       } else {
-        // Fallback for API response issues
-        if (typeof window !== 'undefined') {
-          const authObject = {
-            id: `usr_${Date.now()}`,
-            name: formState.ownerName.trim(),
-            email: formState.email.trim(),
-            role: 'TENANT_OWNER',
-            tenant: {
-              id: `tenant_${Date.now()}`,
-              name: formState.boutiqueName.trim(),
-              code: formState.slug.trim().toUpperCase() + '-01',
-            },
-            loggedInAt: new Date().toISOString(),
-          };
-          localStorage.setItem('yh_auth_user', JSON.stringify(authObject));
-        }
-        setIsSuccess(true);
+        setError(res.error || res.message || 'Failed to create atelier account. Please try again.');
+        setIsSuccess(false);
       }
     } catch (err: any) {
-      if (typeof window !== 'undefined') {
-        const authObject = {
-          id: `usr_${Date.now()}`,
-          name: formState.ownerName.trim(),
-          email: formState.email.trim(),
-          role: 'TENANT_OWNER',
-          tenant: {
-            id: `tenant_${Date.now()}`,
-            name: formState.boutiqueName.trim(),
-            code: formState.slug.trim().toUpperCase() + '-01',
-          },
-          loggedInAt: new Date().toISOString(),
-        };
-        localStorage.setItem('yh_auth_user', JSON.stringify(authObject));
-      }
-      setIsSuccess(true);
+      setError(err.message || 'An unexpected error occurred. Please try again.');
+      setIsSuccess(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -332,7 +354,7 @@ export default function MultiTenantOnboardingPage() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-12">
-      <div className="glass-card-gold rounded-3xl p-6 sm:p-10 border border-yellow-500/20 shadow-2xl shadow-yellow-500/5">
+      <div className="glass-card-gold rounded-3xl p-6 sm:p-10 border border-gold-500/30 shadow-2xl">
         {isSuccess ? (
           <div className="py-8 text-center space-y-6 animate-fade-in">
             <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
@@ -414,6 +436,42 @@ export default function MultiTenantOnboardingPage() {
                     </div>
                   </div>
 
+                  <div className="space-y-1.5 md:col-span-1">
+                    <label htmlFor="city" className="text-xs font-semibold text-slate-300">
+                      City <span className="text-yellow-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <MapPin className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        id="city"
+                        type="text"
+                        required
+                        placeholder="e.g. Mumbai"
+                        value={formState.city}
+                        onChange={(e) => setFormState(prev => ({ ...prev, city: e.target.value }))}
+                        className="input-dark pl-9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 md:col-span-1">
+                    <label htmlFor="phone" className="text-xs font-semibold text-slate-300">
+                      Phone <span className="text-yellow-400">*</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        id="phone"
+                        type="tel"
+                        required
+                        placeholder="e.g. +91 98765 43210"
+                        value={formState.phone}
+                        onChange={(e) => setFormState(prev => ({ ...prev, phone: e.target.value }))}
+                        className="input-dark pl-9"
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-1.5 md:col-span-2">
                     <label htmlFor="tenantSlug" className="text-xs font-semibold text-slate-300">
                       Custom Tenant Subdomain Slug <span className="text-yellow-400">*</span>
@@ -425,8 +483,30 @@ export default function MultiTenantOnboardingPage() {
                       placeholder="royal-savile-row"
                       value={formState.slug}
                       onChange={handleSlugChange}
-                      className="input-dark font-mono"
+                      className={`input-dark font-mono ${slugState.status === 'invalid' || slugState.status === 'taken' ? 'border-rose-500/50 focus:border-rose-500' : slugState.status === 'available' ? 'border-emerald-500/50 focus:border-emerald-500' : ''}`}
                     />
+                    {formState.slug && (
+                      <div className="mt-1.5 flex items-center space-x-1.5 text-xs font-medium">
+                        {slugState.status === 'checking' && (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-yellow-400" />
+                            <span className="text-slate-400">{slugState.message}</span>
+                          </>
+                        )}
+                        {slugState.status === 'available' && (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400">{slugState.message}</span>
+                          </>
+                        )}
+                        {(slugState.status === 'taken' || slugState.status === 'invalid') && (
+                          <>
+                            <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                            <span className="text-rose-400">{slugState.message}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 

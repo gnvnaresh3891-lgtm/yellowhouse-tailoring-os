@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { ToastProvider } from '../components/toast-context';
 
 export const metadata: Metadata = {
   title: 'YellowHouse Tailoring OS | Enterprise Bespoke Tailoring Platform',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="bg-[#0B0F19] text-slate-100 antialiased">
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

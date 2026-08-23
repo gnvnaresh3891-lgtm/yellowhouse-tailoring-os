@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build",
-    "start": "next start"
+    "build": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\" && next build",
+    "start": "next start",
+    "test": "npx ts-node -O \"{\\\"module\\\":\\\"commonjs\\\"}\" src/__tests__/run-tests.ts"
   },
   "dependencies": {
     "next": "^14.2.0",

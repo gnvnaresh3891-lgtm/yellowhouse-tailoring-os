@@ -26,8 +26,18 @@ import {
   FileText,
   Check,
   Tag,
-  AlertCircle
+  AlertCircle,
+  Printer
 } from 'lucide-react';
+import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
+import { syncOrderToJobsStorage, logActivity, calculatePaymentStatus, calculateBalance } from '@/lib/state-sync-utils';
+import { useToast } from '@/components/toast-context';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { OrderReceipt } from '@/components/print-layouts';
+import { calculateBespokePricing } from '@/lib/pricing-calculator';
+import { calculateFabricYield } from '@/lib/fabric-yield';
+import { GarmentCategory } from '@/types/measurement';
+import { Tooltip } from '@/components/Tooltip';
 
 export type OrderStatus =
   | 'DRAFT'
@@ -37,7 +47,8 @@ export type OrderStatus =
   | 'TRIAL_FITTING'
   | 'QC_CHECK'
   | 'READY_FOR_DELIVERY'
-  | 'DELIVERED';
+  | 'DELIVERED'
+  | 'CANCELLED';
 
 export interface OrderItemRow {
   id: string;
@@ -52,15 +63,31 @@ export interface OrderItemRow {
 
 export interface Order {
   id: string;
+  customerId?: string;
   clientName: string;
   clientPhone: string;
   garmentSummary: string;
   itemCount: number;
   status: OrderStatus;
   totalAmount: number;
+  advanceAmount?: number;
+  balanceAmount?: number;
+  paymentStatus?: 'UNPAID' | 'ADVANCE_PAID' | 'FULLY_PAID';
   dueDate: string;
+  rawDueDate?: string;
   createdAt: string;
   isUrgent?: boolean;
+  items?: OrderItemRow[];
+  notes?: string;
+}
+
+export interface OrderFormDraft {
+  selectedClientId: string;
+  dueDate: string;
+  notes: string;
+  advanceAmount?: number;
+  items: OrderItemRow[];
+  updatedAt: string;
 }
 
 const initialOrders: Order[] = [
@@ -185,24 +212,47 @@ export default function OrderManagementPage() {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
-  // Load orders from localStorage on mount
+  // Load orders from localStorage on mount with array safety
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedOrders = localStorage.getItem('yh_orders');
-      if (storedOrders) {
-        try {
-          setOrders(JSON.parse(storedOrders));
-        } catch (e) {}
+    try {
+      const storedOrders = getLocalStorage<Order[]>('yh_orders', initialOrders);
+      if (Array.isArray(storedOrders) && storedOrders.length > 0) {
+        setOrders(storedOrders);
       } else {
-        localStorage.setItem('yh_orders', JSON.stringify(initialOrders));
+        setOrders(initialOrders);
+        setLocalStorage('yh_orders', initialOrders);
       }
+    } catch (e) {
+      setOrders(initialOrders);
+      console.error(e);
+    }
+  }, []);
+
+  // Dynamic customer list from yh_customers with fallback
+  const activeCustomers = useMemo(() => {
+    try {
+      const stored = getLocalStorage<any[]>('yh_customers', customerList);
+      return Array.isArray(stored) && stored.length > 0 ? stored : customerList;
+    } catch (e) {
+      return customerList;
     }
   }, []);
 
   // Form State for Create Order
   const [selectedClientId, setSelectedClientId] = useState<string>(customerList[0].id);
-  const [dueDate, setDueDate] = useState<string>('2026-08-25');
+  const [dueDate, setDueDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d.toISOString().split('T')[0];
+  });
   const [notes, setNotes] = useState<string>('');
+  const [advanceAmountInput, setAdvanceAmountInput] = useState<string>('');
+  
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [deleteModalOrder, setDeleteModalOrder] = useState<Order | null>(null);
+  const [deleteReason, setDeleteReason] = useState<string>('');
+  const [printModalOrder, setPrintModalOrder] = useState<Order | null>(null);
+
   const [items, setItems] = useState<OrderItemRow[]>([
     {
       id: 'item-1',
@@ -212,6 +262,35 @@ export default function OrderManagementPage() {
       unitPrice: 28000
     }
   ]);
+
+  // Load unsubmitted order draft from yh_orders_draft on mount
+  useEffect(() => {
+    try {
+      const draft = getLocalStorage<OrderFormDraft | null>('yh_orders_draft', null);
+      if (draft && typeof draft === 'object' && Array.isArray(draft.items) && draft.items.length > 0) {
+        if (draft.selectedClientId) setSelectedClientId(draft.selectedClientId);
+        if (draft.dueDate) setDueDate(draft.dueDate);
+        if (draft.notes !== undefined) setNotes(draft.notes);
+        if (draft.advanceAmount !== undefined) setAdvanceAmountInput(draft.advanceAmount.toString());
+        setItems(draft.items);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  // Dynamic order draft autosave
+  useEffect(() => {
+    const draft: OrderFormDraft = {
+      selectedClientId,
+      dueDate,
+      notes,
+      advanceAmount: Number(advanceAmountInput) || 0,
+      items,
+      updatedAt: new Date().toISOString()
+    };
+    setLocalStorage('yh_orders_draft', draft);
+  }, [selectedClientId, dueDate, notes, advanceAmountInput, items]);
 
   // Toast / Feedback State
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -277,7 +356,7 @@ export default function OrderManagementPage() {
   };
 
   // Update Item Field
-  const handleUpdateItem = (id: string, field: keyof OrderItemRow, value: string | number) => {
+  const handleUpdateItem = <K extends keyof OrderItemRow>(id: string, field: K, value: OrderItemRow[K]) => {
     setItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
@@ -288,6 +367,39 @@ export default function OrderManagementPage() {
     );
   };
 
+  // Dynamic Bespoke Pricing Engine Integration
+  const dynamicPricing = useMemo(() => {
+    return items.map((item) => {
+      const g = item.garmentType.toLowerCase();
+      let cat: GarmentCategory = 'mens-suit';
+      if (g.includes('sherwani') || g.includes('kurta')) cat = 'mens-sherwani';
+      else if (g.includes('shirt')) cat = 'mens-shirt';
+      else if (g.includes('trouser')) cat = 'mens-trouser';
+      else if (g.includes('lehenga')) cat = 'womens-lehenga';
+      else if (g.includes('anarkali')) cat = 'womens-anarkali';
+      else if (g.includes('corset')) cat = 'womens-corset';
+      else if (g.includes('gown')) cat = 'womens-gown';
+      else if (g.includes('blouse')) cat = 'womens-blouse';
+
+      const meters = item.fabricMeters || calculateFabricYield({ garmentCategory: cat, boltWidth: 44 }).requiredMeters;
+      const costPerMeter = Math.round((item.unitPrice || 2500) / (meters || 1));
+
+      return calculateBespokePricing({
+        garmentCategory: cat,
+        fabricCostPerMeter: costPerMeter > 0 ? costPerMeter : 2500,
+        boltWidth: 44,
+      });
+    });
+  }, [items]);
+
+  const totalCalculatedSamMinutes = useMemo(() => {
+    return dynamicPricing.reduce((sum, p) => sum + p.totalSamMinutes, 0);
+  }, [dynamicPricing]);
+
+  const totalLaborCost = useMemo(() => {
+    return dynamicPricing.reduce((sum, p) => sum + p.baseLaborCost, 0);
+  }, [dynamicPricing]);
+
   // Calculations for Order Summary
   const totalItemsCount = items.length;
   const totalOrderAmount = useMemo(() => {
@@ -295,110 +407,189 @@ export default function OrderManagementPage() {
   }, [items]);
   const advanceAmount = Math.round(totalOrderAmount * 0.5);
 
-  const selectedCustomer = customerList.find((c) => c.id === selectedClientId) || customerList[0];
+  const selectedCustomer = activeCustomers.find((c: any) => c.id === selectedClientId) || activeCustomers[0] || customerList[0];
+
+  const getValidNextStatuses = (current: OrderStatus): OrderStatus[] => {
+    const transitions: Record<OrderStatus, OrderStatus[]> = {
+      DRAFT: ['DRAFT', 'CONFIRMED', 'CANCELLED'],
+      CONFIRMED: ['CONFIRMED', 'CUTTING', 'CANCELLED'],
+      CUTTING: ['CUTTING', 'IN_PRODUCTION', 'CANCELLED'],
+      IN_PRODUCTION: ['IN_PRODUCTION', 'TRIAL_FITTING', 'CANCELLED'],
+      TRIAL_FITTING: ['TRIAL_FITTING', 'READY_FOR_DELIVERY', 'QC_CHECK', 'CANCELLED'],
+      QC_CHECK: ['QC_CHECK', 'READY_FOR_DELIVERY', 'CANCELLED'],
+      READY_FOR_DELIVERY: ['READY_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+      DELIVERED: ['DELIVERED', 'CANCELLED'],
+      CANCELLED: ['CANCELLED']
+    };
+    return transitions[current] || ['CANCELLED'];
+  };
 
   // Helper to format currency
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
   };
 
-  // Render Status Badge
-  const renderStatusBadge = (status: OrderStatus) => {
-    switch (status) {
-      case 'DRAFT':
-        return (
-          <span className="badge bg-slate-500/10 text-slate-400 border border-slate-500/20">
-            DRAFT
-          </span>
-        );
-      case 'CONFIRMED':
-        return <span className="badge badge-blue">CONFIRMED</span>;
-      case 'CUTTING':
-        return <span className="badge badge-amber">CUTTING</span>;
-      case 'IN_PRODUCTION':
-        return <span className="badge badge-gold">IN_PRODUCTION</span>;
-      case 'TRIAL_FITTING':
-        return (
-          <span className="badge bg-purple-500/10 text-purple-400 border border-purple-500/20">
-            TRIAL_FITTING
-          </span>
-        );
-      case 'QC_CHECK':
-        return (
-          <span className="badge bg-orange-500/10 text-orange-400 border border-orange-500/20">
-            QC_CHECK
-          </span>
-        );
-      case 'READY_FOR_DELIVERY':
-        return <span className="badge badge-emerald">READY_FOR_DELIVERY</span>;
-      case 'DELIVERED':
-        return (
-          <span className="badge bg-green-500/10 text-green-400 border border-green-500/20">
-            DELIVERED
-          </span>
-        );
-      default:
-        return <span className="badge bg-slate-500/10 text-slate-400 border border-slate-500/20">{status}</span>;
+  const formatDueDate = (dateStr: string) => {
+    if (!dateStr) {
+      const today = new Date();
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${months[today.getMonth()]} ${today.getDate()}`;
+    }
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    if (monthIdx >= 0 && monthIdx < 12) {
+      return `${months[monthIdx]} ${day}`;
+    }
+    return dateStr;
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setEditingOrderId(order.id);
+    const client = activeCustomers.find(c => c.name === order.clientName);
+    if (client) setSelectedClientId(client.id);
+    
+    if (order.rawDueDate) {
+      setDueDate(order.rawDueDate);
+    }
+    
+    setNotes(order.notes || '');
+    if (order.items && order.items.length > 0) {
+      setItems(order.items);
+    }
+    setActiveTab('create');
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteModalOrder || !deleteReason.trim()) return;
+    
+    try {
+      const deletedLogs = getLocalStorage<any[]>('yh_deleted_orders_log', []);
+      deletedLogs.push({
+        orderId: deleteModalOrder.id,
+        reason: deleteReason,
+        deletedAt: new Date().toISOString()
+      });
+      setLocalStorage('yh_deleted_orders_log', deletedLogs);
+    } catch (e) { console.error(e); }
+
+    const updatedOrders = orders.filter(o => o.id !== deleteModalOrder.id);
+    setOrders(updatedOrders);
+    setLocalStorage('yh_orders', updatedOrders);
+    
+    setDeleteModalOrder(null);
+    setDeleteReason('');
+    showNotification(`Order ${deleteModalOrder.id} deleted successfully.`);
+  };
+
+  const handleFileUpload = (id: string, field: 'fabricImage' | 'liningImage', file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      handleUpdateItem(id, field, base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Direct status change handler with bidirectional sync to jobs storage
+  const handleOrderStatusChange = (orderId: string, newStatus: OrderStatus) => {
+    let updatedOrderObj: Order | null = null;
+    const updatedOrders = orders.map((o) => {
+      if (o.id === orderId) {
+        updatedOrderObj = { ...o, status: newStatus };
+        return updatedOrderObj;
+      }
+      return o;
+    });
+    setOrders(updatedOrders);
+    setLocalStorage('yh_orders', updatedOrders);
+
+    if (updatedOrderObj) {
+      syncOrderToJobsStorage(updatedOrderObj);
+      showNotification(`Order ${orderId} status changed to ${newStatus}`);
     }
   };
 
   // Create Order Handler
   const handleSaveOrder = (status: OrderStatus) => {
-    const nextNum = 9040 + orders.length;
     const garmentSummary = items.map((i) => i.garmentType).join(' + ');
+    const formattedDate = formatDueDate(dueDate);
+    
+    const parsedAdvance = Number(advanceAmountInput) || 0;
+    const computedBalance = calculateBalance(totalOrderAmount, parsedAdvance);
+    const computedPaymentStatus = calculatePaymentStatus(totalOrderAmount, parsedAdvance);
 
-    const newOrder: Order = {
-      id: `#YH-${nextNum}`,
-      clientName: selectedCustomer.name,
-      clientPhone: selectedCustomer.phone,
-      garmentSummary,
-      itemCount: totalItemsCount,
-      status,
-      totalAmount: totalOrderAmount,
-      dueDate: 'Aug 28',
-      createdAt: new Date().toISOString().split('T')[0]
-    };
+    let updatedOrders = [...orders];
+    let finalOrderId = '';
+    let isNew = !editingOrderId;
 
-    const updatedOrders = [newOrder, ...orders];
-    setOrders(updatedOrders);
-
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('yh_orders', JSON.stringify(updatedOrders));
-
-      // Auto-generate a Kanban Job Card if the status warrants workshop processing
-      if (status !== 'DRAFT') {
-        const storedJobs = localStorage.getItem('yh_production_jobs');
-        let jobsList = [];
-        if (storedJobs) {
-          try {
-            jobsList = JSON.parse(storedJobs);
-          } catch (e) {}
+    if (editingOrderId) {
+      finalOrderId = editingOrderId;
+      updatedOrders = updatedOrders.map(o => {
+        if (o.id === editingOrderId) {
+          const updated: Order = {
+            ...o,
+            customerId: selectedCustomer.id,
+            clientName: selectedCustomer.name,
+            clientPhone: selectedCustomer.phone,
+            garmentSummary,
+            itemCount: totalItemsCount,
+            status: status === 'DRAFT' ? o.status : status, 
+            totalAmount: totalOrderAmount,
+            advanceAmount: parsedAdvance,
+            balanceAmount: computedBalance,
+            paymentStatus: computedPaymentStatus as any,
+            dueDate: formattedDate,
+            rawDueDate: dueDate,
+            items,
+            notes
+          };
+          syncOrderToJobsStorage(updated);
+          logActivity({ type: 'order_updated', message: `Order ${updated.id} was updated.`, entityId: updated.id });
+          return updated;
         }
-
-        const newJobCard = {
-          id: `JC-${nextNum}`,
-          orderId: newOrder.id,
-          client: newOrder.clientName,
-          garment: garmentSummary,
-          karigar: 'Karigar Salim', // Default assignee
-          samMinutesLogged: 0,
-          samTotalEstimate: items.length * 120, // 2 hours base estimate per item
-          priority: status === 'CONFIRMED' || newOrder.isUrgent ? 'Urgent' as const : 'Normal' as const,
-          dueDate: 'Aug 28',
-          progress: 0,
-          stage: 'Fabric Inspection' as const,
-          fabricDetails: items.map(i => `${i.fabricSku || 'Standard Fabric'} - ${i.fabricMeters}m`).join(', '),
-          notes: notes || 'New order launched. Verify landmarks and pattern specs.'
-        };
-
-        localStorage.setItem('yh_production_jobs', JSON.stringify([newJobCard, ...jobsList]));
-      }
+        return o;
+      });
+    } else {
+      finalOrderId = `#YH-${Date.now().toString(36).toUpperCase()}`;
+      const newOrder: Order = {
+        id: finalOrderId,
+        customerId: selectedCustomer.id,
+        clientName: selectedCustomer.name,
+        clientPhone: selectedCustomer.phone,
+        garmentSummary,
+        itemCount: totalItemsCount,
+        status,
+        totalAmount: totalOrderAmount,
+        advanceAmount: parsedAdvance,
+        balanceAmount: computedBalance,
+        paymentStatus: computedPaymentStatus as any,
+        dueDate: formattedDate,
+        rawDueDate: dueDate,
+        createdAt: new Date().toISOString().split('T')[0],
+        items,
+        notes
+      };
+      updatedOrders = [newOrder, ...orders];
+      syncOrderToJobsStorage(newOrder);
+      logActivity({ type: 'order_created', message: `Order ${newOrder.id} was created.`, entityId: newOrder.id });
     }
 
+    setOrders(updatedOrders);
+    setLocalStorage('yh_orders', updatedOrders);
+    removeLocalStorage('yh_orders_draft');
+
     setActiveTab('active');
+    setEditingOrderId(null);
 
     // Reset form
+    const nextDueDate = new Date();
+    nextDueDate.setDate(nextDueDate.getDate() + 14);
+    setDueDate(nextDueDate.toISOString().split('T')[0]);
     setNotes('');
+    setAdvanceAmountInput('');
     setItems([
       {
         id: 'item-1',
@@ -410,25 +601,25 @@ export default function OrderManagementPage() {
     ]);
 
     if (status === 'CONFIRMED') {
-      showNotification(`Quotation sent via WhatsApp to ${selectedCustomer.name}! Order #${newOrder.id} created.`);
+      showNotification(`Quotation sent via WhatsApp to ${selectedCustomer.name}! Order ${finalOrderId} ${isNew ? 'created' : 'updated'}.`);
     } else {
-      showNotification(`Order #${newOrder.id} saved as Draft.`, 'info');
+      showNotification(`Order ${finalOrderId} ${isNew ? 'saved as Draft' : 'updated'}.`, 'info');
     }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-6 animate-fade-in">
       {/* Toast Notification Banner */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
           <div
             className={`flex items-center space-x-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md ${
               notification.type === 'success'
-                ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-300'
+                ? 'bg-gold-500/15 border-gold-500/40 text-gold-300'
                 : 'bg-slate-900/90 border-slate-700 text-slate-200'
             }`}
           >
-            <CheckCircle2 className="w-5 h-5 text-yellow-400 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-gold-400 shrink-0" />
             <span className="text-sm font-medium">{notification.message}</span>
             <button
               onClick={() => setNotification(null)}
@@ -443,13 +634,13 @@ export default function OrderManagementPage() {
       {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 shadow-md">
+          <div className="p-3 rounded-2xl bg-gold-500/10 border border-gold-500/20 text-gold-400 shadow-md">
             <ShoppingBag className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <h1 className="text-2xl font-extrabold text-white tracking-tight">Order Management</h1>
-              <span className="badge badge-rose flex items-center space-x-1">
+              <span className="badge badge-gold flex items-center space-x-1">
                 <Sparkles className="w-3 h-3" />
                 <span>Atelier OS</span>
               </span>
@@ -463,13 +654,15 @@ export default function OrderManagementPage() {
         {/* Action Toggle Button */}
         <div className="flex items-center space-x-2">
           {activeTab === 'active' ? (
-            <button
-              onClick={() => setActiveTab('create')}
-              className="btn-gold flex items-center space-x-2 cursor-pointer shadow-lg"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Create New Order</span>
-            </button>
+            <Tooltip content="Launch new bespoke order draft workspace">
+              <button
+                onClick={() => setActiveTab('create')}
+                className="btn-gold flex items-center space-x-2 cursor-pointer shadow-lg"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>Create New Order</span>
+              </button>
+            </Tooltip>
           ) : (
             <button
               onClick={() => setActiveTab('active')}
@@ -497,14 +690,14 @@ export default function OrderManagementPage() {
 
         <div className="glass-card-gold rounded-xl p-4">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-yellow-400 uppercase tracking-wider">In Production</span>
-            <Scissors className="w-4 h-4 text-yellow-400" />
+            <span className="text-[10px] font-semibold text-gold-400 uppercase tracking-wider">In Production</span>
+            <Scissors className="w-4 h-4 text-gold-400" />
           </div>
           <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-2xl font-bold text-yellow-300">
+            <span className="text-2xl font-bold text-gold-300">
               {orders.filter((o) => o.status === 'IN_PRODUCTION' || o.status === 'CUTTING').length}
             </span>
-            <span className="text-[11px] text-yellow-500/80">Cutting & Stitching</span>
+            <span className="text-[11px] text-gold-400/80">Cutting & Stitching</span>
           </div>
         </div>
 
@@ -541,7 +734,7 @@ export default function OrderManagementPage() {
           onClick={() => setActiveTab('active')}
           className={`pb-3.5 px-3 text-sm font-semibold flex items-center space-x-2 transition-all border-b-2 cursor-pointer ${
             activeTab === 'active'
-              ? 'border-yellow-500 text-yellow-400'
+              ? 'border-gold-500 text-gold-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -554,7 +747,7 @@ export default function OrderManagementPage() {
           onClick={() => setActiveTab('create')}
           className={`pb-3.5 px-3 text-sm font-semibold flex items-center space-x-2 transition-all border-b-2 cursor-pointer ${
             activeTab === 'create'
-              ? 'border-yellow-500 text-yellow-400'
+              ? 'border-gold-500 text-gold-400'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
@@ -627,7 +820,7 @@ export default function OrderManagementPage() {
           </div>
 
           {/* Orders Table */}
-          <div className="glass-card rounded-2xl overflow-hidden border border-slate-800/80 shadow-2xl">
+          <div className="glass-card rounded-2xl overflow-hidden border border-slate-800/80 shadow-2xl hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
@@ -652,7 +845,7 @@ export default function OrderManagementPage() {
                       {/* Order # */}
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-yellow-400 text-sm group-hover:underline">
+                          <span className="font-mono font-bold text-gold-400 text-sm group-hover:underline">
                             {order.id}
                           </span>
                           {order.isUrgent && (
@@ -664,7 +857,7 @@ export default function OrderManagementPage() {
                       {/* Client */}
                       <td className="py-4 px-4">
                         <div>
-                          <div className="font-semibold text-white group-hover:text-yellow-300 transition-colors">
+                          <div className="font-semibold text-white group-hover:text-gold-300 transition-colors">
                             {order.clientName}
                           </div>
                           <div className="text-[11px] text-slate-500 font-mono">{order.clientPhone}</div>
@@ -686,17 +879,36 @@ export default function OrderManagementPage() {
                       </td>
 
                       {/* Status */}
-                      <td className="py-4 px-4">{renderStatusBadge(order.status)}</td>
+                      <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleOrderStatusChange(order.id, e.target.value as OrderStatus)}
+                          className="bg-slate-900 border border-slate-700 hover:border-gold-500/60 rounded-lg text-xs py-1 px-2 text-slate-200 font-bold cursor-pointer focus:outline-none focus:border-gold-500"
+                        >
+                          <option value={order.status} className="bg-slate-900 text-slate-300">{order.status}</option>
+                          {getValidNextStatuses(order.status).map(s => {
+                            if (s !== order.status) {
+                              return <option key={s} value={s} className="bg-slate-900">{s}</option>;
+                            }
+                            return null;
+                          })}
+                        </select>
+                      </td>
 
                       {/* Amount */}
-                      <td className="py-4 px-4 text-right font-mono font-semibold text-white">
-                        {formatCurrency(order.totalAmount)}
+                      <td className="py-4 px-4 text-right">
+                        <div className="font-mono font-semibold text-white">
+                          {formatCurrency(order.totalAmount)}
+                        </div>
+                        {order.paymentStatus === 'FULLY_PAID' && <span className="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] mt-1">FULLY PAID</span>}
+                        {order.paymentStatus === 'ADVANCE_PAID' && <span className="badge bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] mt-1">ADVANCE PAID</span>}
+                        {(!order.paymentStatus || order.paymentStatus === 'UNPAID') && <span className="badge bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[9px] mt-1">UNPAID</span>}
                       </td>
 
                       {/* Due Date */}
                       <td className="py-4 px-4">
                         <div className="flex items-center space-x-1.5 text-xs text-slate-300">
-                          <Calendar className="w-3.5 h-3.5 text-yellow-500/80 shrink-0" />
+                          <Calendar className="w-3.5 h-3.5 text-gold-400 shrink-0" />
                           <span>{order.dueDate}</span>
                         </div>
                       </td>
@@ -704,22 +916,50 @@ export default function OrderManagementPage() {
                       {/* Actions */}
                       <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end space-x-1">
-                          <button
-                            onClick={() => setSelectedOrder(order)}
-                            title="View Order Details"
-                            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              showNotification(`Quotation resent for ${order.id} via WhatsApp`);
-                            }}
-                            title="Resend WhatsApp Quotation"
-                            className="p-1.5 rounded-lg hover:bg-yellow-500/10 text-slate-400 hover:text-yellow-400 transition-colors"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </button>
+                          {(order.status === 'READY_FOR_DELIVERY' || order.status === 'DELIVERED') && (
+                            <Tooltip content="Print Delivery Note">
+                              <button
+                                onClick={() => setPrintModalOrder(order)}
+                                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
+                            </Tooltip>
+                          )}
+                          <Tooltip content="Inspect item breakdown and status">
+                            <button
+                              onClick={() => setSelectedOrder(order)}
+                              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content="Edit Order">
+                            <button
+                              onClick={() => handleEditOrder(order)}
+                              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-blue-400 transition-colors"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content="Resend WhatsApp quotation message">
+                            <button
+                              onClick={() => {
+                                showNotification(`Quotation resent for ${order.id} via WhatsApp`);
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-gold-500/10 text-slate-400 hover:text-gold-400 transition-colors"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </button>
+                          </Tooltip>
+                          <Tooltip content="Delete Order">
+                            <button
+                              onClick={() => setDeleteModalOrder(order)}
+                              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </Tooltip>
                         </div>
                       </td>
                     </tr>
@@ -755,6 +995,112 @@ export default function OrderManagementPage() {
               <span className="font-mono text-slate-500">YellowHouse Tailoring OS • Order Engine</span>
             </div>
           </div>
+
+          {/* Mobile Orders View */}
+          <div className="md:hidden space-y-4">
+            {filteredOrders.map((order) => (
+              <div
+                key={order.id}
+                className="glass-card rounded-2xl border border-slate-800 p-4 space-y-3 cursor-pointer hover:bg-slate-800/40 transition-colors"
+                onClick={() => setSelectedOrder(order)}
+              >
+                {/* Top row: Client name (bold) + Status badge (colored) */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="font-bold text-white text-base">
+                      {order.clientName}
+                      {order.isUrgent && <span className="ml-2 badge badge-rose text-[9px] px-1.5 py-0.2">URGENT</span>}
+                    </div>
+                    <div className="text-xs text-gold-400 font-mono mt-0.5">{order.id}</div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleOrderStatusChange(order.id, e.target.value as OrderStatus)}
+                      className="bg-slate-900 border border-slate-700 hover:border-gold-500/60 rounded-lg text-[10px] py-1 px-2 text-slate-200 font-bold cursor-pointer focus:outline-none focus:border-gold-500"
+                    >
+                      <option value={order.status} className="bg-slate-900 text-slate-300">{order.status}</option>
+                      {getValidNextStatuses(order.status).map(s => {
+                        if (s !== order.status) {
+                          return <option key={s} value={s} className="bg-slate-900">{s}</option>;
+                        }
+                        return null;
+                      })}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Middle: Garment summary, Due date */}
+                <div className="flex justify-between items-center bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/50">
+                  <div className="text-xs text-slate-300 font-medium">
+                    {order.garmentSummary} <span className="text-slate-500 font-mono">({order.itemCount})</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5 text-xs text-slate-400">
+                    <Calendar className="w-3.5 h-3.5 text-gold-400 shrink-0" />
+                    <span>{order.dueDate}</span>
+                  </div>
+                </div>
+
+                {/* Bottom row: Total amount (formatted) + Action buttons */}
+                <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
+                  <div className="font-mono font-bold text-white text-base">
+                    {formatCurrency(order.totalAmount)}
+                  </div>
+                  <div className="flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
+                    {(order.status === 'READY_FOR_DELIVERY' || order.status === 'DELIVERED') && (
+                      <button
+                        onClick={() => setPrintModalOrder(order)}
+                        className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors border border-slate-800"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setSelectedOrder(order)}
+                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-slate-800"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleEditOrder(order)}
+                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-blue-400 transition-colors border border-slate-800"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        showNotification(`Quotation resent for ${order.id} via WhatsApp`);
+                      }}
+                      className="p-2 rounded-lg bg-slate-900 hover:bg-gold-500/10 text-slate-400 hover:text-gold-400 transition-colors border border-slate-800"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteModalOrder(order)}
+                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors border border-slate-800"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredOrders.length === 0 && (
+              <div className="glass-card rounded-2xl border border-slate-800 p-8 text-center space-y-3">
+                <ShoppingBag className="w-8 h-8 text-slate-600 mx-auto" />
+                <p className="text-slate-300 text-sm font-semibold">No orders match your filter</p>
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('ALL');
+                  }}
+                  className="btn-ghost text-xs py-1.5 px-3 mt-2"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -767,12 +1113,12 @@ export default function OrderManagementPage() {
             <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <User className="w-5 h-5 text-yellow-400" />
+                  <User className="w-5 h-5 text-gold-400" />
                   <h2 className="text-base font-bold text-white">1. Select Client Profile</h2>
                 </div>
                 {selectedCustomer.isVip && (
                   <span className="badge badge-gold flex items-center space-x-1">
-                    <Sparkles className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                    <Sparkles className="w-3 h-3 text-gold-400 fill-gold-400" />
                     <span>VIP Client</span>
                   </span>
                 )}
@@ -786,7 +1132,7 @@ export default function OrderManagementPage() {
                     onChange={(e) => setSelectedClientId(e.target.value)}
                     className="input-dark cursor-pointer text-sm font-medium"
                   >
-                    {customerList.map((c) => (
+                    {activeCustomers.map((c: any) => (
                       <option key={c.id} value={c.id} className="bg-slate-900 text-white">
                         {c.name} ({c.phone}) {c.isVip ? '★ VIP' : ''}
                       </option>
@@ -810,7 +1156,7 @@ export default function OrderManagementPage() {
             <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Scissors className="w-5 h-5 text-yellow-400" />
+                  <Scissors className="w-5 h-5 text-gold-400" />
                   <h2 className="text-base font-bold text-white">2. Order Garment Items</h2>
                 </div>
                 <button
@@ -831,7 +1177,7 @@ export default function OrderManagementPage() {
                     className="bg-slate-950/60 rounded-xl p-4 border border-slate-800/90 space-y-3 transition-all hover:border-slate-700"
                   >
                     <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
-                      <span className="text-xs font-bold text-yellow-400 flex items-center space-x-1.5">
+                      <span className="text-xs font-bold text-gold-400 flex items-center space-x-1.5">
                         <Tag className="w-3.5 h-3.5" />
                         <span>Garment Item #{idx + 1}</span>
                       </span>
@@ -878,7 +1224,7 @@ export default function OrderManagementPage() {
 
                       {/* Fabric Meters (Auto-Calculated / Editable using pom-input) */}
                       <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-yellow-400/90 flex items-center justify-between">
+                        <label className="text-[11px] font-semibold text-gold-400 flex items-center justify-between">
                           <span>Fabric Required (m)</span>
                           <span className="text-[9px] text-slate-500">Auto</span>
                         </label>
@@ -891,7 +1237,7 @@ export default function OrderManagementPage() {
                             onChange={(e) => handleUpdateItem(item.id, 'fabricMeters', parseFloat(e.target.value) || 0)}
                             className="pom-input text-xs"
                           />
-                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-yellow-500/70 font-mono">meters</span>
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gold-400/80 font-mono">meters</span>
                         </div>
                       </div>
 
@@ -915,28 +1261,34 @@ export default function OrderManagementPage() {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fabric & Lining Attachments</span>
                         <div className="flex items-center space-x-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Simulate uploading custom fabric photo
-                              handleUpdateItem(item.id, 'fabricImage', 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=150');
-                              showNotification("Uploaded custom fabric swatch successfully!");
-                            }}
-                            className="btn-ghost py-1 px-2.5 text-[10px] flex items-center space-x-1"
-                          >
+                          <label className="btn-ghost py-1 px-2.5 text-[10px] flex items-center space-x-1 cursor-pointer">
                             <span>+ Fabric Photo</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Simulate uploading custom lining photo
-                              handleUpdateItem(item.id, 'liningImage', 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=150');
-                              showNotification("Uploaded custom lining photo successfully!");
-                            }}
-                            className="btn-ghost py-1 px-2.5 text-[10px] flex items-center space-x-1"
-                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleFileUpload(item.id, 'fabricImage', e.target.files[0]);
+                                  showNotification("Uploaded custom fabric swatch successfully!");
+                                }
+                              }}
+                            />
+                          </label>
+                          <label className="btn-ghost py-1 px-2.5 text-[10px] flex items-center space-x-1 cursor-pointer">
                             <span>+ Lining Photo</span>
-                          </button>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  handleFileUpload(item.id, 'liningImage', e.target.files[0]);
+                                  showNotification("Uploaded custom lining photo successfully!");
+                                }
+                              }}
+                            />
+                          </label>
                         </div>
                       </div>
 
@@ -957,7 +1309,7 @@ export default function OrderManagementPage() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="w-12 h-12 rounded bg-slate-950 border border-slate-850 flex items-center justify-center text-slate-600 shrink-0">
+                              <div className="w-12 h-12 rounded bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
                                 <Shirt className="w-5 h-5 opacity-30" />
                               </div>
                             )}
@@ -965,7 +1317,7 @@ export default function OrderManagementPage() {
                               <select
                                 onChange={(e) => handleUpdateItem(item.id, 'fabricImage', e.target.value)}
                                 value={item.fabricImage || ''}
-                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] text-slate-300 w-full focus:outline-none focus:border-yellow-500/50"
+                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] text-slate-300 w-full focus:outline-none focus:border-gold-500/50"
                               >
                                 <option value="">Choose Swatch Preset</option>
                                 <option value="https://images.unsplash.com/photo-1590736969955-71cb94801759?w=150">Crimson Silk Velvet</option>
@@ -994,7 +1346,7 @@ export default function OrderManagementPage() {
                                 </button>
                               </div>
                             ) : (
-                              <div className="w-12 h-12 rounded bg-slate-950 border border-slate-850 flex items-center justify-center text-slate-600 shrink-0">
+                              <div className="w-12 h-12 rounded bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
                                 <Tag className="w-5 h-5 opacity-30" />
                               </div>
                             )}
@@ -1002,7 +1354,7 @@ export default function OrderManagementPage() {
                               <select
                                 onChange={(e) => handleUpdateItem(item.id, 'liningImage', e.target.value)}
                                 value={item.liningImage || ''}
-                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] text-slate-300 w-full focus:outline-none focus:border-yellow-500/50"
+                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] text-slate-300 w-full focus:outline-none focus:border-gold-500/50"
                               >
                                 <option value="">Choose Lining Preset</option>
                                 <option value="https://images.unsplash.com/photo-1544816155-12df9643f363?w=150">Gold Zari Threads</option>
@@ -1021,7 +1373,7 @@ export default function OrderManagementPage() {
                             placeholder="Specify buttons, zipper, laces, canvas collar reinforcement specs..."
                             value={item.materialNotes || ''}
                             onChange={(e) => handleUpdateItem(item.id, 'materialNotes', e.target.value)}
-                            className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-[10px] text-slate-200 placeholder-slate-600 w-full h-11 focus:outline-none focus:border-yellow-500/50 resize-none"
+                            className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-[10px] text-slate-200 placeholder-slate-600 w-full h-11 focus:outline-none focus:border-gold-500/50 resize-none"
                           />
                         </div>
                       </div>
@@ -1047,15 +1399,15 @@ export default function OrderManagementPage() {
             </div>
           </div>
 
-          {/* Right Column: Order Summary Card */}
+          {/* Right Column: Order Summary Card (Upgraded to glass-card-gold) */}
           <div className="space-y-6">
-            <div className="glass-card-gold rounded-2xl p-6 space-y-6 sticky top-6">
-              <div className="flex items-center justify-between pb-4 border-b border-yellow-500/20">
+            <div className="glass-card-gold rounded-2xl p-6 border border-gold-500/30 space-y-6 sticky top-6">
+              <div className="flex items-center justify-between pb-4 border-b border-gold-500/30">
                 <div className="flex items-center space-x-2">
-                  <ShoppingBag className="w-5 h-5 text-yellow-400" />
-                  <h3 className="text-lg font-bold text-white">Order Summary</h3>
+                  <ShoppingBag className="w-5 h-5 text-gold-400" />
+                  <h3 className="text-lg font-bold text-white">Order Pricing Engine</h3>
                 </div>
-                <span className="badge badge-gold font-mono">NEW QUOTE</span>
+                <span className="badge badge-gold font-mono">LIVE QUOTE</span>
               </div>
 
               {/* Client Info Brief */}
@@ -1065,19 +1417,39 @@ export default function OrderManagementPage() {
                 <div className="text-slate-400 font-mono">{selectedCustomer.phone}</div>
               </div>
 
-              {/* Breakdown */}
+              {/* Breakdown with Tooltips */}
               <div className="space-y-3 text-xs">
                 <div className="flex items-center justify-between text-slate-300">
                   <span>Total Items</span>
                   <span className="font-mono font-bold text-white">{totalItemsCount} {totalItemsCount === 1 ? 'garment' : 'garments'}</span>
                 </div>
 
-                <div className="flex items-center justify-between text-slate-300">
-                  <span>Total Fabric Estimated</span>
-                  <span className="font-mono text-yellow-400 font-semibold">
-                    {items.reduce((acc, curr) => acc + (curr.fabricMeters || 0), 0).toFixed(1)} meters
-                  </span>
-                </div>
+                <Tooltip content="Estimated fabric yield based on garment category and 44 bolt width">
+                  <div className="flex items-center justify-between text-slate-300 w-full">
+                    <span>Fabric Required</span>
+                    <span className="font-mono text-gold-400 font-semibold">
+                      {items.reduce((acc, curr) => acc + (curr.fabricMeters || 0), 0).toFixed(1)} meters
+                    </span>
+                  </div>
+                </Tooltip>
+
+                <Tooltip content="Standard Allowed Minutes (SAM) calculated for workshop labor allocation">
+                  <div className="flex items-center justify-between text-slate-300 w-full">
+                    <span>Estimated SAM</span>
+                    <span className="font-mono text-amber-400 font-semibold">
+                      {totalCalculatedSamMinutes} mins ({Number((totalCalculatedSamMinutes / 60).toFixed(1))} hrs)
+                    </span>
+                  </div>
+                </Tooltip>
+
+                <Tooltip content="Base labor surcharge rated at ₹42/minute for master tailors">
+                  <div className="flex items-center justify-between text-slate-300 w-full">
+                    <span>Tailoring Labor (₹42/min)</span>
+                    <span className="font-mono text-emerald-400 font-semibold">
+                      {formatCurrency(totalLaborCost)}
+                    </span>
+                  </div>
+                </Tooltip>
 
                 <div className="border-t border-slate-800/80 pt-3 flex items-center justify-between text-sm font-semibold">
                   <span className="text-slate-200">Total Order Amount</span>
@@ -1086,43 +1458,62 @@ export default function OrderManagementPage() {
                   </span>
                 </div>
 
-                {/* 50% Advance Calculation Card */}
-                <div className="bg-yellow-500/10 rounded-xl p-3.5 border border-yellow-500/30 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold text-yellow-400">
-                    <span className="flex items-center space-x-1">
-                      <DollarSign className="w-3.5 h-3.5" />
-                      <span>50% Mandatory Advance</span>
-                    </span>
-                    <span className="font-mono font-extrabold text-base text-yellow-300">
-                      {formatCurrency(advanceAmount)}
-                    </span>
+                <div className="bg-slate-900/60 rounded-xl p-3.5 border border-slate-800 space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Advance/Deposit (₹)</label>
+                    <input
+                      type="number"
+                      value={advanceAmountInput}
+                      onChange={(e) => setAdvanceAmountInput(e.target.value)}
+                      placeholder="e.g. 10000"
+                      className="input-dark w-full font-mono text-sm"
+                    />
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-yellow-500/20">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/80">
                     <span>Balance Due on Fitting</span>
-                    <span className="font-mono font-semibold text-slate-300">{formatCurrency(totalOrderAmount - advanceAmount)}</span>
+                    <span className="font-mono font-semibold text-slate-300">
+                      {formatCurrency(calculateBalance(totalOrderAmount, Number(advanceAmountInput) || 0))}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Actions: Send Quotation via WhatsApp & Save as Draft */}
               <div className="space-y-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleSaveOrder('CONFIRMED')}
-                  className="btn-gold w-full flex items-center justify-center space-x-2 py-3 cursor-pointer text-sm font-bold shadow-lg"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Send Quotation via WhatsApp</span>
-                </button>
+                <Tooltip content="Generate WhatsApp payment link with 50% advance requirement">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveOrder('CONFIRMED')}
+                    className="btn-gold w-full flex items-center justify-center space-x-2 py-3 cursor-pointer text-sm font-bold shadow-lg"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>{editingOrderId ? 'Update & Send Quotation' : 'Send Quotation via WhatsApp'}</span>
+                  </button>
+                </Tooltip>
 
-                <button
-                  type="button"
-                  onClick={() => handleSaveOrder('DRAFT')}
-                  className="btn-ghost w-full flex items-center justify-center space-x-2 py-2.5 cursor-pointer text-sm"
-                >
-                  <Save className="w-4 h-4 text-slate-400" />
-                  <span>Save as Draft</span>
-                </button>
+                <Tooltip content="Save current draft locally to resume editing later">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveOrder('DRAFT')}
+                    className="btn-ghost w-full flex items-center justify-center space-x-2 py-2.5 cursor-pointer text-sm"
+                  >
+                    <Save className="w-4 h-4 text-slate-400" />
+                    <span>{editingOrderId ? 'Update Order' : 'Save as Draft'}</span>
+                  </button>
+                </Tooltip>
+                
+                {editingOrderId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingOrderId(null);
+                      setActiveTab('active');
+                    }}
+                    className="btn-ghost w-full flex items-center justify-center space-x-2 py-2 cursor-pointer text-sm text-slate-400"
+                  >
+                    Cancel Edit
+                  </button>
+                )}
               </div>
 
               <div className="text-[11px] text-slate-500 text-center leading-relaxed">
@@ -1136,16 +1527,33 @@ export default function OrderManagementPage() {
       {/* Modal / Detail Drawer for Selected Active Order */}
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="glass-card-gold rounded-2xl border border-yellow-500/30 max-w-lg w-full p-6 shadow-2xl space-y-6">
+          <div className="glass-card-gold rounded-2xl border border-gold-500/30 max-w-lg w-full p-6 shadow-2xl space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-800">
               <div className="flex items-center space-x-3">
-                <div className="p-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400">
+                <div className="p-2.5 rounded-xl bg-gold-500/10 border border-gold-500/20 text-gold-400">
                   <ShoppingBag className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
                     <h3 className="text-lg font-bold text-white">{selectedOrder.id}</h3>
-                    {renderStatusBadge(selectedOrder.status)}
+                    <select
+                      value={selectedOrder.status}
+                      onChange={(e) => {
+                        const newStat = e.target.value as OrderStatus;
+                        handleOrderStatusChange(selectedOrder.id, newStat);
+                        setSelectedOrder({ ...selectedOrder, status: newStat });
+                      }}
+                      className="bg-slate-900 border border-gold-500/40 rounded-lg text-xs py-1 px-2 text-gold-400 font-bold cursor-pointer focus:outline-none focus:border-gold-500"
+                    >
+                      <option value="DRAFT">DRAFT</option>
+                      <option value="CONFIRMED">CONFIRMED</option>
+                      <option value="CUTTING">CUTTING</option>
+                      <option value="IN_PRODUCTION">IN_PRODUCTION</option>
+                      <option value="TRIAL_FITTING">TRIAL_FITTING</option>
+                      <option value="QC_CHECK">QC_CHECK</option>
+                      <option value="READY_FOR_DELIVERY">READY_FOR_DELIVERY</option>
+                      <option value="DELIVERED">DELIVERED</option>
+                    </select>
                   </div>
                   <p className="text-xs text-slate-400 font-mono">Created on {selectedOrder.createdAt}</p>
                 </div>
@@ -1167,7 +1575,7 @@ export default function OrderManagementPage() {
 
               <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
                 <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold">Target Due Date</span>
-                <p className="text-yellow-400 font-mono font-bold flex items-center space-x-1">
+                <p className="text-gold-400 font-mono font-bold flex items-center space-x-1">
                   <Calendar className="w-3.5 h-3.5 inline shrink-0" />
                   <span>{selectedOrder.dueDate}</span>
                 </p>
@@ -1187,7 +1595,7 @@ export default function OrderManagementPage() {
                   {formatCurrency(selectedOrder.totalAmount)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs text-yellow-400/90 pt-1">
+              <div className="flex items-center justify-between text-xs text-gold-400/90 pt-1">
                 <span>50% Advance Received:</span>
                 <span className="font-mono font-bold">{formatCurrency(selectedOrder.totalAmount * 0.5)}</span>
               </div>
@@ -1209,6 +1617,106 @@ export default function OrderManagementPage() {
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>Resend WhatsApp Link</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModalOrder && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in print:hidden">
+          <div className="glass-card rounded-2xl border border-rose-500/30 max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-rose-500" />
+              Delete Order {deleteModalOrder.id}
+            </h3>
+            <p className="text-sm text-slate-300">Are you sure you want to delete this order? This action cannot be undone.</p>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400 font-semibold">Reason for deletion (Required)</label>
+              <textarea 
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                className="input-dark text-sm w-full"
+                rows={3}
+                placeholder="e.g. Client cancelled, duplicate entry..."
+              />
+            </div>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button onClick={() => setDeleteModalOrder(null)} className="btn-ghost text-xs">Cancel</button>
+              <button 
+                onClick={handleConfirmDelete} 
+                disabled={!deleteReason.trim()}
+                className="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Delivery Note Modal */}
+      {printModalOrder && (
+        <div className="fixed inset-0 z-[70] flex items-start justify-center p-4 sm:p-8 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <style>{`
+            @media print {
+              body * { visibility: hidden; }
+              .print-section, .print-section * { visibility: visible; }
+              .print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; border: none; box-shadow: none; background: white; color: black; }
+            }
+          `}</style>
+          <div className="print-section glass-card-gold rounded-2xl border border-gold-500/30 max-w-2xl w-full p-8 shadow-2xl relative print:!border-none print:!shadow-none print:!text-black print:!bg-white">
+            <button
+              onClick={() => setPrintModalOrder(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-900 print:hidden"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="text-center border-b border-slate-800 print:border-black pb-6 mb-6">
+              <h1 className="text-3xl font-extrabold text-gold-400 print:text-black tracking-tight mb-1">YELLOWHOUSE</h1>
+              <p className="text-sm text-slate-400 print:text-gray-600 uppercase tracking-widest">Delivery Note</p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-8 mb-8">
+              <div>
+                <h4 className="text-xs text-slate-500 print:text-gray-500 uppercase font-bold mb-2">Client Details</h4>
+                <p className="font-bold text-white print:text-black">{printModalOrder.clientName}</p>
+                <p className="text-sm text-slate-400 print:text-gray-600">{printModalOrder.clientPhone}</p>
+              </div>
+              <div className="text-right">
+                <h4 className="text-xs text-slate-500 print:text-gray-500 uppercase font-bold mb-2">Order Information</h4>
+                <p className="font-bold text-white print:text-black">{printModalOrder.id}</p>
+                <p className="text-sm text-slate-400 print:text-gray-600">Due: {printModalOrder.dueDate}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-8">
+              <h4 className="text-xs text-slate-500 print:text-gray-500 uppercase font-bold border-b border-slate-800 print:border-black pb-2">Order Items</h4>
+              {printModalOrder.items?.map((item, idx) => (
+                <div key={item.id} className="flex justify-between items-start border-b border-slate-800/50 print:border-gray-300 pb-3">
+                  <div>
+                    <p className="font-bold text-slate-200 print:text-black">{idx + 1}. {item.garmentType}</p>
+                    <p className="text-xs text-slate-400 print:text-gray-600">Fabric: {item.fabricSku} ({item.fabricMeters}m)</p>
+                    {item.materialNotes && <p className="text-xs text-slate-400 print:text-gray-600 italic mt-1">Note: {item.materialNotes}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-12 text-center text-sm text-slate-500 print:text-gray-600">
+              <p>Thank you for choosing YellowHouse Atelier.</p>
+              <p className="mt-4 border-t border-slate-800 print:border-black pt-4 w-1/2 mx-auto text-black">Client Signature</p>
+            </div>
+
+            <div className="mt-8 flex justify-center print:hidden">
+              <button
+                onClick={() => window.print()}
+                className="btn-gold flex items-center space-x-2 py-2 px-6"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Document</span>
               </button>
             </div>
           </div>

@@ -17,6 +17,7 @@ import {
   Sparkles,
   UserCheck
 } from 'lucide-react';
+import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
 
 // Helper for rendering role badges
 function getRoleBadgeClass(role: string): string {
@@ -98,18 +99,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [forgotPasswordMsg, setForgotPasswordMsg] = useState('');
   const [activeUser, setActiveUser] = useState<StoredUser | null>(null);
 
   // Check for existing active session in localStorage on mount
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('yh_auth_user');
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser) as StoredUser;
-        setActiveUser(parsed);
-      }
-    } catch {
-      // Ignore parse error
+    const savedUser = getLocalStorage<StoredUser | null>('yh_auth_user', null);
+    if (savedUser) {
+      setActiveUser(savedUser);
     }
   }, []);
 
@@ -154,7 +151,7 @@ export default function LoginPage() {
       };
 
       // Mock auth store in localStorage
-      localStorage.setItem('yh_auth_user', JSON.stringify(userObject));
+      setLocalStorage('yh_auth_user', userObject);
       setActiveUser(userObject);
       setLoading(false);
       
@@ -186,7 +183,7 @@ export default function LoginPage() {
         loggedInAt: new Date().toISOString(),
       };
 
-      localStorage.setItem('yh_auth_user', JSON.stringify(userObject));
+      setLocalStorage('yh_auth_user', userObject);
       setActiveUser(userObject);
       setLoading(false);
       
@@ -199,7 +196,7 @@ export default function LoginPage() {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('yh_auth_user');
+    removeLocalStorage('yh_auth_user');
     setActiveUser(null);
     setEmail('');
     setPassword('');
@@ -311,17 +308,25 @@ export default function LoginPage() {
                 <label className="block text-xs font-semibold text-slate-300">
                   Password
                 </label>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    alert('Password reset link has been dispatched to your registered atelier email.');
-                  }}
-                  className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors"
-                >
-                  Forgot password?
-                </a>
+                <div className="flex flex-col items-end">
+                  <a
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setForgotPasswordMsg('Password reset instructions sent to your email');
+                      setTimeout(() => setForgotPasswordMsg(''), 3000);
+                    }}
+                    className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors"
+                  >
+                    Forgot password?
+                  </a>
+                </div>
               </div>
+              {forgotPasswordMsg && (
+                <div className="text-emerald-400 text-[10px] text-right animate-fade-in">
+                  {forgotPasswordMsg}
+                </div>
+              )}
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input

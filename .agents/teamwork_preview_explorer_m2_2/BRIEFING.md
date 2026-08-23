@@ -1,42 +1,38 @@
-# BRIEFING — 2026-08-06T00:38:00Z
+# BRIEFING — 2026-08-07T21:33:10Z
 
 ## Mission
-Design Milestone 2 (M2: Visual Body Landmark Diagram & Interactivity) validation rules and bidirectional state mapping for yellowhouse.
+Investigate Milestone 2 requirements for Staff Management & Order Form Draft Autosave in YellowHouse Tailoring OS.
 
 ## 🔒 My Identity
 - Archetype: explorer
 - Roles: Teamwork explorer
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_2
-- Original parent: d10b382f-07b4-4da2-8c6d-189fabeef293
-- Milestone: M2 - Visual Body Landmark Diagram & Interactivity
+- Original parent: 4f63ff34-b151-4f5e-adab-826cc63764e0
+- Milestone: M2 - Staff Management & Order Form Draft Autosave
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement (produce design, analysis.md, handoff.md)
-- Design bidirectional focus state synchronization between SVG hotspots (`focusedLandmarkId`) and form input fields (`pomId`)
-- Define anatomical proportion sanity rules & posture offset alert triggers
-- Define color-coding state logic: Emerald Green (`#10B981`), Amber Gold (`#F59E0B`), Rose Red (`#EF4444`)
-- Specify React component structure for `BodyLandmarkDiagram.tsx` and integration into `MeasurementEngineContainer.tsx`
+- Read-only investigation — do NOT implement (produce technical strategy & file modification blueprint in analysis.md and handoff.md)
+- Examine `apps/web/src/app/(dashboard)/staff/page.tsx`, `apps/web/src/app/(dashboard)/orders/page.tsx`, and `apps/web/src/lib/storage-utils.ts`
+- Investigate:
+  1. Staff Recruitment form & list persistence to `yh_staff`
+  2. Order Creation form, order items, swatches, client details autosave to `yh_orders_draft` / `yh_orders`
+  3. Fallback defaults and null-safety when local storage is empty/absent/corrupted
 
 ## Current Parent
-- Conversation ID: d10b382f-07b4-4da2-8c6d-189fabeef293
-- Updated: 2026-08-06T00:38:00Z
+- Conversation ID: 4f63ff34-b151-4f5e-adab-826cc63764e0
+- Updated: 2026-08-07T21:33:10Z
 
 ## Investigation State
-- **Explored paths**: `apps/web/src/context/MeasurementEngineContext.tsx`, `apps/web/src/lib/pom-schemas.ts`, `apps/web/src/types/measurement.ts`, `apps/web/src/components/measurement-engine/MeasurementEngineContainer.tsx`, `PomFormEngine.tsx`
-- **Key findings**: Complete 22-hotspot landmark mapping, multi-tier proportion sanity matrix (Bust, Inseam/Outseam, Waist/Chest, Neck/Chest), 4-axis posture alert registry, state color hierarchy, React component specs (`BodyLandmarkDiagram.tsx`, `SvgHumanBodyOutline.tsx`) and 12-column responsive layout integration designed.
-- **Unexplored areas**: None. Design blueprint is fully detailed in `analysis.md` and `handoff.md`.
+- **Explored paths**: `apps/web/src/lib/storage-utils.ts`, `apps/web/src/app/(dashboard)/staff/page.tsx`, `apps/web/src/app/(dashboard)/orders/page.tsx` (In Progress)
+- **Key findings**: [TBD]
+- **Unexplored areas**: [TBD]
 
 ## Key Decisions Made
-- Formulated bidirectional sync via `focusedLandmarkId` in `MeasurementEngineContext`.
-- Defined complete 22 hotspot coordinate registry across Front, Back, and Side views for Men and Women (ViewBox 300x600).
-- Defined multi-tier anatomical proportion rules (Bust Invariants, Inseam/Outseam, Crotch Rise, Waist/Chest drop, Neck/Chest ratio, Apex distance, Corset cinch).
-- Defined posture offset alert registry for all 4 posture axes (`shoulderSlope`, `backCurvature`, `abdomenStance`, `hipSpineStance`).
-- Established color priority: Rose Red (`#EF4444`) > Amber Gold (`#F59E0B`) > Emerald Green (`#10B981`).
-- Authored `analysis.md` and `handoff.md`.
+- Commenced comprehensive analysis of Staff recruitment & Order form autosave architecture.
 
 ## Artifact Index
 - C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_2\DISPATCH.md — Dispatch log
 - C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_2\BRIEFING.md — Briefing file
 - C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_2\progress.md — Progress tracking file
-- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_2\analysis.md — Technical Design Blueprint for Milestone 2
-- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_2\handoff.md — 5-Component Handoff Report for Milestone 2
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_2\analysis.md — Technical strategy and file modification blueprint
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_2\handoff.md — 5-Component Handoff Report

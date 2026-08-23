@@ -1,303 +1,257 @@
-# Milestone 1 (M1) Technical Blueprint: Dynamic Measurement Template & POM Engine
+# Milestone 1: Core Audit, LocalStorage Safety & Test Infrastructure Analysis & Design Blueprint
 
-## Executive Summary & Scope
-
-Milestone 1 establishes the core domain logic and computational engine for the Tailoring OS Measurement System. This blueprint defines:
-1. Complete Points of Measure (POM) schemas for all 9 garment categories across Men's and Women's custom tailoring.
-2. The 4-Axis Posture Profile Model (`shoulderSlope`, `backCurvature`, `abdomenStance`, `hipSpineStance`) with precise numeric offsets.
-3. The Dynamic Ease Allowance Engine formula: $\text{Target POM} = \text{Net Body} + \text{Category Base Ease} + \text{Fit Modifier} + \text{Posture Offset} + \text{Stretch Factor}$.
-4. A multi-variable Size-Scaled Fabric Yield mathematical model adjusting yardage based on girth, garment length, fabric width, pattern repeat, and shrinkage.
+**Author**: `teamwork_preview_explorer_m1_1` (Explorer Subagent)  
+**Scope**: Milestone 1 — Core Audit, LocalStorage Safety & Test Infra  
+**Target Repository**: `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse`  
+**Date**: 2026-08-07  
 
 ---
 
-## 1. Garment Category POM Schemas (All 9 Categories)
+## 1. Executive Summary
 
-### Shared Data Contract (`apps/web/src/types/measurement.ts`)
+Milestone 1 establishes the foundational stability, code hygiene, runtime safety, and automated test execution pipeline for **YellowHouse Tailoring OS**. 
+
+Our comprehensive investigation across `apps/web` and `apps/api` revealed:
+1. **Type Safety & Build Status**: Both `apps/web` and `apps/api` pass `npx tsc --noEmit` cleanly and produce production builds without compilation errors (`npm run build`). However, extensive unused imports from `lucide-react` exist across 11 page/layout components, creating code bloat and linter warnings.
+2. **LocalStorage Safety Gaps**: Multiple core routes (`onboarding/page.tsx`, `login/page.tsx`, `register/page.tsx`, `(dashboard)/layout.tsx`, `(dashboard)/dashboard/page.tsx`) perform unsafe direct calls to `window.localStorage` (`getItem`, `setItem`, `removeItem`). These lack unified fallback handling for SSR rendering, disabled/blocked storage policies, corrupted JSON strings, or DOM quota exceptions.
+3. **Missing Workspace Test Scripts**: Running `npm run test` at the monorepo workspace root currently fails because neither `apps/web/package.json` nor `apps/api/package.json` contains a `"test"` npm script. Both applications already contain comprehensive unit/integration test files (`apps/web/src/__tests__/run-tests.ts` and `apps/api/src/__tests__/signup-dto-adversarial.test.ts`), but they lack the npm script wiring.
+
+This document presents the full findings and step-by-step implementation blueprint to resolve these gaps.
+
+---
+
+## 2. Audit Findings
+
+### 2.1 Baseline Build & Typecheck Verification
+- **`apps/web` (`npx tsc --noEmit`)**: **PASSED** (0 type errors).
+- **`apps/api` (`npx tsc --noEmit`)**: **PASSED** (0 type errors).
+- **`apps/web` (`npm run build`)**: **PASSED** (`next build` compiled 14 static routes successfully).
+- **`apps/api` (`npm run build`)**: **PASSED** (`nest build` compiled build outputs successfully).
+
+### 2.2 Unused Imports Audit (`apps/web`)
+
+The following files contain unused imports (predominantly `lucide-react` icons) that should be cleaned up:
+
+| File Path | Unused Import Symbols |
+| shadow |---|
+| `apps/web/src/app/page.tsx` | `Building2`, `ShieldCheck`, `BarChart3`, `Zap`, `MessageSquare`, `HelpCircle`, `RefreshCw`, `Globe`, `Award`, `ExternalLink`, `DollarSign`, `Activity`, `Maximize2` |
+| `apps/web/src/app/onboarding/page.tsx` | `Scissors`, `Mail`, `Lock`, `CheckCircle2`, `XCircle`, `Phone`, `MapPin`, `PartyPopper` |
+| `apps/web/src/app/(auth)/login/page.tsx` | `Shield`, `Check` |
+| `apps/web/src/app/(auth)/register/page.tsx` | `Sparkles`, `Scissors` |
+| `apps/web/src/app/(dashboard)/dashboard/page.tsx` | `CheckCircle2`, `Clock` |
+| `apps/web/src/app/(dashboard)/customers/page.tsx` | `Calendar`, `Filter`, `MoreVertical`, `Sparkles` |
+| `apps/web/src/app/(dashboard)/measurements/page.tsx` | `Eye`, `RotateCcw`, `ChevronUp`, `Calculator`, `AlertCircle`, `CheckCircle2`, `Info`, `History`, `ArrowUpRight`, `ArrowDownRight`, `Minus` |
+| `apps/web/src/app/(dashboard)/orders/page.tsx` | `Filter`, `CheckCircle2`, `User`, `DollarSign`, `Scissors`, `Shirt`, `Sparkles`, `X`, `MessageSquare`, `Calendar`, `ArrowUpRight`, `FileText`, `Tag`, `AlertCircle` |
+| `apps/web/src/app/(dashboard)/production/page.tsx` | `Sparkles`, `Package`, `User`, `Filter`, `SlidersHorizontal`, `Calendar`, `AlertTriangle`, `ShieldCheck`, `Flame`, `Edit2`, `FileText`, `Printer` |
+| `apps/web/src/app/(dashboard)/staff/page.tsx` | `Mail`, `Building2`, `Check`, `AlertCircle`, `Filter`, `Trash2`, `Lock` |
+| `apps/web/src/app/(dashboard)/admin/page.tsx` | `Building2`, `ShoppingBag`, `Activity`, `Filter`, `Sparkles`, `ExternalLink`, `Ban`, `RotateCcw`, `TrendingUp`, `Server`, `Layers`, `Crown`, `Zap` |
+| `apps/web/src/components/SidebarLayout.tsx` | `LogOut` |
+
+### 2.3 Direct Unsafe LocalStorage Access Audit
+
+The following table details every location where raw `localStorage` calls bypass safety fallbacks:
+
+| File Path | Line Numbers | Raw Call | Identified Risk |
+|---|---|---|---|
+| `apps/web/src/app/onboarding/page.tsx` | 282, 304, 322 | `localStorage.setItem('yh_auth_user', ...)` | Raw write without quota try/catch or safe fallback. |
+| `apps/web/src/app/(auth)/login/page.tsx` | 106 | `localStorage.getItem('yh_auth_user')` | Unhandled JSON parse error if storage corrupted. |
+| `apps/web/src/app/(auth)/login/page.tsx` | 157, 189 | `localStorage.setItem('yh_auth_user', ...)` | Raw write bypassing central utility helper. |
+| `apps/web/src/app/(auth)/login/page.tsx` | 202 | `localStorage.removeItem('yh_auth_user')` | Direct deletion without window check safety wrapper. |
+| `apps/web/src/app/(auth)/register/page.tsx` | 112 | `localStorage.setItem('yh_auth_user', ...)` | Direct raw setItem call. |
+| `apps/web/src/app/(dashboard)/layout.tsx` | 45 | `localStorage.getItem('yh_auth_user')` | Unhandled JSON parse exception if storage corrupted. |
+| `apps/web/src/app/(dashboard)/layout.tsx` | 57 | `localStorage.removeItem('yh_auth_user')` | Direct raw removeItem call. |
+| `apps/web/src/app/(dashboard)/dashboard/page.tsx` | 39 | `localStorage.getItem('yh_orders')` | Direct raw getItem call. |
+| `apps/web/src/app/(dashboard)/dashboard/page.tsx` | 47 | `localStorage.getItem('yh_production_jobs')` | Direct raw getItem call. |
+| `apps/web/src/app/(dashboard)/dashboard/page.tsx` | 55 | `localStorage.getItem('yh_customers')` | Direct raw getItem call. |
+
+### 2.4 Unsafe Nested Property Access Audit
+
+- `apps/web/src/app/(dashboard)/layout.tsx`:
+  - Line 166: `currentUser.role.replace('_', ' ')` -> `currentUser?.role ? currentUser.role.replace('_', ' ') : ''` (prevents runtime TypeError if `currentUser` or `currentUser.role` is null/undefined).
+  - Line 228: `currentUser.role.replace('_', ' ')` -> same safety check required.
+- `apps/web/src/app/(dashboard)/staff/page.tsx`:
+  - Line 59-60: Accessing `currentUser.role` requires optional chaining when checking authorization.
+
+---
+
+## 3. Design Blueprint — Safe LocalStorage Utility (`storage-utils.ts`)
+
+### 3.1 Utility Design (`apps/web/src/lib/storage-utils.ts`)
+
+The utility MUST provide three generic, type-safe functions:
+
 ```typescript
-export type GarmentCategory =
-  | 'mens-suit'
-  | 'mens-sherwani'
-  | 'mens-shirt'
-  | 'mens-trouser'
-  | 'womens-blouse'
-  | 'womens-lehenga'
-  | 'womens-anarkali'
-  | 'womens-corset'
-  | 'womens-gown';
+/**
+ * Safe local storage utility functions for YellowHouse Tailoring OS.
+ * Provides safe local storage methods with SSR window checks,
+ * JSON parsing try/catch error handling, and safe fallback returns.
+ */
 
-export type PomCategoryType = 'length' | 'girth' | 'width' | 'sleeve' | 'trouser';
-
-export interface PomSchemaItem {
-  id: string;
-  code: string;
-  name: string;
-  category: PomCategoryType;
-  baseMeasurement: number; // inches (standard medium/40 body reference)
-  defaultEase: number; // inches
-  landmarkId?: string; // SVG hotspot map reference
-  unit: 'in' | 'cm';
-  validationRange: { min: number; max: number };
+export function getLocalStorage<T>(key: string, fallbackValue: T): T {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return fallbackValue;
+  }
+  try {
+    const item = window.localStorage.getItem(key);
+    if (item === null || item === undefined) {
+      return fallbackValue;
+    }
+    return JSON.parse(item) as T;
+  } catch (error) {
+    console.warn(`[storage-utils] Error reading key "${key}" from localStorage:`, error);
+    return fallbackValue;
+  }
 }
+
+export function setLocalStorage<T>(key: string, value: T): boolean {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return false;
+  }
+  try {
+    const serialized = JSON.stringify(value);
+    window.localStorage.setItem(key, serialized);
+    return true;
+  } catch (error) {
+    console.warn(`[storage-utils] Error setting key "${key}" in localStorage:`, error);
+    return false;
+  }
+}
+
+export function removeLocalStorage(key: string): boolean {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return false;
+  }
+  try {
+    window.localStorage.removeItem(key);
+    return true;
+  } catch (error) {
+    console.warn(`[storage-utils] Error removing key "${key}" from localStorage:`, error);
+    return false;
+  }
+}
+```
+
+### 3.2 Refactoring Pattern for Application Code
+
+All application pages MUST import `getLocalStorage`, `setLocalStorage`, and `removeLocalStorage` from `@/lib/storage-utils`:
+
+```typescript
+// BEFORE:
+const stored = localStorage.getItem('yh_auth_user');
+if (stored) {
+  try {
+    setCurrentUser(JSON.parse(stored));
+  } catch (e) {}
+}
+
+// AFTER:
+import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
+
+const currentUser = getLocalStorage<StoredUser | null>('yh_auth_user', null);
 ```
 
 ---
 
-### Category Schemas Specification
+## 4. Design Blueprint — Workspace `"test"` Scripts Infrastructure Setup
 
-#### 1. Men's Suit (`mens-suit`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `M-SU-01` | Jacket Chest Circumference | girth | 40.0 | +3.50 | `hs-mens-chest` | 30.0 - 60.0 |
-| `M-SU-02` | Buttoning Waist Point | girth | 34.0 | +2.50 | `hs-mens-waist` | 26.0 - 56.0 |
-| `M-SU-03` | Hip / Seat Circumference | girth | 41.0 | +3.00 | `hs-mens-hip` | 32.0 - 60.0 |
-| `M-SU-04` | Shoulder Width (Acromion-to-Acromion) | width | 18.0 | +0.75 | `hs-mens-shoulder` | 14.0 - 24.0 |
-| `M-SU-05` | Center Back Jacket Length | length | 30.0 | +0.00 | `hs-mens-jacket-len` | 24.0 - 38.0 |
-| `M-SU-06` | Sleeve Length (Crown to Wrist) | sleeve | 25.0 | +0.50 | `hs-mens-sleeve` | 20.0 - 32.0 |
-| `M-SU-07` | Armscye / Armhole Depth | width | 10.0 | +1.00 | `hs-mens-armscye` | 7.0 - 14.0 |
-| `M-SU-08` | Bicep Circumference | girth | 14.0 | +2.00 | `hs-mens-bicep` | 10.0 - 22.0 |
+### 4.1 Root & Workspace Package Script Alignment
 
-#### 2. Men's Sherwani (`mens-sherwani`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `M-SH-01` | Chest Circumference | girth | 40.0 | +5.00 | `hs-mens-chest` | 30.0 - 60.0 |
-| `M-SH-02` | Natural Waist | girth | 34.0 | +3.50 | `hs-mens-waist` | 26.0 - 56.0 |
-| `M-SH-03` | Hip / Seat Circumference | girth | 41.0 | +4.50 | `hs-mens-hip` | 32.0 - 60.0 |
-| `M-SH-04` | Shoulder Width | width | 18.0 | +0.75 | `hs-mens-shoulder` | 14.0 - 24.0 |
-| `M-SH-05` | Band Collar Circumference | girth | 15.5 | +0.85 | `hs-mens-neck` | 12.0 - 22.0 |
-| `M-SH-06` | Sherwani Full Length (C7 to Knee/Calf) | length | 42.0 | +0.00 | `hs-mens-sherwani-len` | 34.0 - 52.0 |
-| `M-SH-07` | Sleeve Length | sleeve | 25.5 | +0.50 | `hs-mens-sleeve` | 20.0 - 32.0 |
-| `M-SH-08` | Across Chest Width | width | 16.5 | +0.50 | `hs-mens-across-chest` | 13.0 - 22.0 |
-
-#### 3. Men's Shirt (`mens-shirt`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `M-ST-01` | Collar / Neck Band | girth | 15.5 | +0.75 | `hs-mens-neck` | 12.0 - 22.0 |
-| `M-ST-02` | Chest Circumference | girth | 40.0 | +4.00 | `hs-mens-chest` | 30.0 - 60.0 |
-| `M-ST-03` | Waist Circumference | girth | 34.0 | +3.50 | `hs-mens-waist` | 26.0 - 56.0 |
-| `M-ST-04` | Shoulder Yoke Width | width | 18.0 | +0.50 | `hs-mens-shoulder` | 14.0 - 24.0 |
-| `M-ST-05` | Shirt Length (Back) | length | 30.0 | +0.00 | `hs-mens-shirt-len` | 24.0 - 38.0 |
-| `M-ST-06` | Sleeve Length | sleeve | 25.0 | +0.50 | `hs-mens-sleeve` | 20.0 - 32.0 |
-| `M-ST-07` | Cuff Circumference | girth | 8.5 | +1.50 | `hs-mens-cuff` | 6.0 - 13.0 |
-
-#### 4. Men's Trouser (`mens-trouser`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `M-TR-01` | Waistband Circumference | girth | 34.0 | +1.00 | `hs-mens-trouser-waist` | 26.0 - 56.0 |
-| `M-TR-02` | Seat / Hip Circumference | girth | 41.0 | +3.00 | `hs-mens-hip` | 32.0 - 60.0 |
-| `M-TR-03` | Outseam Length | trouser | 41.0 | +0.00 | `hs-mens-outseam` | 32.0 - 52.0 |
-| `M-TR-04` | Inseam Length | trouser | 31.0 | +0.00 | `hs-mens-inseam` | 24.0 - 40.0 |
-| `M-TR-05` | Thigh Circumference | girth | 24.0 | +2.50 | `hs-mens-thigh` | 18.0 - 34.0 |
-| `M-TR-06` | Knee Circumference | girth | 18.0 | +2.00 | `hs-mens-knee` | 13.0 - 26.0 |
-| `M-TR-07` | Leg Opening / Hem | girth | 15.0 | +1.00 | `hs-mens-ankle` | 10.0 - 22.0 |
-| `M-TR-08` | Crotch Rise Depth | trouser | 10.5 | +0.50 | `hs-mens-crotch` | 8.0 - 16.0 |
-
-#### 5. Women's Sari Blouse (`womens-blouse`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `W-SB-01` | Upper Bust Circumference | girth | 34.0 | +0.75 | `hs-womens-upperbust` | 26.0 - 52.0 |
-| `W-SB-02` | Full Bust Peak | girth | 36.0 | +1.25 | `hs-womens-fullbust` | 28.0 - 56.0 |
-| `W-SB-03` | Underbust / Band | girth | 30.0 | +0.50 | `hs-womens-underbust` | 24.0 - 48.0 |
-| `W-SB-04` | Apex Distance (Nipple to Nipple) | width | 7.5 | +0.00 | `hs-womens-apex-dist` | 5.5 - 11.0 |
-| `W-SB-05` | Apex Height (Shoulder to Apex) | length | 10.0 | +0.00 | `hs-womens-apex-height` | 7.5 - 14.0 |
-| `W-SB-06` | Front Neck Drop | length | 7.0 | +0.00 | `hs-womens-front-neck` | 4.0 - 11.0 |
-| `W-SB-07` | Back Neck Drop | length | 9.5 | +0.00 | `hs-womens-back-neck` | 4.0 - 15.0 |
-| `W-SB-08` | Armhole / Armscye Depth | width | 15.0 | +0.50 | `hs-womens-armscye` | 11.0 - 22.0 |
-| `W-SB-09` | Blouse Total Length | length | 14.5 | +0.00 | `hs-womens-blouse-len` | 11.0 - 19.0 |
-
-#### 6. Women's Lehenga Choli (`womens-lehenga`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `W-LC-01` | Lehenga Waistline (Navel) | girth | 28.0 | +0.50 | `hs-womens-waist` | 22.0 - 48.0 |
-| `W-LC-02` | High Hip / Seat Circumference | girth | 38.0 | +3.00 | `hs-womens-hip` | 30.0 - 58.0 |
-| `W-LC-03` | Lehenga Length (Waist to Floor with Heels)| length | 42.0 | +0.50 | `hs-womens-lehenga-len` | 34.0 - 50.0 |
-| `W-LC-04` | Choli Bust Circumference | girth | 36.0 | +1.50 | `hs-womens-fullbust` | 28.0 - 56.0 |
-| `W-LC-05` | Choli Underbust Band | girth | 30.0 | +0.75 | `hs-womens-underbust` | 24.0 - 48.0 |
-| `W-LC-06` | Choli Back Length | length | 15.0 | +0.00 | `hs-womens-choli-len` | 12.0 - 20.0 |
-
-#### 7. Women's Anarkali (`womens-anarkali`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `W-AN-01` | Full Bust Circumference | girth | 36.0 | +2.50 | `hs-womens-fullbust` | 28.0 - 56.0 |
-| `W-AN-02` | Empire Waist Band | girth | 30.0 | +2.00 | `hs-womens-underbust` | 24.0 - 48.0 |
-| `W-AN-03` | Yoke / Empire Height | length | 14.5 | +0.00 | `hs-womens-yoke-len` | 11.0 - 19.0 |
-| `W-AN-04` | Anarkali Total Length | length | 54.0 | +0.50 | `hs-womens-gown-len` | 42.0 - 64.0 |
-| `W-AN-05` | Flare Hem Circumference | girth | 120.0 | +12.00 | `hs-womens-flare` | 80.0 - 240.0 |
-| `W-AN-06` | Sleeve Length | sleeve | 22.0 | +0.50 | `hs-womens-sleeve` | 14.0 - 26.0 |
-
-#### 8. Women's Corset (`womens-corset`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `W-CO-01` | Overbust Circumference | girth | 34.0 | -1.00 | `hs-womens-upperbust` | 26.0 - 52.0 |
-| `W-CO-02` | Full Bust Peak | girth | 36.0 | -1.50 | `hs-womens-fullbust` | 28.0 - 56.0 |
-| `W-CO-03` | Underbust Line | girth | 30.0 | -1.50 | `hs-womens-underbust` | 24.0 - 48.0 |
-| `W-CO-04` | Waist Cinch Target | girth | 28.0 | -3.00 | `hs-womens-waist` | 20.0 - 44.0 |
-| `W-CO-05` | High Hip Curve | girth | 35.0 | -0.50 | `hs-womens-highhip` | 28.0 - 52.0 |
-| `W-CO-06` | Busk Front Length | length | 13.0 | +0.00 | `hs-womens-busk-len` | 10.0 - 18.0 |
-
-#### 9. Women's Gown (`womens-gown`)
-| Code | Name | Category | Base (in) | Default Ease (in) | Landmark ID | Min-Max Range (in) |
-|---|---|---|---|---|---|---|
-| `W-GO-01` | Full Bust Circumference | girth | 36.0 | +2.00 | `hs-womens-fullbust` | 28.0 - 56.0 |
-| `W-GO-02` | Natural Waist Circumference | girth | 28.0 | +1.50 | `hs-womens-waist` | 22.0 - 48.0 |
-| `W-GO-03` | High Hip / Seat | girth | 38.0 | +2.50 | `hs-womens-hip` | 30.0 - 58.0 |
-| `W-GO-04` | Hollow to Hem Length | length | 58.0 | +0.50 | `hs-womens-hollow-hem` | 46.0 - 66.0 |
-| `W-GO-05` | Train Sweep Extra Length | length | 18.0 | +0.00 | `hs-womens-train` | 0.0 - 60.0 |
-| `W-GO-06` | Shoulder to Waist Length | length | 16.0 | +0.00 | `hs-womens-sh-waist` | 13.0 - 20.0 |
-
----
-
-## 2. 4-Axis Posture Profile Model & Offset Formulas
-
-### Data Definition (`PostureProfile`)
-```typescript
-export type PostureAxis = 'shoulderSlope' | 'backCurvature' | 'abdomenStance' | 'hipSpineStance';
-
-export interface PostureProfile {
-  shoulderSlope: 'normal' | 'sloped' | 'square' | 'very_sloped';
-  backCurvature: 'normal' | 'stooped' | 'erect' | 'prominent_blade';
-  abdomenStance: 'normal' | 'prominent' | 'flat';
-  hipSpineStance: 'normal' | 'high_hip' | 'sway_back';
+1. **Root `package.json`**:
+```json
+{
+  "name": "yellowhouse-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  }
 }
 ```
 
-### Posture Offset Calculation Function
-The total posture offset for a POM item is computed by summing the axis-specific offsets that apply to its `category` or specific `code`:
+2. **`apps/web/package.json`**:
+Add `ts-node` to `devDependencies` and configure `"test"` script:
+```json
+{
+  "name": "@yellowhouse/web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "test": "ts-node --transpile-only src/__tests__/run-tests.ts"
+  },
+  "dependencies": {
+    ...
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
+  }
+}
+```
 
-$$\text{PostureOffset}(\text{POM}) = \Delta_{\text{shoulderSlope}}(\text{POM}) + \Delta_{\text{backCurvature}}(\text{POM}) + \Delta_{\text{abdomenStance}}(\text{POM}) + \Delta_{\text{hipSpineStance}}(\text{POM})$$
+3. **`apps/api/package.json`**:
+Add `"test"` script executing the NestJS DTO & service test suite:
+```json
+{
+  "name": "@yellowhouse/api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "nest start",
+    "seed": "ts-node prisma/seed.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "prisma db seed",
+    "test": "ts-node src/__tests__/signup-dto-adversarial.test.ts"
+  },
+  ...
+}
+```
 
-#### Offset Rule Matrix:
+### 4.2 Test Suite Execution & Verification
 
-1. **`shoulderSlope`**:
-   - `normal`: 0.0" offset.
-   - `sloped`:
-     - Armscye/Armhole POMs (`M-SU-07`, `W-SB-08`): **+0.375"** (deepens armhole to prevent pinching).
-     - Shoulder Width POMs (`M-SU-04`, `M-SH-04`, `M-ST-04`): **-0.25"** (narraws shoulder seam).
-   - `very_sloped`:
-     - Armscye/Armhole POMs: **+0.625"**
-     - Shoulder Width POMs: **-0.375"**
-   - `square`:
-     - Armscye/Armhole POMs: **-0.25"** (raises shoulder, shallows armhole).
-     - Shoulder Width POMs: **+0.25"**
-
-2. **`backCurvature`**:
-   - `normal`: 0.0" offset.
-   - `stooped`:
-     - Back Length POMs (`M-SU-05`, `M-SH-06`, `M-ST-05`, `W-SB-09`, `W-LC-06`): **+0.50"** (adds curve height for rounded upper spine).
-     - Across Chest / Front Length POMs: **-0.25"**
-     - Chest/Bust Girth POMs: **+0.375"**
-   - `erect`:
-     - Back Length POMs: **-0.375"** (shortens back distance).
-     - Across Chest / Front Length POMs: **+0.25"**
-     - Chest/Bust Girth POMs: **+0.25"**
-   - `prominent_blade`:
-     - Upper Back Width / Across Chest POMs: **+0.50"**
-     - Armscye Depth: **+0.25"**
-
-3. **`abdomenStance`**:
-   - `normal`: 0.0" offset.
-   - `prominent`:
-     - Waist Girth POMs (`M-SU-02`, `M-SH-02`, `M-ST-03`, `M-TR-01`, `W-GO-02`): **+1.00"** (relieves waistband tension).
-     - Trouser Rise / Crotch Depth (`M-TR-08`): **+0.50"** (extends front rise for belly overhang).
-   - `flat`:
-     - Waist Girth POMs: **-0.50"** (tighter contouring).
-     - Trouser Rise / Crotch Depth: **-0.25"**
-
-4. **`hipSpineStance`**:
-   - `normal`: 0.0" offset.
-   - `high_hip`:
-     - Hip/Seat Girth POMs (`M-SU-03`, `M-SH-03`, `M-TR-02`, `W-LC-02`, `W-GO-03`): **+0.50"**
-     - Trouser Outseam / Inseam adjustment: **+0.25"**
-   - `sway_back`:
-     - Back Waist Drop / Jacket Length (`M-SU-05`, `W-SB-09`): **-0.625"** (shortens back waist to eliminate lower-back pooling fabric).
-     - Trouser Seat Rise (`M-TR-08`): **-0.375"**
-
----
-
-## 3. Dynamic Ease Calculation Formula
-
-$$\text{Target Garment Measurement} = \text{Net Body} + \text{Category Base Ease} + \text{Fit Preference Modifier} + \text{Posture Offset} + \text{Stretch Factor}$$
-
-### Fit Preference Modifier Matrix ($\text{Fit Modifier}$)
-Values apply depending on POM `category`:
-
-| Fit Preference | Girth POMs (`girth`) | Width POMs (`width`) | Sleeve POMs (`sleeve`) | Length/Trouser POMs (`length`, `trouser`) |
-|---|---|---|---|---|
-| `'skinny'` | -1.50" | -0.50" | -0.375" | 0.00" |
-| `'slim'` | -0.75" | -0.25" | -0.250" | 0.00" |
-| `'regular'` | 0.00" | 0.00" | 0.000" | 0.00" |
-| `'relaxed'` | +1.25" | +0.50" | +0.375" | 0.00" |
-
-### Stretch Factor Formulation ($\text{Stretch Factor}$)
-For woven / non-stretch fabrics, $\text{Stretch Factor} = 0.0$.
-For knit or elastane-blended fabrics, $\text{Stretch Factor}$ is calculated as a negative percentage reduction of Net Body girth:
-$$\text{Stretch Factor} = -(\text{Net Body Girth} \times \text{Fabric Elasticity Rate})$$
-*(e.g. 5% spandex = -5% of 36.0" bust = -1.80" negative ease for corsets/blouses)*.
+When `npm run test` is executed at the monorepo root:
+1. `npm` invokes `npm run test --workspaces`.
+2. `@yellowhouse/api` executes `ts-node src/__tests__/signup-dto-adversarial.test.ts`:
+   - Validates DTO string transformations (lowercasing tenant slugs and emails).
+   - Tests regex validation for tenant subdomains and length constraints.
+   - Tests `checkSlug` logic and Prisma `P2002` duplicate error mapping to NestJS `ConflictException` (409).
+3. `@yellowhouse/web` executes `ts-node --transpile-only src/__tests__/run-tests.ts`:
+   - Tests `storage-utils` (SSR fallback, object serialization, corrupted JSON fallback, key deletion, array/boolean primitives).
+   - Tests 9 POM schema garment templates.
+   - Tests 4-axis posture profile modifier engine.
+   - Tests dynamic ease allowance calculations.
+   - Tests size-scaled fabric yield math.
+   - Tests SVG landmark & hotspot validations.
 
 ---
 
-## 4. Size-Scaled Fabric Yield Calculation Math
+## 5. Step-by-Step Implementation Blueprint for Implementer
 
-### Multi-Variable Mathematical Model
-
-Let:
-- $Y_{base} = \text{Standard Reference Fabric Yardage}$ (for Size Medium / 40" chest, 44" fabric width)
-- $K_{scale} = \text{Composite Size Scaling Ratio}$
-- $F_{width} = \text{Fabric Width Utilization Factor}$
-- $A_{pattern} = \text{Pattern Repeat Allowance Factor}$
-- $A_{shrink} = \text{Shrinkage Padding Factor}$
-
-### 1. Composite Size Scale Ratio ($K_{scale}$)
-$$\text{Ref Girth} = \begin{cases} 40.0\text{ in} & \text{(Men)} \\ 36.0\text{ in} & \text{(Women)} \end{cases}, \quad \text{Ref Length} = \begin{cases} 30.0\text{ in} & \text{(Jacket/Shirt)} \\ 42.0\text{ in} & \text{(Sherwani/Lehenga)} \\ 56.0\text{ in} & \text{(Anarkali/Gown)} \\ 41.0\text{ in} & \text{(Trouser)} \end{cases}$$
-
-$$K_{girth} = \frac{\text{Customer Observed Girth}}{\text{Ref Girth}}, \quad K_{length} = \frac{\text{Customer Observed Length}}{\text{Ref Length}}$$
-
-$$K_{scale} = 0.6 \cdot K_{length} + 0.4 \cdot K_{girth}$$
-
-### 2. Standard Category Base Yardage Matrix ($Y_{base}$)
-For 44" fabric width, baseline standard size consumption:
-- `mens-suit`: 5.00 m
-- `mens-sherwani`: 4.50 m
-- `mens-shirt`: 2.20 m
-- `mens-trouser`: 1.40 m
-- `womens-blouse`: 1.00 m
-- `womens-lehenga`: 5.80 m
-- `womens-anarkali`: 6.50 m
-- `womens-corset`: 1.20 m
-- `womens-gown`: 5.50 m
-
-### 3. Width Utilization Factor ($F_{width}$)
-$$F_{width} = \frac{44.0}{\text{Selected Fabric Width (inches)}}$$
-- For 44" width: $F_{width} = 1.00$
-- For 54" width: $F_{width} = 44/54 \approx 0.815$
-- For 60" width: $F_{width} = 44/60 \approx 0.733$
-
-### 4. Pattern Repeat Allowance ($A_{pattern}$)
-If pattern repeat $R > 0$ inches:
-$$A_{pattern} = 1.0 + \min\left(0.25, \, \frac{R \times 0.0254}{Y_{base} \times K_{scale} \times F_{width}}\right)$$
-If pattern repeat $R = 0$: $A_{pattern} = 1.0$.
-
-### 5. Shrinkage Allowance ($A_{shrink}$)
-If fabric has shrinkage treatment ($S = 0.05$ for 5% shrinkage):
-$$A_{shrink} = 1.0 + S = 1.05$$
-Otherwise $A_{shrink} = 1.0$.
-
-### 6. Final Fabric Yield Calculation
-$$\text{Estimated Meters} = \text{Math.round}\left( Y_{base} \times K_{scale} \times F_{width} \times A_{pattern} \times A_{shrink} \times 100 \right) / 100$$
-
----
-
-## 5. Architectural Implementation Plan for M1
-
-### Key Files to Create / Enhance
-1. `apps/web/src/types/measurement.ts`: Export core TypeScript interfaces for 9 Garment Categories, POM Schemas, 4-Axis Posture Profile, Fit Preferences, and Calculated Ease Results.
-2. `apps/web/src/lib/pom-schemas.ts`: Export schema lookup functions and full array of all 9 category POM templates.
-3. `apps/web/src/lib/posture-engine.ts`: Implement `calculatePostureOffset(pomCode, category, postureProfile)` engine.
-4. `apps/web/src/lib/ease-calculator.ts`: Implement `calculateDynamicEase(netBody, baseEase, fitPref, posture, stretch, pomCategory)` function.
-5. `apps/web/src/lib/fabric-yield.ts`: Implement multi-variable fabric yield math function.
-6. `apps/api/src/modules/measurements/measurements.service.ts`: Update NestJS service to expose getGarmentTemplates, calculateEase, and calculateFabricYield endpoints matching web lib math.
-7. `apps/web/src/components/measurement-engine/PomFormEngine.tsx`: Dynamic form UI with numeric inputs, live validation range checks, and ease breakdowns.
-8. `apps/web/src/components/measurement-engine/PostureProfileSelector.tsx`: Interactive selector UI for the 4 posture axes.
-9. `apps/web/src/components/measurement-engine/FabricYieldCalculator.tsx`: Real-time fabric yield estimator UI.
-10. `apps/web/src/__tests__/`: Unit tests for schema validity, ease calculator, posture offsets, and fabric yield math.
-
----
+1. **Step 1: Clean Unused Imports Across `apps/web`**
+   - Remove all identified unused `lucide-react` icons from the 11 audited files in Section 2.2.
+2. **Step 2: Refactor Direct `localStorage` Calls & Unsafe Property Accesses**
+   - In `apps/web/src/app/onboarding/page.tsx`, `login/page.tsx`, `register/page.tsx`, `(dashboard)/layout.tsx`, `(dashboard)/dashboard/page.tsx`: replace raw `localStorage` calls with `getLocalStorage`, `setLocalStorage`, `removeLocalStorage`.
+   - Add optional chaining checks to `currentUser.role` in `layout.tsx` and `staff/page.tsx`.
+3. **Step 3: Update `package.json` Test Scripts**
+   - Update `apps/web/package.json` with `"ts-node": "^10.9.1"` in `devDependencies` and `"test": "ts-node --transpile-only src/__tests__/run-tests.ts"`.
+   - Update `apps/api/package.json` with `"test": "ts-node src/__tests__/signup-dto-adversarial.test.ts"`.
+4. **Step 4: Verify Full Pipeline**
+   - Run `npx tsc --noEmit` across both apps.
+   - Run `npm run test` at root workspace.
+   - Run `npm run build` at root workspace.

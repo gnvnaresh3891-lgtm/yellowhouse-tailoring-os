@@ -22,6 +22,7 @@ export interface SignupResponse {
   token: string;
   seededTemplatesCount?: number;
   message?: string;
+  error?: string;
 }
 
 export interface SlugCheckResponse {

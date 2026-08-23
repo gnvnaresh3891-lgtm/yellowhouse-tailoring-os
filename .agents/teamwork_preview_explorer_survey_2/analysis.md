@@ -1,152 +1,110 @@
-# Comprehensive UI & State Management Analysis — Yellowhouse Tailoring OS
+# YellowHouse Tailoring OS — Comprehensive Codebase Survey & Analysis
 
-## Overview
-
-This analysis evaluates the frontend architecture, state management patterns, domain data models, existing UI components, and visual/SVG infrastructure in the `yellowhouse` repository (`C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse`).
-
----
-
-## 1. UI Framework & Technical Stack
-
-### Core Frameworks
-* **Frontend Framework**: Next.js `14.2.0` using the App Router (`apps/web/src/app`).
-* **React Version**: React `18.3.0` / React DOM `18.3.0`.
-* **TypeScript**: TypeScript `5.0.0` configured with strict mode in `apps/web/tsconfig.json` and `apps/api/tsconfig.json`.
-* **Backend Framework**: NestJS `10.0.0` (`apps/api/src`), Prisma ORM `5.0.0` (`apps/api/prisma/schema.prisma`).
-
-### Styling & Design System
-* **Tailwind CSS**: Tailwind CSS `3.4.3` (`apps/web/tailwind.config.js`, `apps/web/src/app/globals.css`).
-* **Custom Color Palette**:
-  * `gold`: `gold-400` (`#FACC15`), `gold-500` (`#EAB308`), `gold-600` (`#CA8A04`).
-  * `slate`: `slate-850` (`#141E33`), `slate-950` (`#0B0F19`).
-* **Glassmorphism CSS Utility Classes** (`apps/web/src/app/globals.css` lines 11–32):
-  * `.glass-card`: Semi-transparent slate background with backdrop blur (`rgba(15, 23, 42, 0.75)`).
-  * `.glass-card-gold`: Gold-tinted slate background with gold border (`rgba(20, 30, 51, 0.85)`).
-  * `.transition-glow`: Smooth hover transition with gold box-shadow.
-* **Icon Library**: `lucide-react` `0.378.0` (used for `Scissors`, `Users`, `Ruler`, `ShoppingBag`, `Layers`, `MessageSquare`, `Search`, `Bell`, `ChevronRight`, `CheckCircle2`, `AlertCircle`, `Plus`, `Sparkles`, `Sliders`, `Calculator`, `Send`, `ArrowUpRight`).
-* **Style Helpers**: `clsx` (`2.1.1`), `tailwind-merge` (`2.3.0`).
+## Executive Summary
+This report presents a forensic code audit of the **YellowHouse Tailoring OS** repository located at `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse`. The survey evaluates state management, local storage persistence, data models, business rules, E2E flow integration (R2 & R4), and test coverage across both `@yellowhouse/web` (Next.js 14) and `@yellowhouse/api` (NestJS 10).
 
 ---
 
-## 2. State Management Architecture
+## 1. Form Audit & Local Storage Persistence
 
-* **Current Approach**: Pure React local component state (`useState`) within a single top-level page component (`DashboardPage` in `apps/web/src/app/page.tsx`).
-* **External State Libraries**: None currently installed or used (no Zustand, Redux, Recoil, or React Query/TanStack Query in `package.json`).
-* **Active State Variables** (`apps/web/src/app/page.tsx` lines 11–29):
-  1. `activeTab`: `'crm' | 'yield' | 'kanban' | 'whatsapp'` (controls main view tab switching).
-  2. `selectedGender`: `'Men' | 'Women'` (switches between Men's and Women's POM forms and yield baseline).
-  3. `selectedGarment`: `string` (e.g. `"Sherwani"`, `"Suit"`, `"Sari Blouse"`, `"Lehenga"`).
-  4. `poms`: `Record<string, number>` storing POM key-value pairs (e.g. `chest`, `waist`, `shoulder`, `sleeve`, `length`, `underbust`, `apexDistance`).
-  5. `fabricWidth`: `number` (`44`, `54`, `60`).
-  6. `patternRepeat`: `number`.
-  7. `calculatedMeters`: `number`.
+| Form Component | File Location | Persistence Mechanism | Status & Identified Deficiencies |
+| :--- | :--- | :--- | :--- |
+| **Onboarding Setup Wizard** | `apps/web/src/app/onboarding/page.tsx` | `localStorage.setItem('yh_auth_user')` | ⚠️ **Partial / On-Submit Only**: Intermediate wizard inputs (boutique name, slug, selected templates, owner credentials) are stored solely in React `useState`. Unsaved drafts are lost if refreshed on step 2 or 3. Persistence occurs only upon final signup submission. |
+| **Order Management Form** | `apps/web/src/app/(dashboard)/orders/page.tsx` | `localStorage.setItem('yh_orders')`, `yh_production_jobs` | ⚠️ **Partial / On-Submit Only**: Form fields (selected client, due date, garment item rows, fabric SKU, custom fabric/lining images, notes) reside in React `useState`. Draft orders are not saved to `localStorage` until "Save as Draft" or "Send Quotation" is clicked. |
+| **Measurement Workspace Form** | `apps/web/src/app/(dashboard)/measurements/page.tsx` | `localStorage.setItem('yh_measurements_current')`, `yh_measurements_gender`, `yh_measurements_garment`, `yh_measurements_slope`, `yh_measurements_stance`, `yh_measurements_posture`, `yh_measurements_heel`, `yh_measurement_snapshots` | ✅ **Fully Persistent**: Uses a `useEffect` hook to continuously write all active POM inputs, posture profile selections, fit preferences, and version snapshots to `localStorage` on change. |
+| **Staff Recruitment Form** | `apps/web/src/app/(dashboard)/staff/page.tsx` | In-memory React state (`staffList`) | ❌ **Missing Persistence**: Newly hired staff members are added to local component state but are **NEVER saved to `localStorage` or database**. Reloading the page resets staff to `INITIAL_STAFF`. |
+| **Customer Directory Form** | `apps/web/src/app/(dashboard)/customers/page.tsx` | In-memory React state (`customersList`) | ❌ **Missing Persistence**: Adding a new customer updates component state only. Reloading the page discards newly created customers and resets to `initialCustomers`. |
 
 ---
 
-## 3. Data Models, Schemas & Domain Types
+## 2. Kanban Production Board Audit (Stage Movement & State Sync)
 
-### Database Schema (Prisma — `apps/api/prisma/schema.prisma`)
+### 2.1 State Management & Drag-and-Drop Implementation
+- **Storage**: Kanban job cards are loaded from and synchronized to `localStorage.getItem('yh_production_jobs')` (falling back to `INITIAL_JOB_CARDS` with 14 pre-loaded cards across 5 columns).
+- **Drag-and-Drop**: Native HTML5 or library-based (e.g. `@hello-pangea/dnd`, `dnd-kit`) drag-and-drop event listeners are **not implemented**.
+- **Stage Movement**: Stage transitions are executed via explicit directional buttons (`←` Previous Stage, `→` Next Stage) present on job cards and in the job card detail modal.
 
-1. **`Client`** (lines 51–67):
-   * `id`, `tenantId`, `phone`, `firstName`, `lastName`, `gender` (`"Men" | "Women" | "Unisex"`), `preferredFit` (default `"Regular"`), `postureProfile` (`Json?` e.g. `{"shoulder_slope": "sloping", "chest_stance": "prominent"}`).
-   * Unique constraint: `@@unique([tenantId, phone])`.
-
-2. **`CustomerMeasurementVersion`** (lines 69–84):
-   * `id`, `tenantId`, `clientId`, `versionNumber` (`Int`), `profileName` (`String`), `gender` (`"Men" | "Women"`), `unit` (`"inch" | "cm"`), `measurements` (`Json`), `easeAllowances` (`Json?`), `measuredBy` (`String?`), `isActive` (`Boolean`).
-
-3. **`MeasurementTemplate`** (lines 85–94):
-   * `id`, `tenantId?`, `garmentName` (`String`), `gender` (`"Men" | "Women" | "Unisex"`), `category` (`"Ethnic" | "Western" | "Couture"`), `pomSchema` (`Json`).
-
-4. **`Order` & `OrderItem`** (lines 96–130):
-   * `OrderItem` stores `appliedMeasurementSnapshot` (`Json`), `garmentConfiguration` (`Json`), `productionStage`.
-
-5. **`OrderTrial`** (lines 156–166):
-   * `trialNumber` (`Int`), `status` (`"SCHEDULED" | "COMPLETED" | "ALTERATION_REQUIRED"`), `scheduledAt` (`DateTime`), `observedDeltas` (`Json?` e.g. `{"waist": -0.5, "sleeve": +0.25}`), `masterNotes` (`String?`).
-
-### Backend Measurement & POM Schemas (`apps/api/src/modules/measurements/measurements.service.ts`)
-
-#### POM Templates (`getGarmentTemplates()`, lines 16–75):
-* **Men's Royal Sherwani (`mens-sherwani`)**:
-  * `M-SH-01`: Chest Circumference (Default Ease: +5.0", Tolerance: ±0.25")
-  * `M-SH-02`: Natural Waist (Default Ease: +3.5", Tolerance: ±0.25")
-  * `M-SH-03`: Hip / Seat Circumference (Default Ease: +4.5", Tolerance: ±0.25")
-  * `M-SH-04`: Shoulder Width (Default Ease: +0.75", Tolerance: ±0.125")
-  * `M-SH-05`: Band Collar Height & Circumference (Default Ease: +0.85", Tolerance: ±0.125")
-  * `M-SH-06`: Center Back Length (Default Ease: 0.0", Tolerance: ±0.5")
-  * `M-SH-07`: Sleeve Length (Default Ease: +0.5", Tolerance: ±0.25")
-
-* **Men's Bespoke 3-Piece Suit (`mens-suit`)**:
-  * `M-SU-01`: Jacket Chest (Default Ease: +3.5", Tolerance: ±0.25")
-  * `M-SU-02`: Buttoning Waist Point (Default Ease: +2.5", Tolerance: ±0.25")
-  * `M-SU-03`: Trouser Outseam (Default Ease: -0.5", Tolerance: ±0.25")
-  * `M-SU-04`: Trouser Thigh Circumference (Default Ease: +2.5", Tolerance: ±0.25")
-  * `M-SU-05`: Inseam Length (Default Ease: 0.0", Tolerance: ±0.25")
-
-* **Women's Sari Blouse (`womens-blouse`)**:
-  * `W-SB-01`: Upper Bust Circumference (Default Ease: +0.75", Tolerance: ±0.125")
-  * `W-SB-02`: Full Bust Peak (Default Ease: +1.25", Tolerance: ±0.125")
-  * `W-SB-03`: Underbust / Band (Default Ease: +0.5", Tolerance: ±0.125")
-  * `W-SB-04`: Apex Distance (Default Ease: 0.0", Tolerance: ±0.125")
-  * `W-SB-05`: Apex Height (Default Ease: 0.0", Tolerance: ±0.125")
-  * `W-SB-06`: Front Neck Drop (Default Ease: 0.0", Tolerance: ±0.125")
-  * `W-SB-07`: Back Neck Drop (Default Ease: 0.0", Tolerance: ±0.125")
-  * `W-SB-08`: Armscye / Armhole Depth (Default Ease: +0.5", Tolerance: ±0.125")
-
-* **Women's Lehenga Choli (`womens-lehenga`)**:
-  * `W-LC-01`: Lehenga Waist Line (Default Ease: +0.5", Tolerance: ±0.25")
-  * `W-LC-02`: Lehenga Length (Default Ease: +0.5", Tolerance: ±0.375")
-  * `W-LC-03`: Choli Band Length (Default Ease: +1.0", Tolerance: ±0.125")
-  * `W-LC-04`: Kali Count (Default Ease: 0.0, Tolerance: 0.0)
-
-#### Fabric Yield Math Engine (`calculateFabricYield()`, lines 78–114):
-* Base consumption lookup by fabric width (44", 54", 60").
-* Pattern repeat allowance math: `repeatFactor = 1 + (patternRepeatInches * 0.0254) / requiredMeters`.
-* Shrinkage padding: 5% multiplier when `hasShrinkage` is true.
+### 2.2 Bidirectional Stage-to-Order Synchronization
+- **Sync Handler**: `moveStage(jobId, direction)` in `apps/web/src/app/(dashboard)/production/page.tsx`.
+- **Status Mapping Logic**:
+  ```typescript
+  const mappedStatus = 
+    targetJob.stage === 'Fabric Inspection' ? 'CONFIRMED' :
+    targetJob.stage === 'Master Cutting' ? 'CUTTING' :
+    targetJob.stage === 'Zardozi/Aari Embroidery' ? 'IN_PRODUCTION' :
+    targetJob.stage === 'Stitching Assembly' ? 'IN_PRODUCTION' :
+    targetJob.stage === 'QC & Ready for Delivery' ? 'READY_FOR_DELIVERY' : 'CONFIRMED';
+  ```
+- **Execution**: Updates matching order in `localStorage.getItem('yh_orders')` by comparing sanitized order IDs (`targetJob.orderId.replace('JC-', '').replace('#YH-', '')`).
+- **Gaps & Disconnects**:
+  1. Orders created as `DRAFT` in `/orders` do not automatically create Kanban job cards. Only `CONFIRMED` orders create a job card in `yh_production_jobs`.
+  2. Reverting a card backwards to 'Fabric Inspection' sets order status to 'CONFIRMED', but does not revert delivered order financial ledgers.
 
 ---
 
-## 4. Existing UI Components, Forms, and Layout Patterns
+## 3. Business Logic Calculations & Location Analysis
 
-### Component Architecture
-* Currently, the frontend UI is contained in a single monolithic page component (`apps/web/src/app/page.tsx`). There are no sub-components extracted into `apps/web/src/components/`.
-* **Layout Structure**:
-  1. Sticky top navigation bar header (`Scissors` branding logo, tenant indicator, global search input, notifications icon, user avatar pill).
-  2. 4-column KPI stats grid (`Active Atelier Orders`, `Karigar SAM Payout`, `Fitting Success Rate`, `WhatsApp Advance Payments`).
-  3. Tab bar (`Customer Measurement Engine`, `Fabric Yield Math`, `Karigar Workshop Board`, `WhatsApp Deposit Sender`).
-  4. Tab 1 Panel: Customer profile card (left 4 columns) and Dynamic Measurement POM form grid (right 8 columns).
-  5. Tab 2 Panel: Fabric yield calculator & nesting optimization card.
-  6. Tab 3 Panel: 4-stage Karigar Workshop Kanban Board (`Master Cutting`, `Zardozi Adda Work`, `Stitching Assembly`, `Ready for Delivery`).
-  7. Tab 4 Panel: Meta WhatsApp interactive deposit payload generator.
+### 3.1 Standard Allowed Minutes (SAM) Calculation
+- **Current Implementation**:
+  - In `apps/web/src/app/(dashboard)/orders/page.tsx`: Order creation assigns a static estimate of `items.length * 120` minutes (2 hours per item).
+  - In `apps/web/src/app/(dashboard)/production/page.tsx`: Logged minutes (`samMinutesLogged`) accumulate per card, and artisan timesheets compute payouts at `₹42/min` (`sam * 42`).
+- **Missing Logic**: There is no dynamic SAM engine calculating allowed minutes based on garment category complexity (e.g., 24-kali embroidered lehenga vs 2-piece suit vs sari blouse), panel count, or posture alterations.
 
-### Gap Analysis Against Requirements (R1, R2, R3)
+### 3.2 Order Price Calculations
+- **Current Implementation**:
+  - In `apps/web/src/app/(dashboard)/orders/page.tsx`: Unit price is selected from hardcoded garment presets in `garmentOptions` (e.g., Sherwani = ₹28,000, 3-Piece Suit = ₹35,000, Lehenga = ₹68,000) or manually entered per item.
+  - Total order amount = `sum(item.unitPrice)`.
+  - Advance requirement = `round(totalOrderAmount * 0.5)` (50%).
+- **Missing Logic**: Price calculation is static and does not calculate `(Fabric Required * Fabric Price/Meter) + Tailoring Labor + Embroidery Surcharge`.
 
-1. **R1 (Dynamic Measurement Template & POM Engine)**:
-   * Form inputs in `page.tsx` are hardcoded static HTML fields with `defaultValue`.
-   * Ease calculation logic exists in `apps/api/src/modules/measurements/measurements.service.ts` but is not connected to interactive state updates in the frontend UI.
-   * Posture profile modifiers (e.g. sloping shoulders, posture adjustments) are static text displays without interactive slider/selector logic.
-
-2. **R2 (Visual Body Landmark Diagram & Interactivity)**:
-   * **Missing**: No SVG human body outline or clickable landmark hotspots exist in the codebase.
-   * Required: Interactive 2D SVG silhouette (Front/Back view) for Men's and Women's garments with interactive anatomical hotspots matching POM input fields, hover highlights, and real-time validation badges.
-
-3. **R3 (Measurement Versioning & Fitting Delta Tracker)**:
-   * **Missing**: No measurement snapshot history or delta comparison viewer exists in the UI.
-   * Required: Comparison view displaying Target POM vs. Observed Fitting Trial vs. Alteration Delta (e.g. `+0.25"`, `-0.5"`), with version selection and trial logs based on `CustomerMeasurementVersion` and `OrderTrial` Prisma schemas.
+### 3.3 Dynamic Ease & Fabric Yield Math
+- **Location**:
+  - `apps/web/src/lib/ease-calculator.ts`: Net Body + Base Ease + Fit Preference Modifier + Posture Offset - Stretch Factor.
+  - `apps/web/src/lib/posture-engine.ts`: Posture adjustments (shoulder slope, back curvature, abdomen stance, hip spine stance).
+  - `apps/web/src/lib/fabric-yield.ts`: Size-scaled fabric yield math accounting for bolt width (44" vs 54"), panel count (8–24 kalis), and shrinkage.
+- **Status**: ✅ Fully implemented and verified with math unit test suites.
 
 ---
 
-## 5. Architectural Recommendations for Implementation
+## 4. Existing & Missing Unit/Integration Test Suites
 
-1. **Component Modularization**:
-   * Create `apps/web/src/components/measurements/` directory containing:
-     * `MeasurementForm.tsx`: Dynamic form rendering based on POM schema.
-     * `BodyLandmarkSvg.tsx`: Interactive SVG diagram with landmark hotspots.
-     * `PostureProfileSelector.tsx`: Sloping/square shoulder and chest stance modifiers.
-     * `FittingDeltaTracker.tsx`: Version snapshot comparator & alteration delta calculation table.
-     * `FabricYieldCalculator.tsx`: Fabric bolt & pattern repeat calculator component.
+### 4.1 Existing Test Files
+- `apps/web/src/__tests__/run-all-tests.ts`: Console test runner verifying 9 POM schemas, posture offsets, ease formulas, fabric yield math, and dynamic POM resolution.
+- `apps/web/src/__tests__/onboarding-stress.test.ts`: Stress tests for slug formatting, rapid typing race condition simulation, password matching, template selection, and API errors.
+- `apps/web/src/__tests__/landmark-validation.test.ts`: Verifies SVG landmark hotspots and boundary checks.
+- `apps/web/src/__tests__/measurement-context.test.ts`: Tests React context state management for measurement engine.
+- `apps/api/src/__tests__/signup-dto-adversarial.test.ts`: Tests NestJS `SignupDto` class-transformer/validator and Prisma P2002 duplicate constraint mapping.
 
-2. **State Management Enhancement**:
-   * Implement a centralized state store or custom React hook (e.g. `useMeasurementStore` with React Context or Zustand) to sync selected POMs, posture modifiers, active landmark highlighting, and version history seamlessly between the form, SVG diagram, and delta tracker.
+### 4.2 Critical Test Suite Deficiencies
+1. **Missing NPM Test Scripts**: Root `package.json` defines `"test": "npm run test --workspaces"`, but neither `apps/web/package.json` nor `apps/api/package.json` contains a `"test"` script. Running `npm run test` from root fails.
+2. **Missing Test Coverage**:
+   - `localStorage` state persistence across page navigation for Customer and Staff forms.
+   - RBAC role-based navigation item filtering (tested only visually in `layout.tsx`).
+   - Order creation -> Kanban job card auto-creation flow.
+   - Kanban stage movement -> order status synchronization back to `yh_orders`.
 
-3. **TypeScript Type Exports**:
-   * Define shared TypeScript interfaces in `apps/web/src/types/measurement.ts` matching Prisma schemas and NestJS service DTOs (`POMDefinition`, `MeasurementValueMap`, `PostureProfile`, `MeasurementVersionSnapshot`, `FittingDelta`).
+---
+
+## 5. E2E Flow Integration Matrix (R2 & R4 Requirements)
+
+```
+[Onboarding Wizard] ──(Saves yh_auth_user)──> [Dashboard / RBAC Guard]
+                                                      │
+[Customer Directory] (In-memory only ❌)              │
+        │                                             │
+        ▼                                             ▼
+[CAD Measurements Engine] ──(Saves yh_measurements)──> [Order Creation]
+                                                            │ (Saves yh_orders
+                                                            │  & yh_production_jobs)
+                                                            ▼
+                                                   [Kanban Workshop Board]
+                                                            │ (Syncs stage back
+                                                            │  to yh_orders ✅)
+                                                            ▼
+                                                   [Artisan Timesheets & SAM]
+```
+
+### Key Recommendations for Refinement
+1. Implement `localStorage` draft saving and auto-loading for Onboarding, Order Creation, Customer Directory, and Staff forms.
+2. Add a `test` script in `apps/web/package.json` and `apps/api/package.json` (e.g. using `ts-node` or `vitest`) so `npm run test` completes cleanly.
+3. Enhance SAM calculation and pricing calculations with dynamic formulas.

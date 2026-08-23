@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -8,33 +8,21 @@ import {
   Ruler,
   Users,
   Building2,
-  ShieldCheck,
-  BarChart3,
   Sparkles,
   ArrowRight,
   CheckCircle2,
-  Zap,
   Layers,
   Clock,
   TrendingUp,
   ChevronDown,
   ChevronRight,
   Star,
-  MessageSquare,
-  HelpCircle,
   Menu,
   X,
   Sliders,
-  Eye,
-  RefreshCw,
-  Globe,
-  Award,
   Check,
-  ExternalLink,
   ChevronLeft,
-  DollarSign,
-  Activity,
-  Maximize2
+  Eye,
 } from 'lucide-react';
 
 interface LandmarkData {
@@ -156,6 +144,17 @@ export default function MarketingLandingPage() {
 
   // State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
   const [isAnnualBilling, setIsAnnualBilling] = useState(true);
   const [activeLandmark, setActiveLandmark] = useState<LandmarkData>(LANDMARKS[0]);
   const [postureCompensation, setPostureCompensation] = useState<string>('Stooped');
@@ -245,7 +244,8 @@ export default function MarketingLandingPage() {
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none"
-                aria-label="Toggle menu"
+                aria-label="Toggle navigation menu"
+                aria-expanded={isMobileMenuOpen}
               >
                 {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -561,6 +561,7 @@ export default function MarketingLandingPage() {
                       <button
                         key={pst}
                         onClick={() => setPostureCompensation(pst)}
+                        aria-pressed={postureCompensation === pst}
                         className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                           postureCompensation === pst
                             ? 'bg-yellow-500 text-slate-950 shadow-md shadow-yellow-500/20'
@@ -642,10 +643,10 @@ export default function MarketingLandingPage() {
                 </ul>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-yellow-400 font-semibold">
+              <a href="#cad-engine" className="mt-8 pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-yellow-400 font-semibold hover:text-yellow-300 transition-colors">
                 <span>Explore CAD Capabilities</span>
                 <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              </a>
             </div>
 
             {/* FEATURE 2: KARIGAR PRODUCTION BOARD */}
@@ -685,10 +686,10 @@ export default function MarketingLandingPage() {
                 </ul>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-yellow-400 font-semibold">
+              <a href="#calculator" className="mt-8 pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-yellow-400 font-semibold hover:text-yellow-300 transition-colors">
                 <span>View Workshop Kanban</span>
                 <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              </a>
             </div>
 
             {/* FEATURE 3: MULTI-TENANT ADMIN CONTROL */}
@@ -728,10 +729,10 @@ export default function MarketingLandingPage() {
                 </ul>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-yellow-400 font-semibold">
+              <a href="#pricing" className="mt-8 pt-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-yellow-400 font-semibold hover:text-yellow-300 transition-colors">
                 <span>Enterprise Multi-Branch Specs</span>
                 <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
-              </div>
+              </a>
             </div>
           </div>
         </div>
@@ -857,10 +858,16 @@ export default function MarketingLandingPage() {
                     </div>
                     <input
                       type="range"
+                      id="suit-batch-slider"
                       min="1"
                       max="30"
                       value={suitCount}
-                      onChange={(e) => setSuitCount(parseInt(e.target.value))}
+                      onChange={(e) => setSuitCount(parseInt(e.target.value) || 1)}
+                      aria-label="Batch size in bespoke suits or sherwanis"
+                      aria-valuemin={1}
+                      aria-valuemax={30}
+                      aria-valuenow={suitCount}
+                      aria-valuetext={`${suitCount} units`}
                       className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
                     />
                   </div>
@@ -873,11 +880,17 @@ export default function MarketingLandingPage() {
                     </div>
                     <input
                       type="range"
+                      id="fabric-length-slider"
                       min="2.5"
                       max="4.5"
                       step="0.1"
                       value={fabricLengthPerSuit}
-                      onChange={(e) => setFabricLengthPerSuit(parseFloat(e.target.value))}
+                      onChange={(e) => setFabricLengthPerSuit(parseFloat(e.target.value) || 2.5)}
+                      aria-label="Fabric length per suit in meters"
+                      aria-valuemin={2.5}
+                      aria-valuemax={4.5}
+                      aria-valuenow={fabricLengthPerSuit}
+                      aria-valuetext={`${fabricLengthPerSuit} meters`}
                       className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
                     />
                   </div>
@@ -1269,6 +1282,9 @@ export default function MarketingLandingPage() {
                   <button
                     onClick={() => setOpenFaqIndex(isOpen ? null : index)}
                     className="w-full px-6 py-5 text-left flex items-center justify-between focus:outline-none"
+                    aria-expanded={isOpen}
+                    aria-controls={`faq-answer-${index}`}
+                    id={`faq-trigger-${index}`}
                   >
                     <span className="text-base font-bold text-white pr-4">
                       {faq.question}
@@ -1279,7 +1295,12 @@ export default function MarketingLandingPage() {
                   </button>
 
                   {isOpen && (
-                    <div className="px-6 pb-6 pt-1 text-slate-300 text-sm leading-relaxed border-t border-slate-800/60 animate-fade-in">
+                    <div
+                      id={`faq-answer-${index}`}
+                      role="region"
+                      aria-labelledby={`faq-trigger-${index}`}
+                      className="px-6 pb-6 pt-1 text-slate-300 text-sm leading-relaxed border-t border-slate-800/60 animate-fade-in"
+                    >
                       {faq.answer}
                     </div>
                   )}
@@ -1299,7 +1320,7 @@ export default function MarketingLandingPage() {
                 Elevate Your Bespoke Operation
               </span>
               <h2 className="text-3xl sm:text-5xl font-extrabold text-white leading-tight">
-                Ready to Digitized Your Cutting Table & Workshop?
+                Ready to Digitize Your Cutting Table & Workshop?
               </h2>
               <p className="text-slate-300 text-base sm:text-lg">
                 Join master cutters, karigars, and luxury bespoke houses worldwide. Setup takes under 5 minutes.
@@ -1366,11 +1387,11 @@ export default function MarketingLandingPage() {
             <div>
               <h4 className="font-bold text-white text-xs uppercase tracking-wider mb-4">Solutions</h4>
               <ul className="space-y-2.5 text-xs">
-                <li><span className="text-slate-400">Savile Row Ateliers</span></li>
-                <li><span className="text-slate-400">Indian Heritage Couture</span></li>
-                <li><span className="text-slate-400">Multi-Branch Boutiques</span></li>
-                <li><span className="text-slate-400">Karigar Piece-Rate Pay</span></li>
-                <li><span className="text-slate-400">WhatsApp Fitting Alerts</span></li>
+                <li><a href="#features" className="hover:text-yellow-400 transition-colors">Savile Row Ateliers</a></li>
+                <li><a href="#features" className="hover:text-yellow-400 transition-colors">Indian Heritage Couture</a></li>
+                <li><a href="#features" className="hover:text-yellow-400 transition-colors">Multi-Branch Boutiques</a></li>
+                <li><a href="#calculator" className="hover:text-yellow-400 transition-colors">Karigar Piece-Rate Pay</a></li>
+                <li><a href="#features" className="hover:text-yellow-400 transition-colors">WhatsApp Fitting Alerts</a></li>
               </ul>
             </div>
 
@@ -1378,11 +1399,11 @@ export default function MarketingLandingPage() {
             <div>
               <h4 className="font-bold text-white text-xs uppercase tracking-wider mb-4">Legal & Company</h4>
               <ul className="space-y-2.5 text-xs">
-                <li><span className="text-slate-400">Privacy Policy</span></li>
-                <li><span className="text-slate-400">Terms of Service</span></li>
-                <li><span className="text-slate-400">Security & GDPR</span></li>
-                <li><span className="text-slate-400">API Documentation</span></li>
-                <li><span className="text-slate-400">Contact Support</span></li>
+                <li><Link href="/legal/privacy" className="hover:text-yellow-400 transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/legal/terms" className="hover:text-yellow-400 transition-colors">Terms of Service</Link></li>
+                <li><Link href="/legal/security" className="hover:text-yellow-400 transition-colors">Security & GDPR</Link></li>
+                <li><Link href="/docs/api" className="hover:text-yellow-400 transition-colors">API Documentation</Link></li>
+                <li><a href="mailto:support@yellowhouse.io" className="hover:text-yellow-400 transition-colors">Contact Support</a></li>
               </ul>
             </div>
           </div>
@@ -1392,9 +1413,9 @@ export default function MarketingLandingPage() {
               © 2026 YellowHouse Tailoring OS Inc. All rights reserved. Built for bespoke masters worldwide.
             </div>
             <div className="flex items-center space-x-6">
-              <span>Dark Mode Theme (#0B0F19)</span>
-              <span>Inter Font</span>
-              <span className="text-yellow-500 font-semibold">Gold Accent (#EAB308)</span>
+              <Link href="/legal/privacy" className="hover:text-yellow-400 transition-colors">Privacy</Link>
+              <Link href="/legal/terms" className="hover:text-yellow-400 transition-colors">Terms</Link>
+              <a href="mailto:support@yellowhouse.io" className="hover:text-yellow-400 transition-colors">Support</a>
             </div>
           </div>
         </div>

@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   Layers, Scissors, Sparkles, Package, CheckCircle2,
-  Clock, User, AlertCircle, GripVertical, Filter,
-  Eye, Search, Plus, ArrowRight, X, SlidersHorizontal,
-  ChevronRight, Calendar, AlertTriangle, ShieldCheck, Flame,
+  Clock, User, Search, Plus, X,
+  ChevronRight, Calendar, AlertTriangle, Flame,
   Trash2, Edit2, FileText, Printer
 } from 'lucide-react';
+import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
+import { syncJobToOrdersStorage } from '@/lib/state-sync-utils';
+import { Tooltip } from '@/components/Tooltip';
 
 // ============================================================
 // TYPES & DEFINITIONS
@@ -38,6 +40,7 @@ export interface JobCardItem {
   rack?: string;
   barcodeEnabled?: boolean;
   qrCodeEnabled?: boolean;
+  history?: { action: string; timestamp: string; stage?: string }[];
 }
 
 // Stage Configuration mapping to design system styles
@@ -62,11 +65,11 @@ const STAGE_CONFIG: Record<
   },
   'Master Cutting': {
     label: 'Master Cutting',
-    headerBadgeColor: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30',
-    headerTextColor: 'text-yellow-400',
-    accentBorder: 'border-t-yellow-500',
-    dotColor: 'bg-yellow-400',
-    progressGradient: 'bg-gradient-to-r from-yellow-600 to-yellow-400',
+    headerBadgeColor: 'bg-gold-500/10 text-gold-400 border border-gold-500/30',
+    headerTextColor: 'text-gold-400',
+    accentBorder: 'border-t-gold-500',
+    dotColor: 'bg-gold-400',
+    progressGradient: 'bg-gradient-to-r from-gold-600 to-gold-400',
   },
   'Zardozi/Aari Embroidery': {
     label: 'Zardozi/Aari Embroidery',
@@ -94,8 +97,7 @@ const STAGE_CONFIG: Record<
   },
 };
 
-// Helper for Garment Badges as specified:
-// badge-gold for Sherwani, badge-amber for Lehenga, badge-blue for Suit, badge-rose for Blouse
+// Helper for Garment Badges
 const getGarmentBadgeClass = (garment: string): string => {
   const g = garment.toLowerCase();
   if (g.includes('sherwani')) return 'badge-gold';
@@ -105,14 +107,21 @@ const getGarmentBadgeClass = (garment: string): string => {
   return 'badge-gold';
 };
 
-// Initial 14 Job Cards structured strictly per column count requirements:
-// Column 1: Fabric Inspection - 2 cards
-// Column 2: Master Cutting - 3 cards
-// Column 3: Zardozi/Aari Embroidery - 2 cards
-// Column 4: Stitching Assembly - 4 cards
-// Column 5: QC & Ready for Delivery - 3 cards
+const generateBarcode = (text: string): number[] => {
+  const bars: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    const charCode = text.charCodeAt(i);
+    // Simple logic: charCode mapped to widths 1-3. 
+    // And add a space (0) or 1 unit gap
+    bars.push((charCode % 3) + 1);
+    bars.push(1); // gap
+    bars.push(((charCode >> 1) % 3) + 1);
+    bars.push(1); // gap
+  }
+  return bars;
+};
+
 const INITIAL_JOB_CARDS: JobCardItem[] = [
-  // --- COLUMN 1: Fabric Inspection (2 Cards) ---
   {
     id: 'JC-9035',
     orderId: 'JC-9035',
@@ -143,8 +152,6 @@ const INITIAL_JOB_CARDS: JobCardItem[] = [
     fabricDetails: 'Ivory Italian Brocade - 4.5 meters',
     notes: 'Check woven pattern motif alignment.',
   },
-
-  // --- COLUMN 2: Master Cutting (3 Cards) ---
   {
     id: 'JC-9021',
     orderId: 'JC-9021',
@@ -190,8 +197,6 @@ const INITIAL_JOB_CARDS: JobCardItem[] = [
     fabricDetails: 'Charcoal Super 130s Merino Wool',
     notes: 'Double breasted jacket pattern cut.',
   },
-
-  // --- COLUMN 3: Zardozi/Aari Embroidery (2 Cards) ---
   {
     id: 'JC-9018',
     orderId: 'JC-9018',
@@ -222,8 +227,6 @@ const INITIAL_JOB_CARDS: JobCardItem[] = [
     fabricDetails: 'Emerald Green Organza',
     notes: 'Aari embroidery with pearl & sequins work on back cutout.',
   },
-
-  // --- COLUMN 4: Stitching Assembly (4 Cards) ---
   {
     id: 'JC-8994',
     orderId: 'JC-8994',
@@ -284,8 +287,6 @@ const INITIAL_JOB_CARDS: JobCardItem[] = [
     fabricDetails: 'Pinstripe Charcoal Wool',
     notes: 'Trousers waistband attachment and jacket lining installation.',
   },
-
-  // --- COLUMN 5: QC & Ready for Delivery (3 Cards) ---
   {
     id: 'JC-8960',
     orderId: 'JC-8960',
@@ -369,6 +370,53 @@ export default function ProductionKanbanPage() {
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>('');
   const [timesheetViewMode, setTimesheetViewMode] = useState<'calendar' | 'table'>('calendar');
+  const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<KanbanStage | null>(null);
+
+  const [showCreateJobModal, setShowCreateJobModal] = useState(false);
+  const [newJobForm, setNewJobForm] = useState<Partial<JobCardItem>>({
+    client: '',
+    garment: '',
+    karigar: KARIGAR_LIST[1],
+    samTotalEstimate: 0,
+    priority: 'Normal',
+    dueDate: '',
+    fabricDetails: ''
+  });
+
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const handleCreateJobSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newId = `JC-${Math.floor(9040 + Math.random() * 50)}`;
+    const newCard: JobCardItem = {
+      id: newId,
+      orderId: newId,
+      client: newJobForm.client || 'Unknown Client',
+      garment: newJobForm.garment || 'Garment',
+      karigar: newJobForm.karigar || KARIGAR_LIST[1],
+      samMinutesLogged: 0,
+      samTotalEstimate: newJobForm.samTotalEstimate || 0,
+      priority: (newJobForm.priority as Priority) || 'Normal',
+      dueDate: newJobForm.dueDate || '',
+      progress: 15,
+      stage: 'Fabric Inspection',
+      fabricDetails: newJobForm.fabricDetails,
+      history: [{ action: 'Job created', timestamp: new Date().toISOString(), stage: 'Fabric Inspection' }]
+    };
+    const updatedJobs = [newCard, ...jobs];
+    setJobs(updatedJobs);
+    setLocalStorage('yh_production_jobs', updatedJobs);
+    setShowCreateJobModal(false);
+    setNewJobForm({
+      client: '', garment: '', karigar: KARIGAR_LIST[1], samTotalEstimate: 0, priority: 'Normal', dueDate: '', fabricDetails: ''
+    });
+    showToast('New Job Card created successfully.');
+  };
 
   const handleStartEdit = (job: JobCardItem) => {
     setEditForm({ ...job });
@@ -377,9 +425,12 @@ export default function ProductionKanbanPage() {
 
   const handleSaveEdit = () => {
     if (!editForm) return;
-    const updatedJobs = jobs.map((j) => (j.id === editForm.id ? editForm : j));
+    const historyEntry = { action: 'Details edited', timestamp: new Date().toISOString() };
+    const history = editForm.history ? [...editForm.history, historyEntry] : [historyEntry];
+    const finalEditForm = { ...editForm, history };
+    const updatedJobs = jobs.map((j) => (j.id === finalEditForm.id ? finalEditForm : j));
     setJobs(updatedJobs);
-    localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+    setLocalStorage('yh_production_jobs', updatedJobs);
     setSelectedCardModal(editForm);
     setIsEditing(false);
   };
@@ -389,7 +440,7 @@ export default function ProductionKanbanPage() {
     const jobToDelete = jobs.find((j) => j.id === jobId);
     const updatedJobs = jobs.filter((j) => j.id !== jobId);
     setJobs(updatedJobs);
-    localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+    setLocalStorage('yh_production_jobs', updatedJobs);
 
     const logEntry = {
       jobId,
@@ -398,9 +449,9 @@ export default function ProductionKanbanPage() {
       reason: deleteNote,
       deletedAt: new Date().toISOString(),
     };
-    const currentLogs = JSON.parse(localStorage.getItem('yh_deleted_jobs_log') || '[]');
+    const currentLogs = getLocalStorage<any[]>('yh_deleted_jobs_log', []);
     currentLogs.push(logEntry);
-    localStorage.setItem('yh_deleted_jobs_log', JSON.stringify(currentLogs));
+    setLocalStorage('yh_deleted_jobs_log', currentLogs);
 
     setIsDeleting(false);
     setDeleteNote('');
@@ -417,16 +468,8 @@ export default function ProductionKanbanPage() {
 
   // Sync with localStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedJobs = localStorage.getItem('yh_production_jobs');
-      if (storedJobs) {
-        try {
-          setJobs(JSON.parse(storedJobs));
-        } catch (e) {}
-      } else {
-        localStorage.setItem('yh_production_jobs', JSON.stringify(INITIAL_JOB_CARDS));
-      }
-    }
+    const storedJobs = getLocalStorage<JobCardItem[]>('yh_production_jobs', INITIAL_JOB_CARDS);
+    setJobs(storedJobs);
   }, []);
 
   // Filtering logic
@@ -534,87 +577,73 @@ export default function ProductionKanbanPage() {
     return days;
   };
 
-  // Move card to next or previous stage
-  const moveStage = (jobId: string, direction: 'next' | 'prev') => {
+  const moveJobToStage = (jobId: string, newStage: KanbanStage) => {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+    const currentIndex = stages.indexOf(job.stage);
+    const newIndex = stages.indexOf(newStage);
+    if (Math.abs(currentIndex - newIndex) > 1) {
+      showToast("You can only move a job one stage at a time.");
+      return;
+    }
+
     setJobs((prevJobs) => {
+      let updatedJob: JobCardItem | null = null;
       const updated = prevJobs.map((j) => {
         if (j.id !== jobId) return j;
 
-        const currentIndex = stages.indexOf(j.stage);
-        let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
-
-        if (nextIndex < 0) nextIndex = 0;
-        if (nextIndex >= stages.length) nextIndex = stages.length - 1;
-
-        const newStage = stages[nextIndex];
         let newProgress = j.progress;
-        if (direction === 'next') {
-          newProgress = Math.min(100, j.progress + 20);
-          if (newStage === 'QC & Ready for Delivery') newProgress = 100;
+        if (newStage === 'QC & Ready for Delivery') {
+          newProgress = 100;
         } else {
-          newProgress = Math.max(10, j.progress - 20);
+          const stageIndex = stages.indexOf(newStage);
+          newProgress = Math.min(100, Math.max(15, (stageIndex + 1) * 20));
         }
 
-        return { ...j, stage: newStage, progress: newProgress };
+        const historyEntry = { action: 'Stage moved', timestamp: new Date().toISOString(), stage: newStage };
+        const history = j.history ? [...j.history, historyEntry] : [historyEntry];
+
+        updatedJob = { ...j, stage: newStage, progress: newProgress, history };
+        return updatedJob;
       });
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('yh_production_jobs', JSON.stringify(updated));
-
-        // Bidirectional update back to yh_orders
-        const targetJob = updated.find(x => x.id === jobId);
-        if (targetJob) {
-          const storedOrders = localStorage.getItem('yh_orders');
-          if (storedOrders) {
-            try {
-              const ordersList = JSON.parse(storedOrders);
-              const mappedStatus = 
-                targetJob.stage === 'Fabric Inspection' ? 'CONFIRMED' :
-                targetJob.stage === 'Master Cutting' ? 'CUTTING' :
-                targetJob.stage === 'Zardozi/Aari Embroidery' ? 'IN_PRODUCTION' :
-                targetJob.stage === 'Stitching Assembly' ? 'IN_PRODUCTION' :
-                targetJob.stage === 'QC & Ready for Delivery' ? 'READY_FOR_DELIVERY' : 'CONFIRMED';
-                
-              const updatedOrders = ordersList.map((o: any) => {
-                if (o.id === targetJob.orderId) {
-                  return { ...o, status: mappedStatus };
-                }
-                return o;
-              });
-              localStorage.setItem('yh_orders', JSON.stringify(updatedOrders));
-            } catch (e) {}
-          }
-        }
+      setLocalStorage('yh_production_jobs', updated);
+      if (updatedJob) {
+        syncJobToOrdersStorage(updatedJob);
       }
       return updated;
     });
 
     if (selectedCardModal && selectedCardModal.id === jobId) {
-      const currentIndex = stages.indexOf(selectedCardModal.stage);
-      let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
-      if (nextIndex >= 0 && nextIndex < stages.length) {
-        setSelectedCardModal((prev) =>
-          prev ? { ...prev, stage: stages[nextIndex] } : null
-        );
-      }
+      setSelectedCardModal((prev) => (prev ? { ...prev, stage: newStage } : null));
     }
   };
 
+  const moveStage = (jobId: string, direction: 'next' | 'prev') => {
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) return;
+    const currentIndex = stages.indexOf(job.stage);
+    let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    if (nextIndex < 0) nextIndex = 0;
+    if (nextIndex >= stages.length) nextIndex = stages.length - 1;
+    moveJobToStage(jobId, stages[nextIndex]);
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in pb-12">
+    <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-6 animate-fade-in pb-12">
       {/* ---------------------------------------------------- */}
       {/* PAGE HEADER & CONTROLS */}
       {/* ---------------------------------------------------- */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400 shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400 shadow-md">
               <Layers className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
                 <span>Karigar Workshop Board</span>
-                <span className="text-[10px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded-full font-mono">
+                <span className="badge badge-gold font-mono">
                   LIVE PIPELINE
                 </span>
               </h1>
@@ -627,30 +656,15 @@ export default function ProductionKanbanPage() {
 
         {/* Quick Actions */}
         <div className="flex items-center space-x-3">
-          <button
-            onClick={() => {
-              const newId = `JC-${Math.floor(9040 + Math.random() * 50)}`;
-              const newCard: JobCardItem = {
-                id: newId,
-                orderId: newId,
-                client: 'New Atelier Client',
-                garment: 'Sherwani',
-                karigar: 'Karigar Latif',
-                samMinutesLogged: 15,
-                samTotalEstimate: 180,
-                priority: 'Normal',
-                dueDate: 'Aug 20',
-                progress: 10,
-                stage: 'Fabric Inspection',
-                notes: 'Newly dispatched fabric from inventory store.',
-              };
-              setJobs([newCard, ...jobs]);
-            }}
-            className="btn-gold flex items-center space-x-2 cursor-pointer shadow-lg shadow-yellow-500/10"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Job Card</span>
-          </button>
+          <Tooltip content="Dispatch new workshop job card for active client order">
+            <button
+              onClick={() => setShowCreateJobModal(true)}
+              className="btn-gold flex items-center space-x-2 cursor-pointer shadow-lg"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Job Card</span>
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -660,7 +674,7 @@ export default function ProductionKanbanPage() {
           onClick={() => setActiveTab('board')}
           className={`px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 transition-all ${
             activeTab === 'board'
-              ? 'border-yellow-500 text-yellow-400 bg-slate-900/60'
+              ? 'border-gold-500 text-gold-400 bg-slate-900/60'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
@@ -669,11 +683,11 @@ export default function ProductionKanbanPage() {
         <button
           onClick={() => {
             setActiveTab('timesheets');
-            setSelectedKarigar('All Karigars'); // reset filter for timesheets
+            setSelectedKarigar('All Karigars');
           }}
           className={`px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 transition-all ${
             activeTab === 'timesheets'
-              ? 'border-yellow-500 text-yellow-400 bg-slate-900/60'
+              ? 'border-gold-500 text-gold-400 bg-slate-900/60'
               : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
@@ -683,9 +697,7 @@ export default function ProductionKanbanPage() {
 
       {activeTab === 'board' ? (
         <>
-          {/* ---------------------------------------------------- */}
           {/* METRIC SUMMARY BAR */}
-          {/* ---------------------------------------------------- */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fade-in">
             <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
               <div>
@@ -694,7 +706,7 @@ export default function ProductionKanbanPage() {
                 <p className="text-[10px] text-slate-400 mt-0.5">Across 5 workshop stages</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center text-slate-300">
-                <Package className="w-5 h-5 text-yellow-400" />
+                <Package className="w-5 h-5 text-gold-400" />
               </div>
             </div>
 
@@ -732,9 +744,7 @@ export default function ProductionKanbanPage() {
             </div>
           </div>
 
-          {/* ---------------------------------------------------- */}
           {/* FILTERS TOOLBAR */}
-          {/* ---------------------------------------------------- */}
           <div className="glass-card rounded-2xl p-4 border border-slate-800/80 space-y-3 animate-fade-in">
             <div className="flex flex-col md:flex-row items-center justify-between gap-3">
               {/* Search Input */}
@@ -751,13 +761,12 @@ export default function ProductionKanbanPage() {
 
               {/* Dropdown Filters */}
               <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                {/* Karigar Filter */}
                 <div className="relative">
                   <User className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <select
                     value={selectedKarigar}
                     onChange={(e) => setSelectedKarigar(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-yellow-500/50 appearance-none cursor-pointer"
+                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-gold-500/50 appearance-none cursor-pointer"
                   >
                     {KARIGAR_LIST.map((k) => (
                       <option key={k} value={k}>
@@ -768,13 +777,12 @@ export default function ProductionKanbanPage() {
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
                 </div>
 
-                {/* Garment Filter */}
                 <div className="relative">
                   <Scissors className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <select
                     value={selectedGarment}
                     onChange={(e) => setSelectedGarment(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-yellow-500/50 appearance-none cursor-pointer"
+                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-gold-500/50 appearance-none cursor-pointer"
                   >
                     {GARMENT_TYPES.map((g) => (
                       <option key={g} value={g}>
@@ -785,7 +793,6 @@ export default function ProductionKanbanPage() {
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
                 </div>
 
-                {/* Priority Toggle */}
                 <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-0.5">
                   {(['All', 'Urgent', 'Normal'] as const).map((p) => (
                     <button
@@ -795,7 +802,7 @@ export default function ProductionKanbanPage() {
                         selectedPriority === p
                           ? p === 'Urgent'
                             ? 'bg-rose-500 text-white'
-                            : 'bg-yellow-500 text-slate-950'
+                            : 'btn-gold text-slate-950 font-bold'
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
@@ -807,9 +814,7 @@ export default function ProductionKanbanPage() {
             </div>
           </div>
 
-          {/* ---------------------------------------------------- */}
           {/* 5-COLUMN KANBAN BOARD */}
-          {/* ---------------------------------------------------- */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start animate-fade-in">
             {stages.map((stage) => {
               const config = STAGE_CONFIG[stage];
@@ -819,7 +824,30 @@ export default function ProductionKanbanPage() {
               return (
                 <div
                   key={stage}
-                  className={`kanban-column border-t-4 ${config.accentBorder} flex flex-col min-h-[580px]`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    setDragOverStage(stage);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    setDragOverStage(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const jobId = e.dataTransfer.getData('text/plain');
+                    if (jobId) {
+                      moveJobToStage(jobId, stage);
+                    }
+                    setDragOverStage(null);
+                    setDraggedJobId(null);
+                  }}
+                  className={`kanban-column border-t-4 ${config.accentBorder} flex flex-col min-h-[580px] transition-all duration-200 ${
+                    dragOverStage === stage ? 'kanban-column-drag-over bg-gold-500/10 ring-2 ring-gold-500/50 shadow-xl scale-[1.01]' : ''
+                  }`}
                 >
                   {/* Column Header */}
                   <div className="pb-3 border-b border-slate-800/80 space-y-2">
@@ -847,14 +875,24 @@ export default function ProductionKanbanPage() {
                       return (
                         <div
                           key={job.id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', job.id);
+                            e.dataTransfer.effectAllowed = 'move';
+                            setDraggedJobId(job.id);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedJobId(null);
+                            setDragOverStage(null);
+                          }}
                           onClick={() => setSelectedCardModal(job)}
-                          className={`glass-card hover:border-yellow-500/40 rounded-xl p-4 border transition-all duration-300 cursor-pointer relative group space-y-3 shadow-md ${
+                          className={`glass-card hover:border-gold-500/40 rounded-xl p-4 border transition-all duration-300 cursor-pointer relative group space-y-3 shadow-md ${
                             isUrgent ? 'border-rose-500/20 bg-rose-950/5' : 'border-slate-800/80'
-                          }`}
+                          } ${draggedJobId === job.id ? 'opacity-40 border-dashed border-gold-500' : ''}`}
                         >
-                          {/* Top Row: Job Card # and Garment Badge */}
+                          {/* Top Row */}
                           <div className="flex items-center justify-between">
-                            <span className="font-mono text-[10px] font-extrabold text-slate-500 group-hover:text-yellow-400 transition-colors">
+                            <span className="font-mono text-[10px] font-extrabold text-slate-500 group-hover:text-gold-400 transition-colors">
                               {job.orderId}
                             </span>
                             <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full font-bold ${getGarmentBadgeClass(job.garment)}`}>
@@ -866,7 +904,7 @@ export default function ProductionKanbanPage() {
                           <div className="space-y-1">
                             <h4 className="font-bold text-xs text-white leading-tight">{job.client}</h4>
                             <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                              <User className="w-3 h-3 text-yellow-400/80" />
+                              <User className="w-3 h-3 text-gold-400" />
                               <span>{job.karigar}</span>
                             </p>
                           </div>
@@ -893,28 +931,30 @@ export default function ProductionKanbanPage() {
                             </span>
 
                             <div className="flex items-center space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  moveStage(job.id, 'prev');
-                                }}
-                                disabled={stages.indexOf(job.stage) === 0}
-                                className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
-                                title="Move back to previous stage"
-                              >
-                                &larr;
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  moveStage(job.id, 'next');
-                                }}
-                                disabled={stages.indexOf(job.stage) === stages.length - 1}
-                                className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
-                                title="Move forward to next stage"
-                              >
-                                &rarr;
-                              </button>
+                              <Tooltip content="Move back to previous stage">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveStage(job.id, 'prev');
+                                  }}
+                                  disabled={stages.indexOf(job.stage) === 0}
+                                  className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
+                                >
+                                  {'←'}
+                                </button>
+                              </Tooltip>
+                              <Tooltip content="Move forward to next stage">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveStage(job.id, 'next');
+                                  }}
+                                  disabled={stages.indexOf(job.stage) === stages.length - 1}
+                                  className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
+                                >
+                                  {'→'}
+                                </button>
+                              </Tooltip>
                             </div>
                           </div>
                         </div>
@@ -934,9 +974,7 @@ export default function ProductionKanbanPage() {
           </div>
         </>
       ) : (
-        /* ---------------------------------------------------- */
         /* ARTISAN TIMESHEETS REPORT VIEW */
-        /* ---------------------------------------------------- */
         <div className="space-y-6 animate-fade-in">
           {/* TIMESHEET SUMMARY WIDGETS */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -948,7 +986,7 @@ export default function ProductionKanbanPage() {
                 </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">({timesheetTotalSam} total SAM minutes)</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400">
+              <div className="w-12 h-12 rounded-xl bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400">
                 <Clock className="w-6 h-6" />
               </div>
             </div>
@@ -988,11 +1026,11 @@ export default function ProductionKanbanPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    alert("Timesheet report exported successfully as YellowHouse_Timesheet_Report.csv");
+                    showToast("Timesheet report exported successfully as YellowHouse_Timesheet_Report.csv");
                   }}
                   className="btn-ghost text-xs py-2 px-3 flex items-center space-x-1.5"
                 >
-                  <FileText className="w-3.5 h-3.5 text-yellow-400" />
+                  <FileText className="w-3.5 h-3.5 text-gold-400" />
                   <span>Export CSV</span>
                 </button>
                 <button
@@ -1008,7 +1046,6 @@ export default function ProductionKanbanPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
-              {/* Year Selector */}
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-slate-400 block">Fiscal Year</label>
                 <select
@@ -1021,7 +1058,6 @@ export default function ProductionKanbanPage() {
                 </select>
               </div>
 
-              {/* Month Selector */}
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-slate-400 block">Billing Month</label>
                 <select
@@ -1045,7 +1081,6 @@ export default function ProductionKanbanPage() {
                 </select>
               </div>
 
-              {/* Specific Date Picker */}
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-slate-400 block">Specific Date Filter</label>
                 <input
@@ -1056,7 +1091,6 @@ export default function ProductionKanbanPage() {
                 />
               </div>
 
-              {/* Karigar Filter */}
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-slate-400 block">Karigar Workspace Filter</label>
                 <select
@@ -1081,7 +1115,7 @@ export default function ProductionKanbanPage() {
                   type="button"
                   onClick={() => setTimesheetViewMode('calendar')}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    timesheetViewMode === 'calendar' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                    timesheetViewMode === 'calendar' ? 'btn-gold text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Calendar Month View
@@ -1090,7 +1124,7 @@ export default function ProductionKanbanPage() {
                   type="button"
                   onClick={() => setTimesheetViewMode('table')}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    timesheetViewMode === 'table' ? 'bg-yellow-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                    timesheetViewMode === 'table' ? 'btn-gold text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   Audit List Table
@@ -1099,11 +1133,8 @@ export default function ProductionKanbanPage() {
             </div>
           </div>
 
-          {/* RENDERING EITHER CALENDAR VIEW OR TABLE VIEW */}
+          {/* CALENDAR OR TABLE */}
           {timesheetViewMode === 'calendar' ? (
-            /* ---------------------------------------------------- */
-            /* CALENDAR MONTH VIEW (FullCalendar Demo Style) */
-            /* ---------------------------------------------------- */
             <div className="glass-card rounded-2xl border border-slate-800/80 p-5 space-y-4 shadow-xl animate-fade-in">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
@@ -1114,7 +1145,6 @@ export default function ProductionKanbanPage() {
                 </div>
               </div>
 
-              {/* Calendar Grid Header */}
               <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-800/60">
                 <div>Sun</div>
                 <div>Mon</div>
@@ -1125,7 +1155,6 @@ export default function ProductionKanbanPage() {
                 <div>Sat</div>
               </div>
 
-              {/* Calendar Days 6-Row Grid */}
               <div className="grid grid-cols-7 gap-1">
                 {getCalendarDays().map((day, idx) => {
                   const dayLogs = mockTimesheetLogs.filter((l) => l.date === day.dateStr && (selectedKarigar === 'All Karigars' || l.karigar === selectedKarigar));
@@ -1142,23 +1171,21 @@ export default function ProductionKanbanPage() {
                         !day.isCurrentMonth
                           ? 'bg-slate-950/20 border-slate-900/40 opacity-30'
                           : isSelected
-                          ? 'bg-yellow-500/10 border-yellow-500/80 shadow-md'
+                          ? 'bg-gold-500/10 border-gold-500/80 shadow-md'
                           : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
                       }`}
                     >
-                      {/* Day Number and daily sum badge */}
                       <div className="flex items-start justify-between">
-                        <span className={`text-xs font-bold font-mono ${day.isCurrentMonth ? (isSelected ? 'text-yellow-400' : 'text-slate-300') : 'text-slate-600'}`}>
+                        <span className={`text-xs font-bold font-mono ${day.isCurrentMonth ? (isSelected ? 'text-gold-400' : 'text-slate-300') : 'text-slate-600'}`}>
                           {day.dayNum}
                         </span>
                         {dayTotalSam > 0 && (
-                          <span className="text-[8px] bg-yellow-500/10 text-yellow-400 font-mono px-1 rounded border border-yellow-500/20">
+                          <span className="text-[8px] bg-gold-500/10 text-gold-400 font-mono px-1 rounded border border-gold-500/20">
                             {dayTotalSam}m
                           </span>
                         )}
                       </div>
 
-                      {/* Log lists inside cell */}
                       <div className="mt-1.5 space-y-1 overflow-y-auto max-h-[50px] pr-0.5 scrollbar-thin">
                         {dayLogs.map((log, lIdx) => (
                           <div
@@ -1181,9 +1208,6 @@ export default function ProductionKanbanPage() {
               </div>
             </div>
           ) : (
-            /* ---------------------------------------------------- */
-            /* AUDIT LIST TABLE VIEW */
-            /* ---------------------------------------------------- */
             <div className="glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl animate-fade-in">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -1209,7 +1233,7 @@ export default function ProductionKanbanPage() {
                           </td>
                           <td className="py-3.5 px-4 font-bold text-white">{log.karigar}</td>
                           <td className="py-3.5 px-4">
-                            <span className="font-mono text-yellow-400 font-semibold">{log.jobId}</span>
+                            <span className="font-mono text-gold-400 font-semibold">{log.jobId}</span>
                           </td>
                           <td className="py-3.5 px-4">
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getGarmentBadgeClass(log.garment)}`}>
@@ -1250,7 +1274,6 @@ export default function ProductionKanbanPage() {
             </div>
           )}
 
-          {/* Selected Day Logs Drawer Details (Always visible below Calendar to list detailed tasks of selected cell date) */}
           {timesheetViewMode === 'calendar' && selectedSpecificDate && (
             <div className="glass-card rounded-2xl border border-slate-800/80 p-5 space-y-3 shadow-md animate-fade-in">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
@@ -1259,7 +1282,7 @@ export default function ProductionKanbanPage() {
                 </span>
                 <button
                   onClick={() => setSelectedSpecificDate('')}
-                  className="text-[10px] text-yellow-400 hover:underline"
+                  className="text-[10px] text-gold-400 hover:underline"
                 >
                   Show All Month Logs
                 </button>
@@ -1281,7 +1304,7 @@ export default function ProductionKanbanPage() {
                     {filteredTimesheets.map((log, index) => (
                       <tr key={index} className="hover:bg-slate-800/30">
                         <td className="py-2.5 font-bold text-slate-200">{log.karigar}</td>
-                        <td className="py-2.5 font-mono text-yellow-400">{log.jobId}</td>
+                        <td className="py-2.5 font-mono text-gold-400">{log.jobId}</td>
                         <td className="py-2.5">{log.garment}</td>
                         <td className="py-2.5 text-slate-400">{log.task}</td>
                         <td className="py-2.5 text-center font-mono">{log.sam}m</td>
@@ -1301,20 +1324,18 @@ export default function ProductionKanbanPage() {
         </div>
       )}
 
-      {/* ---------------------------------------------------- */}
       {/* JOB CARD DETAIL MODAL */}
-      {/* ---------------------------------------------------- */}
       {selectedCardModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fade-in">
-          <div className="glass-card-gold rounded-2xl border border-yellow-500/30 max-w-lg w-full p-6 space-y-5 shadow-2xl relative text-slate-100">
+          <div className="glass-card-gold rounded-2xl border border-gold-500/30 max-w-lg w-full p-6 space-y-5 shadow-2xl relative text-slate-100">
             {/* Modal Close Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400">
+                <div className="w-8 h-8 rounded-lg bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400">
                   <Scissors className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-mono font-extrabold text-yellow-400 text-base">
+                  <h3 className="font-mono font-extrabold text-gold-400 text-base">
                     {selectedCardModal.orderId}
                   </h3>
                   <p className="text-xs text-slate-400">{selectedCardModal.client} — {selectedCardModal.garment}</p>
@@ -1403,12 +1424,17 @@ export default function ProductionKanbanPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-slate-400 font-semibold uppercase text-[9px]">Assigned Karigar</label>
-                    <input
-                      type="text"
+                    <select
                       value={editForm.karigar}
                       onChange={(e) => setEditForm({ ...editForm, karigar: e.target.value })}
                       className="input-dark w-full py-2 px-3 text-xs"
-                    />
+                    >
+                      {KARIGAR_LIST.filter(k => k !== 'All Karigars').map((k) => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-1">
                     <label className="text-slate-400 font-semibold uppercase text-[9px]">Target Due Date</label>
@@ -1485,7 +1511,7 @@ export default function ProductionKanbanPage() {
                   <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
                     <span className="text-[10px] text-slate-500 font-semibold uppercase">Assigned Karigar</span>
                     <p className="font-bold text-white flex items-center space-x-1.5">
-                      <User className="w-3.5 h-3.5 text-yellow-400" />
+                      <User className="w-3.5 h-3.5 text-gold-400" />
                       <span>{selectedCardModal.karigar}</span>
                     </p>
                   </div>
@@ -1502,7 +1528,17 @@ export default function ProductionKanbanPage() {
                 <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] text-slate-500 font-semibold uppercase">Current Stage</span>
-                    <span className="text-xs font-bold text-yellow-400">{selectedCardModal.stage}</span>
+                    <select
+                      value={selectedCardModal.stage}
+                      onChange={(e) => moveJobToStage(selectedCardModal.id, e.target.value as KanbanStage)}
+                      className="bg-slate-950 border border-gold-500/40 rounded-lg px-2.5 py-1 text-xs font-bold text-gold-400 focus:outline-none focus:border-gold-500 cursor-pointer"
+                    >
+                      {stages.map((s) => (
+                        <option key={s} value={s} className="bg-slate-900 text-slate-200">
+                          {s}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -1510,14 +1546,14 @@ export default function ProductionKanbanPage() {
                       disabled={stages.indexOf(selectedCardModal.stage) === 0}
                       className="btn-ghost text-[11px] py-1 px-3 disabled:opacity-40"
                     >
-                      &larr; Previous Stage
+                      {'←'} Previous Stage
                     </button>
                     <button
                       onClick={() => moveStage(selectedCardModal.id, 'next')}
                       disabled={stages.indexOf(selectedCardModal.stage) === stages.length - 1}
                       className="btn-gold text-[11px] py-1 px-3 disabled:opacity-40"
                     >
-                      Next Stage &rarr;
+                      Next Stage {'→'}
                     </button>
                   </div>
                 </div>
@@ -1539,7 +1575,7 @@ export default function ProductionKanbanPage() {
                 {/* TRACKING, BARCODES, QR CODES & RACK ASSIGNMENT */}
                 <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                    <span className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider">Storage & Scan Logistics</span>
+                    <span className="text-[10px] text-gold-400 font-bold uppercase tracking-wider">Storage & Scan Logistics</span>
                     <span className="text-[9px] text-slate-500 font-mono">Optional RFID/Rack tracking</span>
                   </div>
 
@@ -1555,14 +1591,13 @@ export default function ProductionKanbanPage() {
                           const updatedRack = e.target.value;
                           const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, rack: updatedRack } : j);
                           setJobs(updatedJobs);
-                          localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+                          setLocalStorage('yh_production_jobs', updatedJobs);
                           setSelectedCardModal({ ...selectedCardModal, rack: updatedRack });
                         }}
                         className="input-dark w-full py-1 px-2.5 text-xs text-slate-200"
                       />
                     </div>
                     <div className="flex gap-4 items-center justify-end">
-                      {/* Barcode/QR Toggles */}
                       <label className="flex items-center space-x-1.5 cursor-pointer">
                         <input
                           type="checkbox"
@@ -1571,10 +1606,10 @@ export default function ProductionKanbanPage() {
                             const val = e.target.checked;
                             const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, barcodeEnabled: val } : j);
                             setJobs(updatedJobs);
-                            localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+                            setLocalStorage('yh_production_jobs', updatedJobs);
                             setSelectedCardModal({ ...selectedCardModal, barcodeEnabled: val });
                           }}
-                          className="rounded border-slate-800 bg-slate-900 text-yellow-500 focus:ring-0 w-3 h-3 animate-fade-in"
+                          className="rounded border-slate-800 bg-slate-900 text-gold-500 focus:ring-0 w-3 h-3 animate-fade-in"
                         />
                         <span className="text-[9px] text-slate-400 font-bold uppercase select-none">Barcode</span>
                       </label>
@@ -1587,10 +1622,10 @@ export default function ProductionKanbanPage() {
                             const val = e.target.checked;
                             const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, qrCodeEnabled: val } : j);
                             setJobs(updatedJobs);
-                            localStorage.setItem('yh_production_jobs', JSON.stringify(updatedJobs));
+                            setLocalStorage('yh_production_jobs', updatedJobs);
                             setSelectedCardModal({ ...selectedCardModal, qrCodeEnabled: val });
                           }}
-                          className="rounded border-slate-800 bg-slate-900 text-yellow-500 focus:ring-0 w-3 h-3 animate-fade-in"
+                          className="rounded border-slate-800 bg-slate-900 text-gold-500 focus:ring-0 w-3 h-3 animate-fade-in"
                         />
                         <span className="text-[9px] text-slate-400 font-bold uppercase select-none">QR Code</span>
                       </label>
@@ -1599,14 +1634,13 @@ export default function ProductionKanbanPage() {
 
                   {/* Render Mock Barcode / QR Code if enabled */}
                   <div className="flex items-center justify-around gap-4 pt-2 border-t border-slate-800/40">
-                    {/* Mock Barcode */}
                     {selectedCardModal.barcodeEnabled ? (
                       <div className="bg-white p-2 rounded flex flex-col items-center justify-center space-y-1 shadow-md border border-slate-700">
                         <div className="flex items-end space-x-[1px] h-8">
-                          {[2, 1, 3, 1, 2, 4, 1, 2, 3, 1, 2, 1, 4, 2, 1, 3, 2, 1].map((width, idx) => (
+                          {generateBarcode(selectedCardModal.orderId).map((width, idx) => (
                             <div
                               key={idx}
-                              style={{ width: `${width}px` }}
+                              style={{ width: `${width}px`, opacity: width === 1 && idx % 2 !== 0 ? 0 : 1 }}
                               className="bg-black h-full"
                             />
                           ))}
@@ -1617,7 +1651,6 @@ export default function ProductionKanbanPage() {
                       <div className="text-[9px] text-slate-600 italic">Barcode tracking deactivated</div>
                     )}
 
-                    {/* Mock QR Code */}
                     {selectedCardModal.qrCodeEnabled ? (
                       <div className="bg-white p-2 rounded flex flex-col items-center justify-center space-y-1 shadow-md border border-slate-700">
                         <div className="w-10 h-10 border border-black p-0.5 grid grid-cols-5 gap-0.5">
@@ -1635,14 +1668,31 @@ export default function ProductionKanbanPage() {
                   </div>
                 </div>
 
+                {/* ACTIVITY TIMELINE */}
+                {selectedCardModal.history && selectedCardModal.history.length > 0 && (
+                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block border-b border-slate-800 pb-1.5">Activity Timeline</span>
+                    <div className="space-y-4 pt-2">
+                      {selectedCardModal.history.map((entry, idx) => (
+                        <div key={idx} className="relative pl-4 border-l-2 border-slate-700/50 pb-2 last:pb-0">
+                          <div className="absolute w-2 h-2 rounded-full bg-gold-500 -left-[5px] top-1"></div>
+                          <p className="text-xs font-semibold text-slate-200">{entry.action}</p>
+                          {entry.stage && <p className="text-[10px] text-gold-400 font-medium">{entry.stage}</p>}
+                          <p className="text-[9px] text-slate-500 mt-0.5">{new Date(entry.timestamp).toLocaleString()}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* INTERACTIVE ACTIONS ROW */}
                 <div className="flex items-center justify-between border-t border-slate-800 pt-3 mt-4">
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleStartEdit(selectedCardModal)}
-                      className="btn-ghost py-1.5 px-3 flex items-center space-x-1 hover:border-yellow-500/40 text-slate-300 hover:text-white"
+                      className="btn-ghost py-1.5 px-3 flex items-center space-x-1 hover:border-gold-500/40 text-slate-300 hover:text-white"
                     >
-                      <Edit2 className="w-3.5 h-3.5 text-yellow-400" />
+                      <Edit2 className="w-3.5 h-3.5 text-gold-400" />
                       <span>Edit Details</span>
                     </button>
                     <button
@@ -1683,12 +1733,29 @@ export default function ProductionKanbanPage() {
         </div>
       )}
 
-      {/* ---------------------------------------------------- */}
       {/* DELIVERY NOTE MODAL */}
-      {/* ---------------------------------------------------- */}
       {showDeliveryNote && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-          <div className="bg-white text-slate-900 rounded-2xl max-w-xl w-full p-8 space-y-6 shadow-2xl relative font-sans">
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden;
+              }
+              #delivery-note-content, #delivery-note-content * {
+                visibility: visible;
+              }
+              #delivery-note-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                box-shadow: none !important;
+                background: white !important;
+                padding: 2rem !important;
+              }
+            }
+          `}</style>
+          <div id="delivery-note-content" className="bg-white text-slate-900 rounded-2xl max-w-xl w-full p-8 space-y-6 shadow-2xl relative font-sans">
             <button
               onClick={() => setShowDeliveryNote(null)}
               className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
@@ -1700,7 +1767,7 @@ export default function ProductionKanbanPage() {
             <div className="flex items-start justify-between border-b-2 border-slate-200 pb-4">
               <div className="space-y-1">
                 <h2 className="text-xl font-extrabold text-slate-900 uppercase tracking-tight flex items-center gap-1.5">
-                  <Scissors className="w-5 h-5 text-yellow-600" />
+                  <Scissors className="w-5 h-5 text-gold-600" />
                   YellowHouse Atelier
                 </h2>
                 <p className="text-[10px] text-slate-500 leading-tight">
@@ -1753,7 +1820,6 @@ export default function ProductionKanbanPage() {
             {/* Delivery Receipt Layout Footer */}
             <div className="flex items-center justify-between pt-4 border-t-2 border-dashed border-slate-200">
               <div className="space-y-1">
-                {/* Visual Barcode representation for custom delivery scanning */}
                 <div className="bg-slate-900 text-white font-mono text-[9px] px-3 py-1 tracking-[0.3em] font-black rounded select-none flex items-center justify-center">
                   ||| | | ||| || ||| | |||
                 </div>
@@ -1779,13 +1845,132 @@ export default function ProductionKanbanPage() {
                     window.print();
                   }
                 }}
-                className="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 px-5 rounded-xl text-xs flex items-center gap-1.5 transition-colors"
+                className="btn-gold text-xs py-2.5 px-5 flex items-center gap-1.5 transition-colors font-bold"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print Delivery Note</span>
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* CREATE JOB MODAL */}
+      {showCreateJobModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fade-in">
+          <div className="glass-card-gold rounded-2xl border border-gold-500/30 max-w-lg w-full p-6 space-y-5 shadow-2xl relative text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-mono font-extrabold text-gold-400 text-base flex items-center gap-2">
+                <Plus className="w-5 h-5" /> Create New Job Card
+              </h3>
+              <button
+                onClick={() => setShowCreateJobModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateJobSubmit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Client Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newJobForm.client}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, client: e.target.value })}
+                    className="input-dark w-full py-2 px-3 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Garment Type</label>
+                  <input
+                    type="text"
+                    required
+                    value={newJobForm.garment}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, garment: e.target.value })}
+                    className="input-dark w-full py-2 px-3 text-xs"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Assigned Karigar</label>
+                  <select
+                    value={newJobForm.karigar}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, karigar: e.target.value })}
+                    className="input-dark w-full py-2 px-3 text-xs"
+                  >
+                    {KARIGAR_LIST.filter(k => k !== 'All Karigars').map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Target Due Date</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Aug 25"
+                    value={newJobForm.dueDate}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, dueDate: e.target.value })}
+                    className="input-dark w-full py-2 px-3 text-xs"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Total SAM (Est.)</label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    value={newJobForm.samTotalEstimate || ''}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, samTotalEstimate: parseInt(e.target.value) || 0 })}
+                    className="input-dark w-full py-2 px-3 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Priority</label>
+                  <select
+                    value={newJobForm.priority}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, priority: e.target.value as Priority })}
+                    className="input-dark w-full py-2 px-3 text-xs"
+                  >
+                    <option value="Normal">Normal</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-slate-400 font-semibold uppercase text-[9px]">Fabric Specification</label>
+                <input
+                  type="text"
+                  value={newJobForm.fabricDetails}
+                  onChange={(e) => setNewJobForm({ ...newJobForm, fabricDetails: e.target.value })}
+                  className="input-dark w-full py-2 px-3 text-xs"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateJobModal(false)}
+                  className="btn-ghost px-4 py-2 text-xs"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-gold px-4 py-2 text-xs">
+                  Create Job Card
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-[100] bg-gold-500 text-slate-950 px-5 py-3 rounded-xl text-sm font-bold shadow-2xl animate-fade-in">
+          {toastMsg}
         </div>
       )}
     </div>

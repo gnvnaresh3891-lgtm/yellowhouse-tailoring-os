@@ -1,396 +1,409 @@
-# Technical Design Blueprint: Visual Body Landmark Diagram & Interactivity (Milestone 2 - R2)
+# Technical Strategy & Architecture Blueprint: Staff Management & Order Form Draft Autosave (Milestone 2)
 
-## Executive Summary
-This document specifies the architecture, data models, validation math, color-coding logic, and React component structures for **Milestone 2 (M2: Visual Body Landmark Diagram & Interactivity)** of the Tailoring OS Measurement Engine (`yellowhouse`). M2 establishes bidirectional real-time synchronization between 2D SVG anatomical body hotspots (`focusedLandmarkId`) and dynamic POM form input fields (`pomId`), enforces multi-tier anatomical proportion sanity rules, alerts on posture profile offsets, and renders live status color-coding.
-
----
-
-## 1. Bidirectional Landmark-to-POM State Synchronization
-
-### 1.1 Synchronization Flow Architecture
-Bidirectional synchronization between the 2D SVG body diagram and the numerical POM entry form is driven by `focusedLandmarkId` in `MeasurementEngineContext`.
-
-```
-┌─────────────────────────────────────────┐               ┌─────────────────────────────────────────┐
-│     BodyLandmarkDiagram (SVG)           │               │          PomFormEngine (Form)            │
-│  - Click / Hover Hotspot                │               │  - Focus / Hover Input Field            │
-│  - Reads focusedLandmarkId              │               │  - Reads focusedLandmarkId              │
-└────────────────────┬────────────────────┘               └────────────────────┬────────────────────┘
-                     │                                                         │
-                     │  setFocusedLandmarkId(landmarkId)                       │  setFocusedLandmarkId(landmarkId)
-                     ▼                                                         ▼
-┌───────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   MeasurementEngineContext                                        │
-│  - State: focusedLandmarkId: string | null                                                        │
-│  - State: activePomSchema: PomSchemaItem[]                                                         │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
-                     │                                                         │
-                     ▼                                                         ▼
-   SVG Hotspot highlights with active aura                 Input field scrolls into view & highlights
-   and renders measurement guideline tape                  with golden accent border and active badge
-```
-
-### 1.2 Data Contract: `apps/web/src/lib/landmark-mappings.ts`
-
-```typescript
-import { GarmentCategory, PostureProfile, ValidationState } from '../types/measurement';
-
-export type AnatomicalView = 'front' | 'back' | 'side';
-export type GenderCategory = 'men' | 'women';
-
-export interface LandmarkCoordinates {
-  x: number; // SVG ViewBox relative X coordinate (0-300)
-  y: number; // SVG ViewBox relative Y coordinate (0-600)
-}
-
-export interface MeasurementGuideline {
-  type: 'horizontal_band' | 'vertical_tape' | 'arc_line' | 'point_pin';
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-  curvature?: number; // for curved waist/hip/blade contours
-}
-
-export interface LandmarkDefinition {
-  id: string; // e.g. 'hs-mens-chest'
-  label: string; // e.g. 'Jacket Chest Circumference'
-  gender: GenderCategory;
-  primaryView: AnatomicalView;
-  coordinates: LandmarkCoordinates;
-  guideline: MeasurementGuideline;
-  description: string;
-}
-
-export type HotspotStatus = 'valid' | 'warning' | 'error' | 'focused';
-
-export interface HotspotColorConfig {
-  status: HotspotStatus;
-  hex: string;
-  fillClass: string;
-  strokeClass: string;
-  glowClass: string;
-  badgeBg: string;
-  pulseAnimationClass: string;
-}
-```
-
-### 1.3 Complete Anatomical Landmark Registry (22 Hotspots)
-
-#### Men's Garment Hotspot Mappings
-| Landmark ID | Label | View | X (ViewBox 300x600) | Y (ViewBox 300x600) | Mapped POM Codes |
-|-------------|-------|------|--------------------|--------------------|-----------------|
-| `hs-mens-neck` | Neck / Band Collar Line | Front/Back | 150 | 105 | `M-SH-05`, `M-ST-01` |
-| `hs-mens-shoulder` | Acromion Shoulder Width | Front | 95 / 205 | 130 | `M-SU-04`, `M-SH-04`, `M-ST-04` |
-| `hs-mens-across-chest` | Across Chest Width | Front | 150 | 150 | `M-SH-08` |
-| `hs-mens-chest` | Chest Apex Circumference | Front | 150 | 170 | `M-SU-01`, `M-SH-01`, `M-ST-02` |
-| `hs-mens-armscye` | Armscye / Armhole Depth | Front | 105 | 170 | `M-SU-07` |
-| `hs-mens-bicep` | Bicep Circumference | Front | 75 | 200 | `M-SU-08` |
-| `hs-mens-sleeve` | Crown-to-Wrist Sleeve | Front/Side | 55 | 290 | `M-SU-06`, `M-SH-07`, `M-ST-06` |
-| `hs-mens-cuff` | Wrist Cuff Edge | Front | 45 | 350 | `M-ST-07` |
-| `hs-mens-waist` | Buttoning / Natural Waist | Front | 150 | 240 | `M-SU-02`, `M-SH-02`, `M-ST-03` |
-| `hs-mens-trouser-waist` | Trouser Waistband Height | Front | 150 | 255 | `M-TR-01` |
-| `hs-mens-hip` | Full Seat / Hip Girth | Front/Side | 150 | 300 | `M-SU-03`, `M-SH-03`, `M-TR-02` |
-| `hs-mens-crotch` | Crotch Intersection Rise | Front | 150 | 335 | `M-TR-08` |
-| `hs-mens-thigh` | Upper Thigh Girth | Front | 125 | 375 | `M-TR-05` |
-| `hs-mens-knee` | Knee Midpoint Girth | Front | 125 | 450 | `M-TR-06` |
-| `hs-mens-ankle` | Ankle Leg Opening Hem | Front | 125 | 540 | `M-TR-07` |
-| `hs-mens-jacket-len` | Jacket Back Length | Back | 150 | 320 | `M-SU-05` |
-| `hs-mens-sherwani-len` | Sherwani Below-Knee Hem | Back | 150 | 460 | `M-SH-06` |
-| `hs-mens-shirt-len` | Shirt Tail Back Length | Back | 150 | 310 | `M-ST-05` |
-| `hs-mens-outseam` | Outer Leg Outseam | Side | 195 | 430 | `M-TR-03` |
-| `hs-mens-inseam` | Inner Leg Inseam | Front | 135 | 430 | `M-TR-04` |
-
-#### Women's Garment Hotspot Mappings
-| Landmark ID | Label | View | X (ViewBox 300x600) | Y (ViewBox 300x600) | Mapped POM Codes |
-|-------------|-------|------|--------------------|--------------------|-----------------|
-| `hs-womens-front-neck` | Front Neck Drop | Front | 150 | 110 | `W-SB-06` |
-| `hs-womens-back-neck` | Back Neck Drop | Back | 150 | 105 | `W-SB-07` |
-| `hs-womens-upperbust` | Upper Bust High Chest | Front | 150 | 155 | `W-SB-01`, `W-CO-01` |
-| `hs-womens-fullbust` | Full Bust Apex Peak | Front | 150 | 180 | `W-SB-02`, `W-LC-04`, `W-AN-01`, `W-CO-02`, `W-GO-01` |
-| `hs-womens-underbust` | Underbust Ribcage Band | Front | 150 | 205 | `W-SB-03`, `W-LC-05`, `W-AN-02`, `W-CO-03` |
-| `hs-womens-apex-dist` | Nipple-to-Nipple Distance | Front | 150 | 180 | `W-SB-04` |
-| `hs-womens-apex-height` | High Shoulder to Apex | Front | 125 | 155 | `W-SB-05` |
-| `hs-womens-armscye` | Armhole Circumference Depth| Front | 110 | 175 | `W-SB-08` |
-| `hs-womens-sleeve` | Shoulder to Wrist Sleeve | Front/Side | 60 | 270 | `W-AN-06` |
-| `hs-womens-waist` | Navel / Natural Waist | Front | 150 | 245 | `W-LC-01`, `W-CO-04`, `W-GO-02` |
-| `hs-womens-highhip` | High Hip Curve Spring | Front | 150 | 275 | `W-LC-02`, `W-CO-05` |
-| `hs-womens-hip` | Full Seat / Hip Girth | Front/Side | 150 | 305 | `W-GO-03` |
-| `hs-womens-blouse-len` | Blouse Bottom Band Hem | Front | 150 | 215 | `W-SB-09` |
-| `hs-womens-choli-len` | Choli Back Length | Back | 150 | 220 | `W-LC-06` |
-| `hs-womens-yoke-len` | Empire Yoke Height | Front | 150 | 210 | `W-AN-03` |
-| `hs-womens-busk-len` | Center Steel Busk Length | Front | 150 | 245 | `W-CO-06` |
-| `hs-womens-sh-waist` | High Shoulder to Waist | Side | 150 | 185 | `W-GO-06` |
-| `hs-womens-lehenga-len`| Waist to Floor Lehenga Length | Side | 180 | 410 | `W-LC-03` |
-| `hs-womens-gown-len` | Shoulder to Floor Gown | Front | 150 | 560 | `W-AN-04` |
-| `hs-womens-hollow-hem` | Neck Hollow to Floor Hem | Front | 150 | 560 | `W-GO-04` |
-| `hs-womens-flare` | Umbrella Flare Circle Hem | Front | 150 | 575 | `W-AN-05` |
-| `hs-womens-train` | Trailing Skirt Train Sweep| Back | 150 | 585 | `W-GO-05` |
-
-### 1.4 Helper Functions Specification
-```typescript
-export function getLandmarkForPom(garmentCategory: GarmentCategory, pomId: string): LandmarkDefinition | undefined;
-export function getPomForLandmark(garmentCategory: GarmentCategory, landmarkId: string): PomSchemaItem | undefined;
-export function getLandmarksForGarment(garmentCategory: GarmentCategory, view: AnatomicalView): LandmarkDefinition[];
-```
+**Author:** M2 Explorer 2 (`teamwork_preview_explorer_m2_2`)  
+**Target Project:** YellowHouse Tailoring OS (`C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse`)  
+**Date:** 2026-08-07  
 
 ---
 
-## 2. Anatomical Proportion Sanity Rules & Posture Alerts
+## 1. Executive Summary
 
-### 2.1 Proportion Sanity Validation Matrix (Validation Rules)
+Milestone 2 requires dynamic local storage persistence and state resilience across all primary forms in YellowHouse Tailoring OS. This report covers the technical analysis, current code state, flaw identification, architectural blueprint, and step-by-step file modification plan for:
+1. **Staff Management Form & List Persistence (`yh_staff`)**
+2. **Order Creation Form, Items, Swatches & Client Details Autosave (`yh_orders_draft` & `yh_orders`)**
+3. **Fallback Defaults, Null Safety & Storage Corruption Resilience**
 
-To protect bespoke pattern making from invalid anthropometric input data, the engine applies real-time proportion checks in `MeasurementEngineContext`:
+Currently, the Staff page (`apps/web/src/app/(dashboard)/staff/page.tsx`) relies purely on in-memory React state initialized with a hardcoded `INITIAL_STAFF` array. Any hired or terminated specialists are lost upon page reload. The Order Creation form (`apps/web/src/app/(dashboard)/orders/page.tsx`) persists confirmed orders to `yh_orders` upon submit, but completely lacks draft autosave (`yh_orders_draft`). If a user navigates away or refreshes while configuring complex multi-item garment specs, fabric swatches, lining choices, or trim instructions, all inputs are destroyed. Furthermore, `storage-utils.ts` lacks validation guards against stringified `"null"` values and corrupted non-array payloads, creating crash risks (`.map` / `.filter` on null).
 
-```typescript
-export interface ProportionCheckResult {
-  pomId: string;
-  severity: 'error' | 'warning';
-  message: string;
-}
-
-export function evaluateAnatomicalProportions(
-  garmentCategory: GarmentCategory,
-  measurements: Record<string, number>,
-  postureProfile: PostureProfile
-): ProportionCheckResult[]
-```
-
-#### Detailed Rule Specifications:
-
-1. **Women's Bust Tiering Invariant**:
-   - **Rule 1.1**: `Underbust < Upper Bust < Full Bust`
-   - **Check**: `Upper Bust >= Full Bust`
-     - Severity: `error` (Rose Red)
-     - Message: `"Upper Bust (${upperBust}") cannot exceed or equal Full Bust Peak (${fullBust}")."`
-   - **Check**: `Underbust >= Upper Bust`
-     - Severity: `error` (Rose Red)
-     - Message: `"Underbust Band (${underbust}") cannot exceed or equal Upper Bust (${upperBust}")."`
-   - **Check**: `Underbust >= Full Bust`
-     - Severity: `error` (Rose Red)
-     - Message: `"Underbust Band (${underbust}") cannot exceed Full Bust Peak (${fullBust}")."`
-
-2. **Trouser Seam Length Invariant**:
-   - **Rule 2.1**: `Inseam < Outseam`
-   - **Check**: `Inseam >= Outseam`
-     - Severity: `error` (Rose Red)
-     - Message: `"Inseam length (${inseam}") must be strictly less than Outseam length (${outseam}")."`
-   - **Rule 2.2**: Crotch Rise Delta `Rise = Outseam - Inseam`
-   - **Check**: `Rise < 7.0"` or `Rise > 16.0"`
-     - Severity: `warning` (Amber Gold)
-     - Message: `"Crotch rise delta (${rise.toFixed(1)}") is unusual for standard trouser draft (expected 7.0" - 16.0")."`
-
-3. **Chest vs Waist Girth Invariant (Men's)**:
-   - **Check**: `Waist > Chest + 4.0"` AND `postureProfile.abdomenStance !== 'prominent'`
-     - Severity: `warning` (Amber Gold)
-     - Message: `"Waist girth (${waist}") significantly exceeds Chest girth (${chest}"). Set Abdomen Stance to 'Prominent' if intentional."`
-
-4. **Neck-to-Chest Ratio Sanity**:
-   - **Check**: `Neck > Chest * 0.50` OR `Neck < Chest * 0.28`
-     - Severity: `warning` (Amber Gold)
-     - Message: `"Neck circumference (${neck}") is out of standard proportion relative to Chest girth (${chest}")."`
-
-5. **Shoulder-to-Chest Ratio Sanity**:
-   - **Check**: `Shoulder > Chest * 0.60` OR `Shoulder < Chest * 0.35`
-     - Severity: `warning` (Amber Gold)
-     - Message: `"Shoulder width (${shoulder}") is out of proportion relative to Chest girth (${chest}")."`
-
-6. **Apex Distance Ratio (Women's)**:
-   - **Check**: `ApexDistance > FullBust * 0.32` OR `ApexDistance < FullBust * 0.14`
-     - Severity: `warning` (Amber Gold)
-     - Message: `"Bust apex distance (${apexDist}") is disproportionate relative to Full Bust (${fullBust}")."`
-
-7. **Corset Tight-Lace Sanity**:
-   - **Check**: `WaistCinchTarget > Underbust + 2.0"`
-     - Severity: `warning` (Amber Gold)
-     - Message: `"Corset waist target exceeds underbust line, defying waist-reduction silhouette."`
-
-### 2.2 Posture Offset Alert Triggers
-
-Selecting non-normal values on the 4 posture axes triggers targeted posture warning badges (Amber Gold) and recalculates ease pattern drops:
-
-```typescript
-export interface PostureAlertTrigger {
-  axis: PostureAxis;
-  value: string;
-  affectedPomIds: string[];
-  affectedLandmarkIds: string[];
-  alertMessage: string;
-  patternEffectNote: string;
-}
-```
-
-#### Posture Alert Registry:
-| Axis | Value | Affected POMs | Affected Landmarks | Alert Badge & Pattern Note |
-|------|-------|---------------|-------------------|----------------------------|
-| `shoulderSlope` | `sloped` | `m-su-07`, `w-sb-08` | `hs-mens-armscye`, `hs-womens-armscye` | `"Sloped shoulders (+0.25" Armscye depth drop, shoulder seam angle lowered 3°)."` |
-| `shoulderSlope` | `square` | `m-su-07`, `w-sb-08` | `hs-mens-armscye`, `hs-womens-armscye` | `"Square shoulders (-0.25" Armscye depth drop, shoulder seam angle raised 2°)."` |
-| `shoulderSlope` | `very_sloped` | `m-su-07`, `w-sb-08` | `hs-mens-armscye`, `hs-womens-armscye` | `"Very sloped shoulders (+0.50" Armscye depth drop, shoulder pad insertion required)."` |
-| `backCurvature` | `stooped` | `m-su-05`, `m-st-05`, `m-sh-08` | `hs-mens-jacket-len`, `hs-mens-across-chest` | `"Stooped back (+0.75" Center Back extension to prevent collar gap)."` |
-| `backCurvature` | `erect` | `m-su-05`, `m-st-05` | `hs-mens-jacket-len` | `"Erect posture (-0.375" Center Back reduction to eliminate lumbar waist rolls)."` |
-| `backCurvature` | `prominent_blade` | `m-su-04`, `m-sh-04` | `hs-mens-shoulder` | `"Prominent scapula (+0.50" Across Back width, shoulder blade dart expanded)."` |
-| `abdomenStance` | `prominent` | `m-su-02`, `m-st-03`, `w-lc-01` | `hs-mens-waist`, `hs-womens-waist` | `"Prominent abdomen (+1.0" Front Waist length & buttoning ease extension)."` |
-| `abdomenStance` | `flat` | `m-su-02`, `m-st-03` | `hs-mens-waist` | `"Flat abdomen (-0.50" Front Waist ease streamlined)."` |
-| `hipSpineStance` | `high_hip` | `m-tr-02`, `w-lc-02`, `w-co-05` | `hs-mens-hip`, `hs-womens-highhip` | `"High hip (+0.50" High Hip ease & raised side seam shaping)."` |
-| `hipSpineStance` | `sway_back` | `m-tr-08`, `w-lc-06` | `hs-mens-crotch`, `hs-womens-choli-len` | `"Sway back stance (-0.50" Back Waist rise hollowed out to avoid fabric pooling)."` |
+This blueprint details the exact changes needed to achieve 100% draft persistence, zero data loss, and crash-proof null safety.
 
 ---
 
-## 3. Color-Coding State Logic
+## 2. Current Implementation Code Audit
 
-### 3.1 State Resolution Hierarchy
-For any landmark or POM input field, state color is determined by a strict priority order:
+### 2.1 Staff Management (`apps/web/src/app/(dashboard)/staff/page.tsx`)
 
-1. **Focused Override**: If `landmarkId === focusedLandmarkId` -> Apply Active Focus Ring (Gold Glow + Primary status border).
-2. **Rose Red (`#EF4444`)**: Range Min/Max Error OR Anatomical Proportion Error. High priority visual indicator.
-3. **Amber Gold (`#F59E0B`)**: Range Warning OR Active Posture Profile Offset Trigger OR Proportion Warning.
-4. **Emerald Green (`#10B981`)**: Input is valid, within range bounds, passes all proportion checks, and normal posture.
-
-### 3.2 Hotspot Color Configuration Mapping
-
-```typescript
-export function getHotspotColorConfig(
-  pomId: string | undefined,
-  validationState: ValidationState,
-  postureProfile: PostureProfile,
-  isFocused: boolean
-): HotspotColorConfig {
-  const hasError = pomId ? !!validationState.errors[pomId] : false;
-  const hasWarning = pomId ? !!validationState.warnings[pomId] : false;
-
-  if (hasError) {
-    return {
-      status: isFocused ? 'focused' : 'error',
-      hex: '#EF4444',
-      fillClass: 'fill-rose-500',
-      strokeClass: 'stroke-rose-400',
-      glowClass: 'drop-shadow-[0_0_12px_rgba(239,68,68,0.8)]',
-      badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/50',
-      pulseAnimationClass: 'animate-ping text-rose-500/40'
-    };
-  }
-
-  if (hasWarning) {
-    return {
-      status: isFocused ? 'focused' : 'warning',
-      hex: '#F59E0B',
-      fillClass: 'fill-amber-500',
-      strokeClass: 'stroke-amber-400',
-      glowClass: 'drop-shadow-[0_0_10px_rgba(245,158,11,0.7)]',
-      badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/50',
-      pulseAnimationClass: 'animate-pulse text-amber-500/30'
-    };
-  }
-
-  return {
-    status: isFocused ? 'focused' : 'valid',
-    hex: '#10B981',
-    fillClass: 'fill-emerald-500',
-    strokeClass: 'stroke-emerald-400',
-    glowClass: isFocused
-      ? 'drop-shadow-[0_0_12px_rgba(234,179,8,0.9)]'
-      : 'drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]',
-    badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50',
-    pulseAnimationClass: isFocused ? 'animate-pulse text-gold-400/50' : 'none'
+- **State Initialization (Line 59)**:
+  ```typescript
+  const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF);
+  ```
+  `staffList` is initialized strictly with the hardcoded 5-member `INITIAL_STAFF` array (`Master Latif Khan`, `Sarah Jenkins`, `Rafi Craftsman`, `Anik Dev`, `Priya Mehta`).
+- **Storage Utility Import (Line 19)**:
+  `getLocalStorage` is imported, but only used on line 78 for `yh_auth_user`. `setLocalStorage` and `removeLocalStorage` are not imported or used anywhere.
+- **Add Staff Handler (`handleAddStaff`, Lines 84–143)**:
+  ```typescript
+  const newMember: StaffMember = {
+    id: `st-${Date.now().toString().slice(-4)}`,
+    name: newStaffName.trim(),
+    email: newStaffEmail.trim(),
+    role: newStaffRole,
+    branch: newStaffBranch,
+    status: 'Active',
+    hiredAt: new Date().toISOString().split('T')[0]
   };
+  setStaffList(prev => [newMember, ...prev]);
+  ```
+  Updates React memory state `setStaffList` only. No `setLocalStorage('yh_staff', ...)` call is performed.
+- **Remove Staff Handler (`handleRemoveStaff`, Lines 145–149)**:
+  ```typescript
+  setStaffList(prev => prev.filter(st => st.id !== id));
+  ```
+  Updates React state only. No local storage sync.
+- **Recruitment Form Inputs (Lines 67–72)**:
+  `newStaffName`, `newStaffEmail`, `newStaffPassword`, `newStaffRole`, `newStaffBranch` exist only in transient `useState`. If the modal is closed or page refreshed mid-entry, draft input is erased.
+
+---
+
+### 2.2 Order Management (`apps/web/src/app/(dashboard)/orders/page.tsx`)
+
+- **State Initialization & Mount Load (Lines 186, 192–195)**:
+  ```typescript
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+
+  useEffect(() => {
+    const storedOrders = getLocalStorage<Order[]>('yh_orders', initialOrders);
+    setOrders(storedOrders);
+  }, []);
+  ```
+  `yh_orders` is read on mount, but if `localStorage` returns a non-array or `null` (e.g. key contains `"null"` string), `setOrders` receives non-array, breaking downstream calls like `orders.filter` on line 223.
+- **Order Creation Form State (Lines 198–209)**:
+  ```typescript
+  const [selectedClientId, setSelectedClientId] = useState<string>(customerList[0].id);
+  const [dueDate, setDueDate] = useState<string>('2026-08-25');
+  const [notes, setNotes] = useState<string>('');
+  const [items, setItems] = useState<OrderItemRow[]>([
+    {
+      id: 'item-1',
+      garmentType: 'Sherwani',
+      fabricSku: 'SKU-SHER-901',
+      fabricMeters: 4.5,
+      unitPrice: 28000
+    }
+  ]);
+  ```
+  Order creation form state consists of `selectedClientId`, `dueDate`, `notes`, and an array of `items` containing fabric SKUs, meters, unit prices, `fabricImage` (swatch preset/URL), `liningImage` (lining preset/URL), and `materialNotes` (trims/zippers/collar specs).
+- **Absence of Draft Autosave (`yh_orders_draft`)**:
+  There is **zero** code reading from or writing to `yh_orders_draft`.
+  When a user adds multiple garment items, attaches swatches, or writes detailed tailoring notes:
+  - Navigating to another dashboard tab or refreshing wipes out the draft.
+  - Clicking "Save as Draft" currently generates an active order with status `'DRAFT'` into `yh_orders`, rather than saving the form state draft for ongoing editing.
+- **Order Creation Handler (`handleSaveOrder`, Lines 354–419)**:
+  ```typescript
+  const updatedOrders = [newOrder, ...orders];
+  setOrders(updatedOrders);
+  setLocalStorage('yh_orders', updatedOrders);
+  ```
+  Saves to `yh_orders`, but does not clear `yh_orders_draft` from localStorage.
+
+---
+
+### 2.3 Local Storage Utilities (`apps/web/src/lib/storage-utils.ts`)
+
+- **Current Implementation (Lines 7–21)**:
+  ```typescript
+  export function getLocalStorage<T>(key: string, fallbackValue: T): T {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+      return fallbackValue;
+    }
+    try {
+      const item = window.localStorage.getItem(key);
+      if (item === null || item === undefined) {
+        return fallbackValue;
+      }
+      return JSON.parse(item) as T;
+    } catch (error) {
+      console.warn(`[storage-utils] Error reading key "${key}" from localStorage:`, error);
+      return fallbackValue;
+    }
+  }
+  ```
+- **Null Safety Hole**:
+  If `window.localStorage.getItem(key)` returns string `"null"`, `JSON.parse("null")` evaluates to JavaScript `null`. The check `item === null` evaluates to `false` because `item` is `"null"`. Thus, `getLocalStorage('yh_orders', [])` returns `null` instead of `[]`!
+  Calling `.filter()` or `.map()` on `orders` then throws an uncaught `TypeError: Cannot read properties of null`.
+
+---
+
+## 3. Core Architectural Strategy
+
+### 3.1 Staff Management Strategy (`yh_staff` & `yh_staff_draft`)
+
+```
+   ┌─────────────────────────────────────────────────────────────┐
+   │                      StaffPage Mount                        │
+   └──────────────────────────────┬──────────────────────────────┘
+                                  │
+                   Read `yh_staff` via getLocalStorage
+                                  │
+                  Is valid non-empty StaffMember[]?
+                           ├───────────┐
+                          YES          NO
+                           │           │
+                    setStaffList   Fallback to INITIAL_STAFF
+                           │       & seed to `yh_staff`
+                           └─────┬─────┘
+                                 │
+           ┌─────────────────────┴─────────────────────┐
+           ▼                                           ▼
+  handleAddStaff()                             handleRemoveStaff()
+  1. Add new member                            1. Filter out member
+  2. setStaffList(updated)                     2. setStaffList(updated)
+  3. setLocalStorage('yh_staff', updated)      3. setLocalStorage('yh_staff', updated)
+  4. removeLocalStorage('yh_staff_draft')
+```
+
+1. **Mount Synchronization**: Load `yh_staff` from localStorage on page mount. If absent or empty, seed `INITIAL_STAFF` into localStorage under key `yh_staff`.
+2. **Mutation Synchronization**: Whenever a staff member is added or terminated, immediately update `yh_staff` in localStorage.
+3. **Form Draft Autosave (`yh_staff_draft`)**:
+   - Store temporary values (`name`, `email`, `role`, `branch`) in `yh_staff_draft`.
+   - On modal input change, update `yh_staff_draft`.
+   - On successful recruitment, clear `yh_staff_draft`.
+
+---
+
+### 3.2 Order Form Draft Autosave Strategy (`yh_orders_draft` & `yh_orders`)
+
+```
+   ┌─────────────────────────────────────────────────────────────┐
+   │                    OrderManagementPage                      │
+   └──────────────────────────────┬──────────────────────────────┘
+                                  │
+                 ┌────────────────┴────────────────┐
+                 ▼                                 ▼
+      Mount / Load `yh_orders`          Mount / Load `yh_orders_draft`
+      (Array fallback guard)            (Form state draft restore)
+                 │                                 │
+                 │                      User edits client, items,
+                 │                      swatches, or notes
+                 │                                 │
+                 │                      Autosave to `yh_orders_draft`
+                 │                                 │
+                 └────────────────┬────────────────┘
+                                  │
+                        handleSaveOrder()
+                        1. Construct new Order
+                        2. Append to `yh_orders`
+                        3. setLocalStorage('yh_orders', updated)
+                        4. removeLocalStorage('yh_orders_draft')
+                        5. Reset form to clean default state
+```
+
+1. **Draft Data Structure**:
+   ```typescript
+   export interface OrderFormDraft {
+     selectedClientId: string;
+     dueDate: string;
+     notes: string;
+     items: OrderItemRow[];
+     lastSavedAt: string;
+   }
+   ```
+2. **Mount Draft Restoration**:
+   - On component mount, call `getLocalStorage<OrderFormDraft | null>('yh_orders_draft', null)`.
+   - If a valid draft with items exists, populate `selectedClientId`, `dueDate`, `notes`, and `items`.
+3. **Continuous Dynamic Autosave**:
+   - Use a `useEffect` watching `[selectedClientId, dueDate, notes, items]`.
+   - Automatically persist draft updates to `yh_orders_draft` whenever form fields change.
+4. **Draft Clearance on Order Submission**:
+   - When an order is saved (either as CONFIRMED or DRAFT in active orders list), invoke `removeLocalStorage('yh_orders_draft')` to clear the draft workspace.
+
+---
+
+### 3.3 Defensive Storage & Null-Safety Strategy
+
+1. **Enhanced `getLocalStorage` Helper**:
+   - Guard against string `"null"`, `"undefined"`, and invalid shapes.
+   - If `JSON.parse` yields `null` or `undefined`, explicitly return `fallbackValue`.
+2. **Array Validation Wrappers**:
+   - When retrieving lists (`yh_staff`, `yh_orders`, `yh_customers`), enforce `Array.isArray(result) && result.length > 0` validation before setting state.
+3. **Customer Synchronization**:
+   - Read `yh_customers` in `orders/page.tsx` to dynamically include newly added customers alongside the standard fallback options.
+
+---
+
+## 4. Detailed File Modification Blueprint
+
+### 4.1 `apps/web/src/lib/storage-utils.ts`
+
+**Objective**: Fix null parsing vulnerability and ensure absolute type safety on empty or malformed storage keys.
+
+```typescript
+export function getLocalStorage<T>(key: string, fallbackValue: T): T {
+  if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+    return fallbackValue;
+  }
+  try {
+    const item = window.localStorage.getItem(key);
+    if (item === null || item === undefined || item === 'null' || item === 'undefined') {
+      return fallbackValue;
+    }
+    const parsed = JSON.parse(item);
+    if (parsed === null || parsed === undefined) {
+      return fallbackValue;
+    }
+    return parsed as T;
+  } catch (error) {
+    console.warn(`[storage-utils] Error reading key "${key}" from localStorage:`, error);
+    return fallbackValue;
+  }
 }
 ```
 
 ---
 
-## 4. Component Structure & Integration Blueprint
+### 4.2 `apps/web/src/app/(dashboard)/staff/page.tsx`
 
-### 4.1 Component Tree Architecture
+**Objective**: Implement dynamic persistence for staff additions/removals (`yh_staff`) and recruitment form drafts (`yh_staff_draft`).
 
-```
-MeasurementEngineContainer.tsx
- ├── BodyLandmarkDiagram.tsx  (Visual 2D SVG Panel - Left Column)
- │    ├── AnatomicalViewSwitcher (Front | Back | Side)
- │    ├── SvgHumanBodyOutline.tsx
- │    │    ├── <defs> (Glow filters, marker gradients)
- │    │    ├── <g id="body-silhouette"> (Male/Female Vector Body Path)
- │    │    ├── <g id="posture-deformers"> (Visual Posture Offsets)
- │    │    ├── <g id="measurement-guidelines"> (Dashed Tape Lines)
- │    │    └── <g id="hotspots"> (Interactive Hotspot Pins)
- │    └── ActiveLandmarkDetailCard (Context summary box)
- │
- ├── PomFormEngine.tsx        (Dynamic Form Input Grid - Right/Center Column)
- ├── PostureProfileSelector.tsx (4-Axis Controls - Bottom Left)
- └── FabricYieldCalculator.tsx  (Fabric Math Card - Bottom Right)
-```
-
-### 4.2 Detailed Component Specifications
-
-#### A. `BodyLandmarkDiagram.tsx`
-- **Location**: `apps/web/src/components/measurement-engine/BodyLandmarkDiagram.tsx`
-- **Props**: `className?: string`, `interactive?: boolean`
-- **State**: `view: 'front' | 'back' | 'side'` (defaults to `'front'`)
-- **Key Responsibilities**:
-  1. Render view switcher tab bar (Front View, Back View, Side View).
-  2. Auto-detect gender silhouette (`men` vs `women`) from `useMeasurementEngine().gender`.
-  3. Render `SvgHumanBodyOutline`.
-  4. Display status summary bar (Count of Valid, Posture Warning, and Proportion Error landmarks).
-  5. Render `ActiveLandmarkDetailCard` at bottom when a landmark is focused.
-
-#### B. `SvgHumanBodyOutline.tsx`
-- **Location**: `apps/web/src/components/measurement-engine/SvgHumanBodyOutline.tsx`
-- **Props**:
-  - `gender`: `'men' | 'women'`
-  - `view`: `'front' | 'back' | 'side'`
-  - `focusedLandmarkId`: `string | null`
-  - `validationState`: `ValidationState`
-  - `postureProfile`: `PostureProfile`
-  - `measurements`: `Record<string, number>`
-  - `activePomSchema`: `PomSchemaItem[]`
-  - `onSelectLandmark`: `(landmarkId: string) => void`
-- **SVG ViewBox**: `0 0 300 600`
-- **SVG Layers**:
-  1. Background grid overlay (subtle 20px slate mesh).
-  2. Silhouette vector path with anatomical outline (torso, arms, legs, neck, head).
-  3. Dynamic posture deformity paths (e.g. tilted shoulder line when `shoulderSlope === 'sloped'`).
-  4. Guidelines: Dashed tape lines across active measurement points (e.g. chest circumference band line).
-  5. Hotspot pins: `<g>` group with target radius 16px, core pin circle radius 6px, color-coded based on `getHotspotColorConfig()`.
-  6. Hover Tooltip: Floating SVG card showing POM code, name, value in active units (`in` / `cm`), and validation alert text.
-
-#### C. Integration in `MeasurementEngineContainer.tsx`
-
-Upgrade `MeasurementEngineContainer.tsx` to integrate `BodyLandmarkDiagram.tsx` into a responsive 12-column layout:
-
-```tsx
-<MeasurementEngineProvider
-  initialGarmentCategory={initialGarmentCategory}
-  initialPostureProfile={initialPostureProfile}
-  initialMeasurements={initialMeasurements}
->
-  <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 ${className}`}>
-    {/* Left Column: Visual 2D SVG Body Diagram (5 cols) */}
-    <div className="lg:col-span-5 space-y-6">
-      <BodyLandmarkDiagram />
-    </div>
-
-    {/* Right Column: POM Form Engine & Posture / Fabric Controls (7 cols) */}
-    <div className="lg:col-span-7 space-y-6">
-      <PomFormEngine onSaveSnapshot={onSaveSnapshot} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <PostureProfileSelector />
-        <FabricYieldCalculator />
-      </div>
-    </div>
-  </div>
-</MeasurementEngineProvider>
-```
+1. **Import `setLocalStorage` and `removeLocalStorage`**:
+   ```typescript
+   import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
+   ```
+2. **Staff List Mount Effect**:
+   ```typescript
+   useEffect(() => {
+     const stored = getLocalStorage<StaffMember[]>('yh_staff', INITIAL_STAFF);
+     if (Array.isArray(stored) && stored.length > 0) {
+       setStaffList(stored);
+     } else {
+       setStaffList(INITIAL_STAFF);
+       setLocalStorage('yh_staff', INITIAL_STAFF);
+     }
+   }, []);
+   ```
+3. **Staff Recruitment Draft Load & Autosave**:
+   - Interface:
+     ```typescript
+     interface StaffFormDraft {
+       name: string;
+       email: string;
+       role: string;
+       branch: string;
+     }
+     ```
+   - Load draft on mount / modal open:
+     ```typescript
+     useEffect(() => {
+       const draft = getLocalStorage<StaffFormDraft | null>('yh_staff_draft', null);
+       if (draft) {
+         if (draft.name) setNewStaffName(draft.name);
+         if (draft.email) setNewStaffEmail(draft.email);
+         if (draft.role) setNewStaffRole(draft.role);
+         if (draft.branch) setNewStaffBranch(draft.branch);
+       }
+     }, []);
+     ```
+   - Autosave draft when inputs change:
+     ```typescript
+     useEffect(() => {
+       if (newStaffName || newStaffEmail) {
+         setLocalStorage('yh_staff_draft', {
+           name: newStaffName,
+           email: newStaffEmail,
+           role: newStaffRole,
+           branch: newStaffBranch
+         });
+       }
+     }, [newStaffName, newStaffEmail, newStaffRole, newStaffBranch]);
+     ```
+4. **Update `handleAddStaff`**:
+   - Persist updated list to `yh_staff`:
+     ```typescript
+     const updatedList = [newMember, ...staffList];
+     setStaffList(updatedList);
+     setLocalStorage('yh_staff', updatedList);
+     removeLocalStorage('yh_staff_draft');
+     ```
+5. **Update `handleRemoveStaff`**:
+   - Persist updated list to `yh_staff`:
+     ```typescript
+     const updatedList = staffList.filter(st => st.id !== id);
+     setStaffList(updatedList);
+     setLocalStorage('yh_staff', updatedList);
+     ```
 
 ---
 
-## 5. Verification & Test Plan
+### 4.3 `apps/web/src/app/(dashboard)/orders/page.tsx`
 
-1. **TypeScript Type Safety**: Verify zero `tsc --noEmit` errors across `landmark-mappings.ts`, `BodyLandmarkDiagram.tsx`, `SvgHumanBodyOutline.tsx`, and `MeasurementEngineContext.tsx`.
-2. **Bidirectional Focus Sync Test**:
-   - Focus input field for `M-SU-01` -> `focusedLandmarkId` becomes `'hs-mens-chest'`, SVG hotspot for chest pulses with gold ring.
-   - Click SVG hotspot `'hs-mens-waist'` -> `focusedLandmarkId` becomes `'hs-mens-waist'`, `PomFormEngine` scrolls input `M-SU-02` into view with gold outline.
-3. **Proportion Sanity Validation Test**:
-   - Enter `W-SB-01` (Upper Bust) = 38" and `W-SB-02` (Full Bust) = 36". Context sets `validationState.errors['w-sb-02']` and SVG hotspot `'hs-womens-fullbust'` turns Rose Red (`#EF4444`).
-   - Enter `M-TR-04` (Inseam) = 35" and `M-TR-03` (Outseam) = 30". Context sets `validationState.errors['m-tr-04']` and SVG hotspot `'hs-mens-inseam'` turns Rose Red (`#EF4444`).
-4. **Posture Alert Trigger Test**:
-   - Select `shoulderSlope = 'sloped'`. Context sets posture alert warning on `M-SU-07` (Armscye), SVG hotspot `'hs-mens-armscye'` turns Amber Gold (`#F59E0B`) with posture note.
+**Objective**: Add `yh_orders_draft` autosave for Order Creation form (items, swatches, materials, client details), ensure array safety on `yh_orders`, and clear draft upon order creation.
+
+1. **Order Form Draft Type Definition**:
+   ```typescript
+   export interface OrderFormDraft {
+     selectedClientId: string;
+     dueDate: string;
+     notes: string;
+     items: OrderItemRow[];
+     updatedAt: string;
+   }
+   ```
+2. **Mount Effect for `yh_orders` Safety**:
+   ```typescript
+   useEffect(() => {
+     const storedOrders = getLocalStorage<Order[]>('yh_orders', initialOrders);
+     if (Array.isArray(storedOrders) && storedOrders.length > 0) {
+       setOrders(storedOrders);
+     } else {
+       setOrders(initialOrders);
+       setLocalStorage('yh_orders', initialOrders);
+     }
+   }, []);
+   ```
+3. **Mount Effect for `yh_orders_draft` Load**:
+   ```typescript
+   useEffect(() => {
+     const draft = getLocalStorage<OrderFormDraft | null>('yh_orders_draft', null);
+     if (draft && typeof draft === 'object' && Array.isArray(draft.items) && draft.items.length > 0) {
+       if (draft.selectedClientId) setSelectedClientId(draft.selectedClientId);
+       if (draft.dueDate) setDueDate(draft.dueDate);
+       if (draft.notes !== undefined) setNotes(draft.notes);
+       setItems(draft.items);
+     }
+   }, []);
+   ```
+4. **Autosave Draft Effect**:
+   ```typescript
+   useEffect(() => {
+     // Persist current draft state to localStorage
+     const draft: OrderFormDraft = {
+       selectedClientId,
+       dueDate,
+       notes,
+       items,
+       updatedAt: new Date().toISOString()
+     };
+     setLocalStorage('yh_orders_draft', draft);
+   }, [selectedClientId, dueDate, notes, items]);
+   ```
+5. **Update `handleSaveOrder`**:
+   - Upon creating order:
+     ```typescript
+     const updatedOrders = [newOrder, ...orders];
+     setOrders(updatedOrders);
+     setLocalStorage('yh_orders', updatedOrders);
+     removeLocalStorage('yh_orders_draft'); // Clear draft upon submit
+     ```
+   - Reset form state to initial defaults.
+6. **Dynamic Client Directory Loading**:
+   - Load customers from `yh_customers` with `customerList` fallback:
+     ```typescript
+     const activeCustomers = useMemo(() => {
+       const stored = getLocalStorage<any[]>('yh_customers', customerList);
+       return Array.isArray(stored) && stored.length > 0 ? stored : customerList;
+     }, []);
+     ```
+
+---
+
+## 5. Verification & Testing Strategy
+
+1. **Unit Testing (`apps/web/src/__tests__/storage-utils.test.ts`)**:
+   - Verify string `"null"` handling in `getLocalStorage`.
+   - Verify array integrity checks.
+2. **Integration Verification Command**:
+   - Run `npm test` inside `apps/web` to confirm zero regressions across storage utils, posture calculation, SAM engine, and POM schemas.
+3. **Manual Verification Workflow**:
+   - Open `/staff`, add new specialist, refresh page -> verify specialist persists from `yh_staff`.
+   - Delete specialist, refresh -> verify deletion persists.
+   - Open `/orders` -> Create New Order tab. Fill client, 2 garment items, add fabric image URL, write material notes. Refresh page -> verify all fields restore from `yh_orders_draft`.
+   - Submit order -> verify order added to `yh_orders` and `yh_orders_draft` cleared.

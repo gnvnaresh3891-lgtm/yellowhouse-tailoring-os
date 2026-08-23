@@ -6,6 +6,21 @@
 
 @layer base {
   :root {
+    /* HSL Base Hue Variables */
+    --gold-hue: 45;
+    --gold-sat: 93%;
+    
+    /* HSL Gold Palette Tokens */
+    --color-gold-50: hsl(var(--gold-hue), var(--gold-sat), 96%);
+    --color-gold-100: hsl(var(--gold-hue), var(--gold-sat), 88%);
+    --color-gold-200: hsl(var(--gold-hue), var(--gold-sat), 77%);
+    --color-gold-300: hsl(var(--gold-hue), var(--gold-sat), 63%);
+    --color-gold-400: hsl(var(--gold-hue), var(--gold-sat), 53%);   /* #FACC15 equivalent */
+    --color-gold-500: hsl(var(--gold-hue), var(--gold-sat), 47%);   /* #EAB308 Core Metallic Gold */
+    --color-gold-600: hsl(var(--gold-hue), 85%, 40%);               /* #CA8A04 Deep Gold */
+    --color-gold-700: hsl(var(--gold-hue), 80%, 30%);               /* Shadow Gold */
+
+    /* Legacy compatibility hex tokens */
     --gold-50: #fefce8;
     --gold-100: #fef9c3;
     --gold-200: #fef08a;
@@ -13,9 +28,22 @@
     --gold-400: #facc15;
     --gold-500: #eab308;
     --gold-600: #ca8a04;
-    --glass-bg: rgba(15, 23, 42, 0.75);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-gold-border: rgba(234, 179, 8, 0.25);
+
+    /* Dark Slate Background Hierarchy */
+    --bg-app: hsl(222, 47%, 7%);        /* #0B0F19 Surface Base */
+    --bg-surface-dark: hsl(222, 47%, 10%);/* #101625 Elevated Surface */
+    --bg-card: hsl(222, 40%, 12%);       /* #141C2E Card Interior */
+
+    /* Glassmorphic Transparency & Border Tokens */
+    --glass-bg: hsla(222, 47%, 10%, 0.75);
+    --glass-bg-hover: hsla(222, 47%, 14%, 0.85);
+    --glass-border: hsla(0, 0%, 100%, 0.08);
+    --glass-border-hover: hsla(0, 0%, 100%, 0.18);
+    
+    --glass-gold-bg: hsla(222, 43%, 14%, 0.85);
+    --glass-gold-border: hsla(var(--gold-hue), var(--gold-sat), 47%, 0.30);
+    --glass-gold-border-hover: hsla(var(--gold-hue), var(--gold-sat), 53%, 0.60);
+    --glass-gold-glow: hsla(var(--gold-hue), var(--gold-sat), 47%, 0.15);
   }
 
   * {
@@ -30,46 +58,71 @@
 }
 
 @layer components {
+  /* Standard Glassmorphic Card */
   .glass-card {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
     border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .glass-card:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
   }
 
+  /* Gold Highlighted Glassmorphic Card (VIP/Featured/Active) */
   .glass-card-gold {
-    background: rgba(20, 30, 51, 0.85);
-    backdrop-filter: blur(16px);
+    background: var(--glass-gold-bg);
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
     border: 1px solid var(--glass-gold-border);
-    box-shadow: 0 8px 32px rgba(234, 179, 8, 0.05);
+    box-shadow: 0 8px 32px 0 var(--glass-gold-glow), inset 0 1px 1px 0 rgba(250, 204, 21, 0.2);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .glass-card-gold:hover {
-    border-color: rgba(234, 179, 8, 0.4);
-    box-shadow: 0 12px 48px rgba(234, 179, 8, 0.1);
+    border-color: var(--glass-gold-border-hover);
+    box-shadow: 0 16px 48px 0 hsla(var(--gold-hue), var(--gold-sat), 47%, 0.25), inset 0 1px 1px 0 rgba(250, 204, 21, 0.4);
+    transform: translateY(-2px);
   }
 
+  /* Luxury HSL Gold Button Component */
   .btn-gold {
-    @apply bg-gradient-to-r from-yellow-600 to-yellow-500 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm;
-    box-shadow: 0 4px 14px rgba(234, 179, 8, 0.25);
-    transition: all 0.2s ease;
+    background: linear-gradient(135deg, hsl(45, 93%, 47%) 0%, hsl(38, 92%, 50%) 100%);
+    color: hsl(222, 47%, 7%);
+    font-weight: 700;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    box-shadow: 0 4px 16px hsla(45, 93%, 47%, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .btn-gold:hover {
     filter: brightness(1.1);
-    box-shadow: 0 6px 20px rgba(234, 179, 8, 0.35);
-    transform: translateY(-1px);
+    box-shadow: 0 6px 24px hsla(45, 93%, 47%, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    transform: translateY(-1.5px);
+  }
+
+  .btn-gold:active {
+    transform: translateY(0.5px);
+    box-shadow: 0 2px 8px hsla(45, 93%, 47%, 0.2);
   }
 
   .btn-ghost {
     @apply px-4 py-2 rounded-xl text-sm font-medium text-slate-400 border border-slate-800;
     transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .btn-ghost:hover {
@@ -100,7 +153,7 @@
   }
 
   .badge {
-    @apply text-[10px] font-semibold px-2 py-0.5 rounded-md;
+    @apply text-[10px] font-semibold px-2 py-0.5 rounded-md inline-flex items-center gap-1;
   }
 
   .badge-gold {
@@ -124,7 +177,7 @@
   }
 
   .pom-input {
-    @apply w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-yellow-400 font-mono font-bold;
+    @apply w-full bg-slate-950/90 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-yellow-400 font-mono font-bold backdrop-blur-md;
     transition: border-color 0.2s ease;
   }
 
@@ -134,7 +187,13 @@
   }
 
   .kanban-column {
-    @apply glass-card rounded-2xl p-4 border border-slate-800 space-y-3 min-h-[300px];
+    @apply glass-card rounded-2xl p-4 border border-slate-800 space-y-3 max-h-[calc(100vh-240px)] overflow-y-auto custom-scrollbar;
+  }
+
+  .kanban-column-drag-over {
+    border-style: dashed !important;
+    border-color: hsla(45, 93%, 47%, 0.6) !important;
+    background: hsla(45, 93%, 47%, 0.05) !important;
   }
 
   .kanban-card {
@@ -158,11 +217,76 @@
   }
 
   @keyframes pulse-gold {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.2); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.25); }
     50% { box-shadow: 0 0 0 8px rgba(234, 179, 8, 0); }
   }
 
   .pulse-gold {
     animation: pulse-gold 2s ease-in-out infinite;
   }
+
+  /* Tooltip CSS Animations & Positioning */
+  @keyframes tooltip-fade-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .tooltip-trigger {
+    position: relative;
+  }
+
+  .tooltip-content {
+    position: absolute;
+    z-index: 60;
+    padding: 0.375rem 0.625rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: #f8fafc;
+    background-color: hsla(222, 47%, 10%, 0.95);
+    border: 1px solid hsla(45, 93%, 47%, 0.3);
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 12px hsla(45, 93%, 47%, 0.15);
+    backdrop-filter: blur(12px);
+    white-space: nowrap;
+    pointer-events: none;
+    animation: tooltip-fade-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .tooltip-top { bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 0.5rem; }
+  .tooltip-bottom { top: 100%; left: 50%; transform: translateX(-50%); margin-top: 0.5rem; }
+  .tooltip-left { right: 100%; top: 50%; transform: translateY(-50%); margin-right: 0.5rem; }
+  .tooltip-right { left: 100%; top: 50%; transform: translateY(-50%); margin-left: 0.5rem; }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsla(222, 47%, 20%, 0.8);
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsla(var(--gold-hue), var(--gold-sat), 47%, 0.5);
+  }
+}
+
+@media print {
+  /* Hide all UI chrome */
+  aside, header, .no-print { display: none !important; }
+  /* Show print-only elements */
+  .print-only { display: block !important; }
+  /* Reset backgrounds */
+  body { background: white !important; color: black !important; }
+  main { padding: 0 !important; }
+}
+
+.print-only {
+  display: none;
 }

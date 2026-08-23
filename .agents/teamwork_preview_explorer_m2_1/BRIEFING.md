@@ -1,37 +1,43 @@
-# BRIEFING — 2026-08-06T00:37:50Z
+# BRIEFING — 2026-08-07T21:34:55Z
 
 ## Mission
-Design Milestone 2 (Visual Body Landmark Diagram & Interactivity) SVG graphics, hotspot structure, coordinates, hover/click interactions, and status pulse animations for Yellowhouse.
+Investigate Milestone 2 requirements for Onboarding Form Draft Autosave & Customer Directory Persistence in YellowHouse Tailoring OS.
 
 ## 🔒 My Identity
-- Archetype: Explorer / Architect
-- Roles: Visual Landmark Diagram & Hotspot Architecture Specialist
+- Archetype: Explorer
+- Roles: Milestone 2 Explorer 1
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_1
-- Original parent: d10b382f-07b4-4da2-8c6d-189fabeef293
-- Milestone: M2 - Visual Body Landmark Diagram & Interactivity
+- Original parent: 4f63ff34-b151-4f5e-adab-826cc63764e0
+- Milestone: Milestone 2 (Onboarding Draft Autosave & Customer Directory Persistence)
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT modify source code directly (only produce analysis.md and handoff.md in working directory).
-- Clean React SVG vector figures for Men (Front & Back) and Women (Front & Back).
-- Map ALL POM codes across Men's & Women's categories defined in M1 outputs to exact hotspot IDs, SVG viewBox coordinates (cx, cy, r), and tooltips.
-- Interactive hover effects, click selection handlers, and status pulse animations matching Tailwind dark slate and gold theme (`#EAB308`).
+- Read-only investigation — do NOT implement code changes in the main source codebase (only produce analysis.md, handoff.md, BRIEFING.md, progress.md, DISPATCH.md in own directory)
+- Evidence-based investigation with exact line numbers and code snippets
 
 ## Current Parent
-- Conversation ID: d10b382f-07b4-4da2-8c6d-189fabeef293
-- Updated: 2026-08-06T00:37:50Z
+- Conversation ID: 4f63ff34-b151-4f5e-adab-826cc63764e0
+- Updated: 2026-08-07T21:34:55Z
 
 ## Investigation State
-- **Explored paths**: `ORIGINAL_REQUEST.md`, `PROJECT.md`, `apps/web/src/types/measurement.ts`, `apps/web/src/lib/pom-schemas.ts`, `apps/web/src/context/MeasurementEngineContext.tsx`.
-- **Key findings**: Complete mapping of 63 POM schema items across 9 garment categories to 35 unique SVG hotspots. Precise coordinates on `0 0 400 800` canvas specified. SVG path vectors for Men/Women Front/Back, pulse ring keyframe animation specs, and React component code designed.
-- **Unexplored areas**: None. Design complete.
+- **Explored paths**:
+  - `apps/web/src/app/onboarding/page.tsx`
+  - `apps/web/src/app/(dashboard)/customers/page.tsx`
+  - `apps/web/src/lib/storage-utils.ts`
+  - `apps/web/src/types/onboarding.ts`
+  - `apps/web/src/__tests__/storage-utils.test.ts`
+  - `apps/web/src/__tests__/onboarding-stress.test.ts`
+- **Key findings**:
+  - Onboarding form lacks draft hydration and debounced autosave effect to `yh_onboarding_draft`. Clears state on refresh.
+  - Customer directory uses hardcoded `initialCustomers` mock array on mount and doesn't sync additions/edits/deletions to `yh_customers`.
+  - `storage-utils.ts` safe helpers protect against SSR and corrupted JSON, but components need hydration safety and structural array validation.
+- **Unexplored areas**: None for M2 Onboarding and Customer persistence investigation.
 
 ## Key Decisions Made
-- Established `viewBox="0 0 400 800"` for high-resolution anatomical rendering.
-- Designed 35 unique hotspot nodes covering all 63 POM codes across Western, Ethnic, and Couture categories for Men & Women.
-- Specified gold accent (`#EAB308`) and dark slate UI state transitions, gold glow SVG filter `<filter id="glow-gold">`, and pulse ring animations.
+- Authored full technical strategy in `analysis.md` and complete handoff report in `handoff.md`.
 
 ## Artifact Index
-- DISPATCH.md — Dispatch log
-- BRIEFING.md — Context memory
-- analysis.md — Milestone 2 Visual Body Landmark Diagram & Interactivity Blueprint
-- handoff.md — 5-component Handoff Report
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_1\DISPATCH.md — Received dispatch prompt
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_1\BRIEFING.md — Mission briefing index
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_1\progress.md — Subtask progress tracking
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_1\analysis.md — Technical strategy and file modification blueprint
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_m2_1\handoff.md — 5-component handoff report

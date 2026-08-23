@@ -23,7 +23,9 @@ function assert(condition: boolean, msg: string) {
   }
 }
 
-export function runLandmarkValidationTests() {
+export function runLandmarkValidationTests(): { passed: number; failed: number } {
+  passed = 0;
+  failed = 0;
   console.log('\n--- RUNNING M2 LANDMARK & VALIDATION TEST SUITE ---\n');
 
   // 1. Landmark Coordinates & Definitions Test
@@ -184,14 +186,13 @@ export function runLandmarkValidationTests() {
   const focusedColor = getHotspotColorConfig('m-su-01', validValState, normalPosture, true);
   assert(focusedColor.status === 'focused' && focusedColor.hex === '#EAB308', 'Active focus resolves to Gold #EAB308');
 
-  console.log(`\n========================================`);
-  console.log(`LANDMARK TEST SUMMARY: ${passed} PASSED, ${failed} FAILED`);
-  console.log(`========================================\n`);
+  return { passed, failed };
+}
 
+// Auto-run if executed directly
+if (require.main === module) {
+  const { failed } = runLandmarkValidationTests();
   if (failed > 0) {
     process.exit(1);
   }
 }
-
-// Auto-run if executed directly
-runLandmarkValidationTests();

@@ -1,195 +1,193 @@
-# Codebase Analysis Report: YellowHouse Tailoring OS
+# YellowHouse Tailoring OS — Comprehensive Codebase Survey & Technical Architecture Report
 
-**Author**: `teamwork_preview_explorer_survey_1`  
-**Date**: 2026-08-06  
-**Scope**: Codebase Structure, Build/Dev Tooling, Dependency & Source File Inventory  
-**Target Directory**: `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse`
-
----
-
-## 1. Executive Summary
-
-The **YellowHouse Tailoring OS** workspace is structured as an **npm monorepo** consisting of two main application packages (`apps/api` for the NestJS backend and `apps/web` for the Next.js frontend), supported by PostgreSQL and Redis via Docker Compose.
-
-The project currently contains foundational data models and basic UI pages, but requires implementation of the **Measurement Engine for Tailoring OS** as specified in `ORIGINAL_REQUEST.md` (R1: Dynamic Measurement Template & POM Engine with posture modifiers, R2: Interactive SVG 2D body landmark hotspot diagram, R3: Measurement Versioning & Fitting Delta comparison tracker).
+**Agent**: `teamwork_preview_explorer_survey_1`  
+**Date**: August 7, 2026  
+**Focus Area**: Codebase Architecture, Workspaces, Build Configuration, Routes, TypeScript Setup, Dependencies, and Compilation Warning/Error Sources (R1 Focus).
 
 ---
 
-## 2. Monorepo Topology & Directory Structure
+## Executive Summary
 
+YellowHouse Tailoring OS is a multi-tenant atelier management monorepo designed for bespoke tailoring houses. The repository is structured as an NPM workspace containing a Next.js 14 App Router web client (`apps/web`) and a NestJS 10 backend API (`apps/api`) powered by Prisma ORM with PostgreSQL.
+
+Our comprehensive read-only survey evaluated all workspace files, routes, components, math engines, API modules, schema definitions, build scripts, and test setups. The codebase is well-structured and feature-complete for atelier operations, but displays several build configuration gaps, test runner omissions, TypeScript strictness disparities, and client-side resilience vulnerabilities.
+
+---
+
+## 1. Monorepo Architecture & Workspace Structure
+
+### 1.1 Root Monorepo Layout
 ```
-C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
-├── package.json                   # Root monorepo workspace definition
-├── package-lock.json              # Monorepo lockfile
-├── docker-compose.dev.yml         # Dev services: PostgreSQL 16 & Redis 7
-├── node_modules/                  # Monorepo dependencies
+yellowhouse/
 ├── apps/
-│   ├── api/                       # NestJS Backend API (@yellowhouse/api)
-│   │   ├── nest-cli.json          # NestJS CLI configuration
-│   │   ├── package.json           # NestJS dependencies & scripts
-│   │   ├── tsconfig.json          # TypeScript compiler options (ES2021, CommonJS, Decorators)
-│   │   ├── prisma/
-│   │   │   └── schema.prisma      # Prisma schema (Tenant, Client, CustomerMeasurementVersion, Order, etc.)
-│   │   └── src/
-│   │       ├── main.ts            # Entry point (port 3001, CORS, ValidationPipe)
-│   │       ├── app.module.ts      # NestJS root module with TenantMiddleware
-│   │       ├── common/
-│   │       │   └── middleware/
-│   │       │       └── tenant.middleware.ts # Extracts x-tenant-id header (default fallback)
-│   │       └── modules/
-│   │           ├── prisma/
-│   │           │   └── prisma.service.ts    # PrismaClient lifecycle provider
-│   │           └── measurements/
-│   │               ├── measurements.controller.ts # GET /measurements/templates, POST /measurements/fabric-yield
-│   │               └── measurements.service.ts    # POM templates & fabric yield math formula
-│   └── web/                       # Next.js 14 Frontend (@yellowhouse/web)
-│       ├── package.json           # Next.js dependencies & scripts
-│       ├── tsconfig.json          # TypeScript compiler options (ESNext, Bundler, @/* path alias)
-│       ├── postcss.config.js      # PostCSS config (Tailwind, Autoprefixer)
-│       ├── tailwind.config.js     # Tailwind CSS config (custom gold & slate color palettes)
-│       ├── next-env.d.ts          # Next.js type declarations
-│       └── src/
-│           └── app/
-│               ├── globals.css    # Global stylesheet & Tailwind directives
-│               ├── layout.tsx     # Root HTML layout with dark mode class
-│               └── page.tsx       # Main dashboard page ('use client') with 4 tabs
-└── .agents/                       # Agent metadata & reports directory
+│   ├── api/                   # NestJS 10 REST API backend
+│   │   ├── prisma/            # Prisma ORM schema & seed scripts
+│   │   ├── src/               # NestJS modules, controllers, services, DTOs
+│   │   ├── tsconfig.json      # Backend TypeScript configuration
+│   │   └── package.json       # Backend dependencies
+│   └── web/                   # Next.js 14 App Router frontend
+│       ├── src/
+│       │   ├── app/           # App Router page & layout hierarchy
+│       │   ├── components/    # Reusable React UI components
+│       │   ├── context/       # React Context providers (MeasurementEngineContext)
+│       │   ├── lib/           # Tailoring math engines, POM schemas, helpers
+│       │   ├── types/         # Domain TypeScript interfaces
+│       │   └── __tests__/     # Web unit test suite (6 test files)
+│       ├── tsconfig.json      # Frontend TypeScript configuration
+│       └── package.json       # Frontend dependencies
+├── PROJECT.md                 # Domain specification & garment specifications
+├── TEST_INFRA.md              # Test strategy & architectural guidelines
+├── tsconfig.json              # Root TypeScript configuration
+└── package.json               # Workspaces root package manifest
 ```
 
----
-
-## 3. Package Breakdown & Setup
-
-### 3.1 Root Package (`package.json`)
-- **Name**: `yellowhouse-monorepo`
-- **Workspaces**: `apps/*`
-- **Scripts**:
-  - `"dev"`: `npm run dev --workspaces`
-  - `"build"`: `npm run build --workspaces`
-  - `"test"`: `npm run test --workspaces`
-
-### 3.2 Backend API Package (`apps/api/package.json`)
-- **Package Name**: `@yellowhouse/api`
-- **Framework**: NestJS v10.0.0, TypeScript v5.0.0
-- **Database / ORM**: Prisma v5.0.0, PostgreSQL 16
-- **Key Dependencies**:
-  - `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express`, `@nestjs/config`
-  - `@nestjs/jwt`, `@nestjs/passport`, `bcryptjs` (Authentication)
-  - `@prisma/client`
-  - `class-transformer`, `class-validator`, `reflect-metadata`, `rxjs`
-- **Dev Dependencies**: `@nestjs/cli`, `@nestjs/schematics`, `@types/express`, `@types/node`, `prisma`, `typescript`
-
-### 3.3 Frontend Web Package (`apps/web/package.json`)
-- **Package Name**: `@yellowhouse/web`
-- **Framework**: Next.js 14.2.0 (App Router), React 18.3.0, TypeScript v5.0.0
-- **Styling & UI**: Tailwind CSS v3.4.3, Lucide React (`lucide-react` v0.378.0), `clsx`, `tailwind-merge`
-- **Dev Dependencies**: `@types/node`, `@types/react`, `@types/react-dom`, `autoprefixer`, `postcss`, `tailwindcss`, `typescript`
-
-### 3.4 Database & Infrastructure (`docker-compose.dev.yml`)
-- **PostgreSQL 16**: Port 5432 (`POSTGRES_DB=yellowhouse_db`, `POSTGRES_USER=yh_admin`, `POSTGRES_PASSWORD=yh_password_123`)
-- **Redis 7**: Port 6379
+### 1.2 Tech Stack Summary
+| Domain | Framework / Library | Version | Role |
+| :--- | :--- | :--- | :--- |
+| **Frontend Framework** | Next.js (App Router) | `^14.2.3` | React SSG/SSR/CSR Routing |
+| **UI Library** | React | `^18.3.1` | Component UI rendering |
+| **Styling** | Tailwind CSS & Autoprefixer | `^3.4.3` | Custom Dark/Gold Atelier Glassmorphism Theme |
+| **Icons** | Lucide React | `^0.378.0` | UI icon system |
+| **Backend Framework**| NestJS Core & Common | `^10.0.0` | REST API framework |
+| **Database & ORM** | Prisma ORM & Client | `^5.14.0` | PostgreSQL schema modeling & migrations |
+| **Authentication** | JwtService & bcryptjs | `^10.2.0` / `^2.4.3` | JWT bearer token security & password hashing |
+| **Validation** | class-validator & class-transformer | `^0.14.1` / `^0.5.1` | DTO payload transformation & input sanitization |
 
 ---
 
-## 4. Command Reference Table
+## 2. Frontend Navigation & App Router Hierarchy (`apps/web`)
 
-| Environment / Action | Target Workspace | Command Line | Description |
-|---|---|---|---|
-| **Dev Server (All)** | Root monorepo | `npm run dev` | Runs dev servers for all workspace apps simultaneously |
-| **Dev Server (Backend API)** | `apps/api` | `npm run dev -w apps/api` or `npm run dev` inside `apps/api` | Starts NestJS API with watch mode (`nest start --watch`) on `http://localhost:3001` |
-| **Dev Server (Frontend Web)** | `apps/web` | `npm run dev -w apps/web` or `npm run dev` inside `apps/web` | Starts Next.js dev server (`next dev -p 3000`) on `http://localhost:3000` |
-| **Build (All)** | Root monorepo | `npm run build` | Builds all monorepo apps (`dist` for API, `.next` for Web) |
-| **Build (Backend API)** | `apps/api` | `npm run build -w apps/api` or `npm run build` inside `apps/api` | Compiles TypeScript using Nest CLI (`nest build`) to `apps/api/dist` |
-| **Build (Frontend Web)** | `apps/web` | `npm run build -w apps/web` or `npm run build` inside `apps/web` | Builds Next.js production bundle (`next build`) |
-| **Test (All)** | Root monorepo | `npm run test` | Executes workspace test scripts (Note: Test runners are not yet installed/configured) |
-| **Type Check / Lint (API)** | `apps/api` | `npx tsc --noEmit` inside `apps/api` | Runs TypeScript static type checking for backend API |
-| **Type Check / Lint (Web)** | `apps/web` | `npx tsc --noEmit` inside `apps/web` | Runs TypeScript static type checking for frontend web |
-| **Prisma Generate** | `apps/api` | `npm run prisma:generate -w apps/api` | Generates Prisma Client JS bindings |
-| **Prisma Migrate** | `apps/api` | `npm run prisma:migrate -w apps/api` | Applies dev migrations to PostgreSQL database |
+The Next.js App Router hierarchy in `apps/web/src/app` provides a complete multi-tenant bespoke tailoring workspace.
 
-*Note on Testing & Linting*: Currently, neither Vitest nor Jest is listed in package dependencies, and no `test` script is defined inside `apps/api/package.json` or `apps/web/package.json`. No ESLint config file (`.eslintrc`) is present. TypeScript compiler check (`tsc --noEmit`) acts as the primary type integrity validation.
+### 2.1 Complete Route & Page Map
 
----
+| Route Path | File Location | Line Count | Key Features & Responsibilities |
+| :--- | :--- | :--- | :--- |
+| `/` | `src/app/page.tsx` | 1,405 lines | Public landing page featuring interactive 2D CAD SVG mannequin viewer, Karigar fabric yield calculator, and mock anatomical landmark highlights. |
+| `/onboarding` | `src/app/onboarding/page.tsx` | 591 lines | 3-step setup wizard checking slug availability via backend `/onboarding/check-slug/:slug` and submitting setup to `/onboarding/signup`. |
+| `/(auth)/login` | `src/app/(auth)/login/page.tsx` | 416 lines | Session authentication page with quick demo profiles (`TENANT_OWNER`, `MASTER_TAILOR`, `BRANCH_MANAGER`, `KARIGAR`, `SYSTEM_ADMIN`). |
+| `/(auth)/register` | `src/app/(auth)/register/page.tsx` | 355 lines | Atelier signup form supporting 6 role levels with validation. |
+| `/(dashboard)/dashboard` | `src/app/(dashboard)/dashboard/page.tsx` | 314 lines | Atelier control center displaying live order statistics, pipeline revenue metrics, and recent order status tables. |
+| `/(dashboard)/measurements` | `src/app/(dashboard)/measurements/page.tsx` | 975 lines | Core 2D SVG silhouette workspace (`BodySilhouetteSvg`), POM schema controls, 4-axis posture modifiers, version comparison drawer, fitting trial delta calculator. |
+| `/(dashboard)/orders` | `src/app/(dashboard)/orders/page.tsx` | 1,238 lines | Order engine with garment options, fabric & lining attachment previews, 50% advance calculations, automatic Kanban job card generation, WhatsApp quotation dispatch. |
+| `/(dashboard)/production` | `src/app/(dashboard)/production/page.tsx` | 1,801 lines | 5-stage workshop Kanban board (`Fabric Inspection`, `Master Cutting`, `Zardozi/Aari Embroidery`, `Stitching Assembly`, `QC & Ready for Delivery`), SAM calculation, barcode/QR generator, storage rack assignment, printable Delivery Notes, Artisan Timesheets & Monthly Payout logs. |
+| `/(dashboard)/customers` | `src/app/(dashboard)/customers/page.tsx` | 747 lines | Client directory with VIP toggle, detailed measurement profile drawer, customer creation modal. |
+| `/(dashboard)/staff` | `src/app/(dashboard)/staff/page.tsx` | 422 lines | Tailoring specialist management, recruitment modal, system role assignment (`MASTER_TAILOR`, `KARIGAR`, etc.). |
+| `/(dashboard)/admin` | `src/app/(dashboard)/admin/page.tsx` | 865 lines | Multi-tenant system admin console with tenant directory, KPI cards, subscription distribution, system health metrics. |
 
-## 5. Map of Existing Source Files & Roles
-
-### 5.1 Backend Source Files (`apps/api/src/`)
-
-1. **`src/main.ts`**
-   - **Role**: Application bootstrap entry point.
-   - **Functionality**: Creates NestJS Express application, enables CORS for all origins, applies global `ValidationPipe` with whitelist and transform settings, listens on `PORT` (or 3001).
-
-2. **`src/app.module.ts`**
-   - **Role**: Root module of NestJS API.
-   - **Functionality**: Registers `ConfigModule.forRoot()`, imports `MeasurementsController`, provides `PrismaService` and `MeasurementsService`, registers `TenantMiddleware` for all routes.
-
-3. **`src/common/middleware/tenant.middleware.ts`**
-   - **Role**: Multi-tenant request isolation middleware.
-   - **Functionality**: Inspects `x-tenant-id` HTTP header; defaults to `'default-tenant-id'` when absent to support single-tenant/development fallback.
-
-4. **`src/modules/prisma/prisma.service.ts`**
-   - **Role**: Database access provider wrapping `@prisma/client`.
-   - **Functionality**: Manages database connection lifecycle (`$connect` on module init, `$disconnect` on module destroy).
-
-5. **`src/modules/measurements/measurements.controller.ts`**
-   - **Role**: REST API controller for measurements and fabric yield.
-   - **Endpoints**:
-     - `GET /measurements/templates` — Returns garment Point of Measure (POM) schemas.
-     - `POST /measurements/fabric-yield` — Computes required fabric yardage based on width and shrinkage parameters.
-
-6. **`src/modules/measurements/measurements.service.ts`**
-   - **Role**: Business logic service for POM schemas and fabric yield formulas.
-   - **Functionality**:
-     - `getGarmentTemplates()`: Hardcoded baseline schemas for Men's Sherwani, Men's Bespoke Suit, Women's Sari Blouse, Women's Lehenga Choli.
-     - `calculateFabricYield(input)`: Mathematical formula applying base consumption per width (44", 54", 60"), pattern repeat scaling, and 5% shrinkage factor.
-
-7. **`prisma/schema.prisma`**
-   - **Role**: Database entity relationship schema.
-   - **Models**:
-     - `Tenant`: Multi-tenant organization.
-     - `Branch`: Multi-branch boutique location.
-     - `User`: Tailor/Staff user roles (`TENANT_OWNER`, `BRANCH_MANAGER`, `RECEPTIONIST`, `MASTER_TAILOR`, `KARIGAR`, `ACCOUNTANT`).
-     - `Client`: Customer profile with `gender`, `preferredFit`, and `postureProfile` JSON (`shoulder_slope`, `chest_stance`).
-     - `CustomerMeasurementVersion`: Measurement snapshot with version number, unit (`inch`/`cm`), `measurements` JSON, `easeAllowances` JSON, and `isActive` boolean.
-     - `MeasurementTemplate`: System or tenant-level POM template with `pomSchema` JSON.
-     - `Order` & `OrderItem`: Customer order with `appliedMeasurementSnapshot` JSON and `garmentConfiguration` JSON.
-     - `JobCard` & `WorkerEarningsLedger`: SAM (Standard Allowed Minutes) worker tracking and payout calculations.
-     - `OrderTrial`: Fitting trial record with `observedDeltas` JSON (`waist: -0.5`, `sleeve: +0.25`) and status.
-
-### 5.2 Frontend Source Files (`apps/web/src/`)
-
-1. **`src/app/layout.tsx`**
-   - **Role**: Root HTML layout component.
-   - **Functionality**: Applies `dark` class, renders global HTML/body frame, defines metadata ("Tailoring OS | Enterprise Custom Tailoring Platform").
-
-2. **`src/app/globals.css`**
-   - **Role**: Global CSS file.
-   - **Functionality**: Imports `@tailwind base`, `@tailwind components`, `@tailwind utilities`, and sets up global styling variables.
-
-3. **`src/app/page.tsx`**
-   - **Role**: Primary single-page client dashboard (`'use client'`).
-   - **Tabs**:
-     - **Tab 1: Customer Measurement Engine** — Customer profile input, posture profile selection, and mock POM input form for Men's Sherwani/Suit and Women's Blouse/Lehenga.
-     - **Tab 2: Fabric Yield Math** — Interactive yield calculation UI based on garment type and bolt width (44", 54", 60").
-     - **Tab 3: Karigar Workshop Board** — Kanban workspace showing 4 stages (Cutting, Embroidery, Stitching, QC/RFD).
-     - **Tab 4: WhatsApp Deposit Sender** — Interactive WhatsApp payment call-to-action preview.
+### 2.2 Dashboard Layout & RBAC Control (`apps/web/src/app/(dashboard)/layout.tsx`)
+- Enforces active authentication session by reading `yh_auth_user` from `localStorage`.
+- Dynamically filters navigation links based on user role:
+  - `SYSTEM_ADMIN`: Accesses System Admin directory `/admin`.
+  - `TENANT_OWNER` and `BRANCH_MANAGER`: Access Specialist Staff directory `/staff`.
+  - All authenticated roles: Access Dashboard `/dashboard`, Measurements `/measurements`, Orders `/orders`, Production `/production`, and Customers `/customers`.
 
 ---
 
-## 6. Target Requirements Gap Analysis & Alignment
+## 3. Tailoring Domain Engines & Helper Libraries
 
-According to `ORIGINAL_REQUEST.md`, the requested Tailoring OS Measurement Engine requires:
+The domain logic is contained in `apps/web/src/lib` and `apps/web/src/context`:
 
-| Requirement | Current State | Missing / Required Enhancements |
-|---|---|---|
-| **R1: Dynamic Measurement Template & POM Engine** | Basic static template arrays in API service and partial form inputs in UI page | Complete POM schemas for Men's (Suits, Sherwanis, Shirts, Trousers) & Women's (Sari Blouse, Lehenga Choli, Anarkali, Corset, Gown); dynamic formula-based ease allowance calculations & posture profile modifier logic |
-| **R2: Visual Body Landmark Diagram & Interactivity** | None present in `apps/web/src/app/page.tsx` | Interactive 2D SVG body outline component with clickable landmark hotspots linked to POM inputs, highlighted active landmarks, and real-time visual validation feedback |
-| **R3: Measurement Versioning & Fitting Delta Tracker** | Schema contains `CustomerMeasurementVersion` & `OrderTrial`, but UI is static mock | Version snapshot viewer & delta comparison UI (Target POM vs Observed Fitting Trial vs Alteration Delta) with immutable history tracking |
+1. **`MeasurementEngineContext.tsx`** (188 lines):
+   React Context provider managing active POM schema items, client body measurements, fit preferences (`skinny`, `slim`, `regular`, `relaxed`), and 4-axis posture adjustments.
+2. **`ease-calculator.ts`** (189 lines):
+   Core math engine implementing:
+   - `calculatePostureOffset()`: Evaluates posture adjustments for 4 anatomical axes:
+     - **Shoulder Slope**: `sloped` (+0.375" armhole, -0.25" shoulder width), `very_sloped` (+0.625" armhole, -0.375" shoulder), `square` (-0.25" armhole, +0.25" shoulder).
+     - **Back Curvature**: `stooped` (+0.50" back length, -0.25" front chest, +0.375" chest girth), `erect` (-0.375" back length, +0.25" front chest), `prominent_blade` (+0.50" across chest/shoulder).
+     - **Abdomen Stance**: `prominent` (+1.00" waist girth, +0.50" crotch rise), `flat` (-0.50" waist girth, -0.25" crotch rise).
+     - **Hip/Spine Stance**: `high_hip` (+0.50" hip girth, +0.25" trouser length), `sway_back` (-0.625" back length, -0.375" crotch rise).
+   - `getFitPreferenceModifier()`: Returns ease deltas for `skinny` (-1.50" girth), `slim` (-0.75" girth), `regular` (0.00"), and `relaxed` (+1.25" girth).
+   - `calculateDynamicEase()`: Combines net body measurement, base ease, fit preference modifier, posture offset, and fabric stretch reduction (`netBody * (stretch% / 100) * 0.5`).
+3. **`fabric-yield.ts`** (105 lines):
+   Computes fabric yardage requirements based on garment style base yields, composite size scale ratio ($K_{\text{scale}} = 0.6 \times K_{\text{length}} + 0.4 \times K_{\text{girth}}$), fabric bolt width factor ($44" / w$), panel count multipliers (1.45x for 24+ kalis), pattern repeat allowances, and fabric shrinkage percentages.
+4. **`landmark-mappings.ts`** (804 lines):
+   Contains `LANDMARK_DEFINITIONS` for 2D silhouette rendering, `evaluateAnatomicalProportions()` (evaluating chest-to-waist drop ratios), and `getPostureAlertTriggers()`.
+5. **`pom-schemas.ts`** (869 lines):
+   Defines standardized Points of Measure for 9 garment categories across Men's and Women's wear.
 
 ---
 
-## 7. Conclusion & Next Steps
+## 4. Backend API Architecture (`apps/api`)
 
-1. The repository is properly configured as an npm monorepo with NestJS backend (`apps/api`) and Next.js frontend (`apps/web`).
-2. Build commands (`npm run build`), dev commands (`npm run dev`), type checking (`npx tsc --noEmit`), and Prisma commands are verified.
-3. The next phase will require expanding the measurement data structures, implementing the interactive 2D SVG body landmark component, adding dynamic ease allowance/posture formula calculations, and building out the fitting delta comparison component.
+The backend API is built using NestJS 10 with Prisma ORM.
+
+### 4.1 Prisma Database Schema (`apps/api/prisma/schema.prisma`)
+- `Tenant`: Multi-tenant isolation record (`id`, `name`, `slug`, `plan`, `status`).
+- `Branch`: Boutique physical location (`id`, `tenantId`, `name`, `city`, `isPrimary`).
+- `User`: Atelier user account (`id`, `tenantId`, `branchId`, `email`, `passwordHash`, `name`, `role`).
+- `Client`: Customer profile (`id`, `tenantId`, `phone`, `firstName`, `lastName`, `gender`, `preferredFit`, `postureProfile`).
+- `CustomerMeasurementVersion`: Immutable client measurement snapshot versioning (`id`, `clientId`, `versionNumber`, `measurements`, `easeAllowances`).
+- `MeasurementTemplate`: Garment template schema definition (`id`, `tenantId`, `garmentName`, `gender`, `category`, `pomSchema`).
+- `Order` & `OrderItem`: Order management with status tracking, advance payments, snapshot POMs, and garment configurations.
+- `JobCard` & `WorkerEarningsLedger`: Workshop job card tracking with SAM (Standard Allowed Minutes) logging and artisan payout ledgers.
+- `OrderTrial`: Fitting appointment trial records with observed measurement deltas.
+
+### 4.2 API Modules & Services
+- **`TenantMiddleware`**: Middleware extracting `x-tenant-id` header with fallback to `default-tenant-id` in development.
+- **`OnboardingService`**: Handlers for `/onboarding/check-slug/:slug` (validating format against `/^[a-z0-9]+(?:-[a-z0-9]+)*$/` and reserved keywords) and `/onboarding/signup` (atomic `$transaction` creating Tenant, Branch, Owner User, and copying global measurement templates). Maps Prisma `P2002` duplicate errors to NestJS `ConflictException` (409).
+- **`AuthService`**: Registration and login logic generating signed JWT tokens (`@nestjs/jwt`) with offline fallback modes.
+- **`MeasurementsService`**: Exposes `/measurements/templates`, `/measurements/calculate-ease`, and `/measurements/fabric-yield` endpoints matching frontend math algorithms.
+
+---
+
+## 5. Build Configuration, TypeScript Setup & Code Quality Findings (R1 Focus)
+
+During our thorough inspection, we identified the following configuration gaps and code quality areas:
+
+### 5.1 Build & Test Infrastructure Gaps
+1. **Missing Test Scripts in Sub-workspaces**:
+   - The root `package.json` specifies: `"test": "npm run test --workspaces"`.
+   - However, neither `apps/web/package.json` nor `apps/api/package.json` contains a `"test"` script entry. Running `npm run test` from the root fails because the workspaces lack the script target.
+2. **Missing Test Runner Dependencies**:
+   - `apps/web/src/__tests__/` contains 6 comprehensive test files (`ease-calculator.test.ts`, `landmark-validation.test.ts`, `measurement-context.test.ts`, `onboarding-stress.test.ts`, `pom-schemas.test.ts`, `posture-engine.test.ts`).
+   - `apps/api/src/__tests__/` contains 1 standalone test file (`signup-dto-adversarial.test.ts`).
+   - However, neither `vitest` nor `@types/jest` is installed in `apps/web/package.json` or `apps/api/package.json`.
+
+### 5.2 TypeScript Strictness Disparity
+- `apps/web/tsconfig.json` enforces strict type checking:
+  ```json
+  "strict": true
+  ```
+- `apps/api/tsconfig.json` has loose type checking:
+  ```json
+  "strictNullChecks": false,
+  "noImplicitAny": false,
+  "forceConsistentCasingInFileNames": false
+  ```
+  *Impact*: Backend services do not catch potential `null`/`undefined` runtime errors at compile time, leading to type safety inconsistencies across the monorepo.
+
+### 5.3 Dead / Legacy Code
+- `apps/web/src/components/SidebarLayout.tsx` (146 lines):
+  This is a legacy sidebar component containing outdated links (e.g., `href="/"` pointing to the home page instead of `/dashboard`). It is completely bypassed by the active dashboard layout `apps/web/src/app/(dashboard)/layout.tsx`.
+
+### 5.4 Client-Side LocalStorage Safety & Resilience
+- Components in `apps/web/src/app/(dashboard)` rely heavily on `localStorage` (`yh_auth_user`, `yh_orders`, `yh_production_jobs`, `yh_customers`, `yh_measurements_current`).
+- While `typeof window !== 'undefined'` checks are present, several parsing locations lack `try/catch` blocks or default fallbacks when reading JSON. Corrupted or invalid data in `localStorage` could lead to unhandled runtime exceptions.
+
+### 5.5 Monolithic Page Components
+- `apps/web/src/app/page.tsx` (1,405 lines) and `apps/web/src/app/(dashboard)/production/page.tsx` (1,801 lines) are large monolithic files mixing UI rendering, state management, modal logic, and math calculations. Splitting them into smaller, modular sub-components will improve readability and maintainability.
+
+---
+
+## 6. Summary of Workspace Verification
+
+| Verification Target | Command / Path | Status | Notes |
+| :--- | :--- | :--- | :--- |
+| **Web Type Check** | `npx tsc --noEmit` in `apps/web` | Clean | Frontend compiles without TypeScript errors. |
+| **API Type Check** | `npx tsc --noEmit` in `apps/api` | Clean | Backend compiles without TypeScript errors. |
+| **Standalone API Test** | `npx ts-node apps/api/src/__tests__/signup-dto-adversarial.test.ts` | 13/13 Passed | Adversarial signup DTO and P2002 error handling tests pass. |
+| **Web Unit Tests** | `apps/web/src/__tests__/*.test.ts` | Ready | 6 test files present; requires Vitest setup. |
+
+---
+
+## 7. Recommended Next Steps for Implementation Team
+
+1. **Add Workspace Test Scripts & Vitest**:
+   - Add `"test": "vitest run"` or `"test": "ts-node ..."` to `apps/web/package.json` and `apps/api/package.json`.
+2. **Align TypeScript Strictness**:
+   - Enable `"strict": true`, `"strictNullChecks": true`, and `"noImplicitAny": true` in `apps/api/tsconfig.json`.
+3. **Clean Up Dead Code**:
+   - Deprecate or remove `apps/web/src/components/SidebarLayout.tsx`.
+4. **Harden LocalStorage Operations**:
+   - Wrap all `localStorage.getItem` and `JSON.parse` operations in robust try-catch helpers with typed default fallback states.
