@@ -7,6 +7,15 @@ import { runStateSyncTests } from './state-sync.test';
 import { runAdversarialM3Tests } from './adversarial-m3-challenge.test';
 import { runRbacVisibilityTests } from './rbac-visibility.test';
 import { runAdversarialM4Tests } from './rbac-adversarial-m4.test';
+import { runEcosystemAlgorithmsTests } from './ecosystem-algorithms.test';
+import { runChallenger2SeedsAndLicensingTests } from './challenger-m1-2-seeds-licensing.test';
+import { runAdversarialStressSuite } from './challenger-m1-adversarial.test';
+import { runDigitalAssetsTests } from './digital-assets.test';
+import { runEquipmentSharingTests } from './equipment-sharing.test';
+import { runMilestone3EcosystemTests } from './milestone3-ecosystem.test';
+import { runTrialStylistDirectoryTests } from './trial-stylist-directory.test';
+import { runPrintAndRbacExpansionTests } from './print-and-rbac-expansion.test';
+import { runChallengerFinalStressSuite } from './challenger-final-stress.test';
 import { getAllGarmentTemplates, getGarmentTemplate, getGarmentTemplatesByGender, POM_SCHEMAS } from '../lib/pom-schemas';
 import { calculateDynamicEase, calculatePostureOffset } from '../lib/ease-calculator';
 import { calculateFabricYield } from '../lib/fabric-yield';
@@ -71,7 +80,50 @@ async function runAllSuites() {
   passed += m4AdversarialResult.passed;
   failed += m4AdversarialResult.failed;
 
+  // 1i. Run Milestone 1 Ecosystem Layer 1-5 Algorithms Test Suite
+  const ecosystemResult = runEcosystemAlgorithmsTests();
+  passed += ecosystemResult.passed;
+  failed += ecosystemResult.failed;
 
+  // 1j. Run Milestone 1 Challenger 2 Seeds & Licensing Verification Suite
+  const challenger2Result = runChallenger2SeedsAndLicensingTests();
+  passed += challenger2Result.passed;
+  failed += challenger2Result.failed;
+
+  // 1k. Run Milestone 1 Challenger 1 Adversarial Stress Test Suite
+  const challenger1Result = runAdversarialStressSuite();
+  passed += challenger1Result.passed;
+  failed += challenger1Result.failed;
+
+  // 1l. Run Milestone 2 Layer 1 Digital Assets Test Suite
+  const digitalAssetsResult = runDigitalAssetsTests();
+  passed += digitalAssetsResult.passed;
+  failed += digitalAssetsResult.failed;
+
+  // 1m. Run Milestone 2 Layer 2 Equipment Sharing Test Suite
+  const equipmentSharingResult = runEquipmentSharingTests();
+  passed += equipmentSharingResult.passed;
+  failed += equipmentSharingResult.failed;
+
+  // 1n. Run Milestone 3 Layer 3 & 4 Supply & Bidding Ecosystem Test Suite
+  const m3EcosystemResult = runMilestone3EcosystemTests();
+  passed += m3EcosystemResult.passed;
+  failed += m3EcosystemResult.failed;
+
+  // 1o. Run Milestone 4 Layer 5 3-Month Trial & Stylist Directory Test Suite
+  const trialStylistResult = runTrialStylistDirectoryTests();
+  passed += trialStylistResult.passed;
+  failed += trialStylistResult.failed;
+
+  // 1p. Run Milestone 4 Print Layouts & Expanded RBAC Test Suite
+  const printRbacResult = runPrintAndRbacExpansionTests();
+  passed += printRbacResult.passed;
+  failed += printRbacResult.failed;
+
+  // 1q. Run Final Adversarial Challenger Comprehensive Stress Suite
+  const challengerFinalResult = runChallengerFinalStressSuite();
+  passed += challengerFinalResult.passed;
+  failed += challengerFinalResult.failed;
 
   // 2. POM Schemas & Measurement Engine Tests
   console.log('[Suite 2: POM Schemas & Garment Templates]');

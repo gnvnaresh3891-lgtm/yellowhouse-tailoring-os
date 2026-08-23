@@ -15,9 +15,53 @@ const pathLabels: Record<string, string> = {
   admin: 'Admin Panel',
 };
 
-export function Breadcrumb() {
+export interface BreadcrumbItem {
+  label: string;
+  href?: string;
+  active?: boolean;
+}
+
+export interface BreadcrumbProps {
+  items?: BreadcrumbItem[];
+}
+
+export function Breadcrumb({ items }: BreadcrumbProps = {}) {
   const pathname = usePathname();
   
+  if (items && items.length > 0) {
+    return (
+      <nav className="flex items-center text-sm font-medium" aria-label="Breadcrumb">
+        <ol className="flex items-center space-x-2">
+          <li>
+            <Link href="/dashboard" className="text-slate-400 hover:text-[#f5d061] transition-colors flex items-center">
+              <Home className="h-4 w-4" />
+              <span className="sr-only">Home</span>
+            </Link>
+          </li>
+          
+          {items.map((item, index) => {
+            const isLast = item.active || index === items.length - 1;
+            
+            return (
+              <li key={item.label + index} className="flex items-center">
+                <ChevronRight className="h-4 w-4 text-[#f5d061] mx-1 opacity-60" />
+                {isLast || !item.href ? (
+                  <span className="text-slate-200" aria-current="page">
+                    {item.label}
+                  </span>
+                ) : (
+                  <Link href={item.href} className="text-slate-400 hover:text-[#f5d061] transition-colors">
+                    {item.label}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+    );
+  }
+
   // Split path and remove empty segments
   const segments = pathname.split('/').filter(Boolean);
   
@@ -59,3 +103,5 @@ export function Breadcrumb() {
     </nav>
   );
 }
+
+export default Breadcrumb;

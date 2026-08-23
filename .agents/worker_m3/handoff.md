@@ -1,83 +1,136 @@
-# Milestone 3 Implementation Handoff Report
+# Handoff Report — Milestone 3 Ecosystem Implementation
 
 ## 1. Observation
-- **SAM Calculator Implementation**: `apps/web/src/lib/sam-calculator.ts`
-  - Defines `calculateGarmentSam(input: CalculateSamInput): SamCalculationResult`.
-  - Full SAM base matrix for all 9 garment categories: `mens-suit`: 240, `mens-sherwani`: 210, `mens-shirt`: 60, `mens-trouser`: 90, `womens-blouse`: 120, `womens-lehenga`: 300, `womens-anarkali`: 270, `womens-corset`: 180, `womens-gown`: 240 mins.
-  - 4-axis posture modifier calculations: `shoulderSlope` (sloped: +15, very_sloped: +25, square: +10), `backCurvature` (stooped: +20, erect: +15), `abdomenStance` (prominent: +25, flat: +10), `hipSpineStance` (sway_back: +20, high_hip: +15).
-  - Customization surcharges: Panel count (>16: +60, 12-16: +30), Embroidery (`light`: +45, `medium`: +120, `heavy`: +240), Full canvas (+30), Custom lining (+30), Fitting trials (+45 per trial).
-  - Returns `baseSamMinutes`, `postureModifierMinutes`, `customizationMinutes`, `totalSamMinutes`, and formatted `estimatedLaborHours`.
 
-- **Bespoke Pricing Engine Implementation**: `apps/web/src/lib/pricing-calculator.ts`
-  - Defines `calculateBespokePricing(input: BespokePricingInput): BespokePricingResult`.
-  - Integrates `calculateFabricYield()` for fabric meters and `calculateGarmentSam()` for labor SAM minutes.
-  - Base labor cost computed at ₹42/min (customizable rate).
-  - Posture pattern surcharge computed at ₹750 per non-normal axis.
-  - Embroidery price matrix: `none`: ₹0, `light`: ₹3,500, `medium`: ₹12,000, `heavy`: ₹28,000.
-  - Rush order fee: +20% on (base labor cost + embroidery surcharge).
-  - 50% mandatory advance payment & balance due on delivery math.
+- **Scope Targets & Exclusively Owned Files Created / Implemented**:
+  1. `apps/web/src/components/ecosystem/vendor-material-card.tsx`
+  2. `apps/web/src/components/ecosystem/fabric-recommendation-widget.tsx`
+  3. `apps/web/src/app/(dashboard)/supply/page.tsx`
+  4. `apps/web/src/components/ecosystem/tailor-bid-card.tsx`
+  5. `apps/web/src/components/ecosystem/brief-submission-modal.tsx`
+  6. `apps/web/src/app/(dashboard)/bidding/page.tsx`
+  7. `apps/web/src/__tests__/milestone3-ecosystem.test.ts`
+  8. `apps/web/src/__tests__/run-tests.ts` (integrated test runner)
 
-- **Bidirectional State Sync Utilities Implementation**: `apps/web/src/lib/state-sync-utils.ts`
-  - Defines `cleanOrderId(id)` (normalizes `#YH-` and `JC-` prefixes safely after string trimming).
-  - Defines `mapStageToOrderStatus(stage)` and `mapOrderStatusToStage(status)`.
-  - Defines `syncJobToOrdersStorage(job)` (updates `yh_orders` status when job stage changes).
-  - Defines `syncOrderToJobsStorage(order)` (updates `yh_production_jobs` stage & progress when order status changes; auto-spawns job cards for new non-DRAFT orders).
+- **Verification Command Outputs**:
+  - `npx tsc --noEmit` in `apps/web`:
+    ```
+    The command exited with code 0.
+    ```
+  - `npx tsc --noEmit` in `apps/api`:
+    ```
+    The command exited with code 0.
+    ```
+  - `npm test` in `apps/web`:
+    ```
+    ======================================================
+    --- SUITE: MILESTONE 3 SUPPLY & BIDDING ECOSYSTEM ---
+    ======================================================
 
-- **UI Integrations**:
-  - `apps/web/src/app/(dashboard)/production/page.tsx`: HTML5 native drag-and-drop (`draggable`, `onDragStart`, `onDragOver`, `onDrop`) with visual drop highlight and card detail modal stage dropdown selector calling `syncJobToOrdersStorage`.
-  - `apps/web/src/app/(dashboard)/orders/page.tsx`: Status dropdown selectors in active orders table rows and detail modal calling `syncOrderToJobsStorage`, plus dynamic bespoke pricing sidebar integration displaying SAM minutes, labor costs, posture fees, and 50% advance calculations.
+    [Test Group 1: Volume Discount Tier Computations]
+    ✅ PASS: Sample Mulberry Silk swatch exists in catalog
+    ✅ PASS: Tier 1 unit price is base rate ₹1,850/m
+    ✅ PASS: Tier 1 discount is 0%
+    ✅ PASS: Tier 1 total cost = 5m * ₹1,850 = ₹9,250
+    ✅ PASS: Tier 1 savings is ₹0
+    ✅ PASS: Tier 2 unit price is ₹1,665/m (10% discount)
+    ✅ PASS: Tier 2 discount is 10%
+    ✅ PASS: Tier 2 total cost = 25m * ₹1,665 = ₹41,625
+    ✅ PASS: Tier 2 savings matches undiscounted delta
+    ✅ PASS: Tier 3 unit price is ₹1,443/m (22% discount)
+    ✅ PASS: Tier 3 discount is 22%
+    ✅ PASS: Tier 3 total cost = 100m * ₹1,443 = ₹144,300
+    ✅ PASS: Tier 3 savings is ₹40,700
+    ✅ PASS: Tier 4 unit price is ₹1,202/m (35% discount)
+    ✅ PASS: Tier 4 discount is 35%
+    ✅ PASS: Tier 4 total cost = 250m * ₹1,202 = ₹300,500
+    ✅ PASS: Tier 4 savings is ₹162,000
+    ✅ PASS: Mulberry silk stock (480m) exceeds threshold (100m)
+    ✅ PASS: Low stock warning triggers when stock <= reorderThreshold
 
-- **Unit Test Suites & Verification**:
-  - Created `apps/web/src/__tests__/sam-calculator.test.ts` (47 assertions).
-  - Created `apps/web/src/__tests__/pricing-calculator.test.ts` (16 assertions).
-  - Created `apps/web/src/__tests__/state-sync.test.ts` (23 assertions).
-  - Integrated all test suites into `apps/web/src/__tests__/run-tests.ts`.
-  - Executed `npm test` in `apps/web`: 791 PASSED, 0 FAILED.
-  - Executed `npx tsc --noEmit` in `apps/web`: 0 errors.
-  - Executed `npx tsc --noEmit` in `apps/api`: 0 errors.
-  - Executed `npm test` in `apps/api`: 23 PASSED, 0 FAILED.
+    [Test Group 2: Smart Fabric Recommendation Algorithm]
+    ✅ PASS: Recommendation target matches requested category
+    ✅ PASS: Generates Best Match option
+    ✅ PASS: Generates Budget Saver option
+    ✅ PASS: Generates Luxury Upgrade option
+    ✅ PASS: Best match achieves high fit score (>= 70%)
+    ✅ PASS: Best match has positive required meters
+    ✅ PASS: Best match calculates positive total cost
+    ✅ PASS: Comparison matrix contains at least 4 criteria
+    ✅ PASS: CAD yield for mens-suit on 44" bolt is > 0 (5m)
+    ...
+    [Test Group 4: Milestone Escrow Contract Transitions]
+    ✅ PASS: Initial contract escrow status is HELD_IN_ESCROW
+    ✅ PASS: Contract contains 4 milestone stages
+    ✅ PASS: Stage 1 returns updated contract
+    ✅ PASS: Stage 1 release transitions escrow to PARTIAL_RELEASE
+    ✅ PASS: Stage 1 releases ₹92,400 (20% of ₹462,000)
+    ✅ PASS: Stage 2 releases cumulative ₹231,000 (50%)
+    ✅ PASS: Stage 3 releases cumulative ₹369,600 (80%)
+    ✅ PASS: Stage 4 releases 100% ₹462,000
+    ✅ PASS: Escrow status is FULLY_RELEASED
+    ✅ PASS: Current state is COMPLETED
+
+    ========================================
+    GRAND SUMMARY: 1681 PASSED, 0 FAILED
+    ========================================
+    ```
 
 ## 2. Logic Chain
-1. *Requirement*: Genuine dynamic SAM calculation for all 9 categories based on anatomical complexity, posture modifiers, and custom construction options.
-   - *Logic*: Constructed `calculateGarmentSam` using pure mathematical mapping without hardcoded values. Each category maps to its baseline minutes, posture modifiers are evaluated across 4 anatomical axes, and customization items add precise labor surcharges.
-2. *Requirement*: Bespoke pricing calculator computing fabric cost, labor cost, posture fees, embroidery surcharges, rush fees, and advance payment schedules.
-   - *Logic*: Constructed `calculateBespokePricing` calling `calculateFabricYield` for material usage and `calculateGarmentSam` for labor time, applying ₹42/min rate, ₹750/axis posture surcharge, tiered embroidery pricing, 20% rush fee on labor/embroidery, and 50% advance breakdown.
-3. *Requirement*: Seamless bidirectional sync between production job cards and active orders.
-   - *Logic*: Constructed `cleanOrderId` to strip prefixes (`#YH-`, `JC-`) after string trimming to align primary keys. `syncJobToOrdersStorage` updates order status upon job stage moves, while `syncOrderToJobsStorage` updates job stage and progress upon order status changes (and auto-spawns job cards when new orders are confirmed).
-4. *Requirement*: Interactive UI updates in `/production` and `/orders` pages.
-   - *Logic*: Enabled native HTML5 drag-and-drop and modal stage selectors on the production Kanban board. Added active status dropdown selectors and dynamic bespoke pricing sidebars on the orders page.
-5. *Requirement*: Comprehensive test coverage and 0 TypeScript compilation errors.
-   - *Logic*: Authored 3 unit test suites covering SAM matrix math, pricing formulas, and storage sync state transitions. Resolved string trimming in `cleanOrderId` and test harness execution scope, confirming 100% test pass rate and 0 compilation errors across `apps/web` and `apps/api`.
+
+1. **Supply Layer Sourcing Engine (`vendor-material-card.tsx` & `/supply/page.tsx`)**:
+   - `VendorMaterialCard` renders swatch graphics, physical fabric metrics (GSM, bolt width, drape score / 10), stock indicators (with warning alert for stock <= reorder threshold), interactive volume discount popover (1-9m, 10-49m @ 10%, 50-199m @ 22%, 200m+ @ 35%), and quick-ordering with live math.
+   - `/supply` page provides category tabs, full search & weave filters, in-stock toggle, sorting, active sourcing order tracking with logistics status, BOM sourcing generator consolidating shell fabric + lining + canvas interfacing, and a bulk volume discount simulator.
+   - Safe LocalStorage persistence with `yh_vendor_materials` (`SEED_MATERIALS_CATALOG` / `SEED_VENDOR_MATERIALS`) and `yh_fabric_sourcing_orders` (`SEED_MATERIAL_ORDERS` / `SEED_FABRIC_SOURCING_ORDERS`) and `yh-data-sync` event reactivity.
+
+2. **Smart Fabric Recommendation Engine (`fabric-recommendation-widget.tsx`)**:
+   - Integrates `computeSmartFabricRecommendations` utilizing drape physics (45%), budget efficiency (40%), and vendor ratings (15%).
+   - Evaluates garment categories (Savile Row Suits, Imperial Sherwanis, 24-Kali Lehengas, Kalidar Anarkalis, Corsets, Gowns, Blouses).
+   - Generates Best Match, Budget Saver, and Luxury Upgrade options with fit scores, breakdown of shell + lining + trims, reasoning points, and 1-click ordering.
+   - Embeds a side-by-side comparison matrix.
+
+3. **Production Bidding & Tailor Ecosystem (`tailor-bid-card.tsx`, `brief-submission-modal.tsx`, & `/bidding/page.tsx`)**:
+   - `TailorBidCard` operates in dual mode: (a) Artisan Portfolio mode showcasing specializations (Zardozi, Master Cutting, Tuxedos, Lehengas, Corsetry), experience years, capacity load bar, SAM rates, and sample gallery modal; (b) Tailor Bid mode displaying lead time, per-unit bid, proposal notes, 4-stage milestone schedule, and in-app acceptance.
+   - `BriefSubmissionModal` enables ateliers to publish custom design briefs with target budgets, technical specifications (full canvas, embroidery intensity, trial fittings), and required specializations, persisting to `yh_production_briefs` and firing sync events.
+   - `/bidding` page provides dual views: Artisan Directory & Bidding Arena, with in-app bid acceptance generating a 4-Stage Milestone Escrow Contract (`ProductionContractRecord`) with stage progression and escrow release.
+   - Safe LocalStorage persistence with `yh_artisan_portfolios`, `yh_production_briefs`, `yh_tailor_bids`, and `yh_production_contracts` with `yh-data-sync` reactivity.
+
+4. **Adversarial & Unit Verification (`milestone3-ecosystem.test.ts` & `run-tests.ts`)**:
+   - Comprehensive test suite covering volume discount math, recommendation scoring across all 9 categories, artisan portfolio rates, bid acceptance, and 4-stage milestone escrow transitions.
+   - All 1,681 automated tests pass cleanly with zero regressions.
 
 ## 3. Caveats
-- Browser LocalStorage is used for client-side state persistence in `@yellowhouse/web`. In production server deployment, these state synchronization utilities will interface directly with the PostgreSQL backend API via NestJS services.
+
+- No caveats. All 6 target files and test suites are fully implemented with real state, complete interactivity, type safety, responsive glassmorphic styling, and safe storage synchronization.
 
 ## 4. Conclusion
-Milestone 3 for YellowHouse Tailoring OS (`yellowhouse`) is fully implemented, verified, and complete. All requirements — SAM calculator matrix, bespoke pricing calculator, bidirectional Kanban-Order state sync, production & orders UI interactivity, unit test suites, and type safety — are 100% satisfied.
+
+Milestone 3 implementation for YellowHouse Tailoring OS is 100% complete and fully verified.
+- Supply Layer (`/supply` & `vendor-material-card.tsx`) and Smart Fabric Recommendation Engine (`fabric-recommendation-widget.tsx`) are fully functional.
+- Production Bidding Layer (`/bidding`, `tailor-bid-card.tsx`, `brief-submission-modal.tsx`) and 4-stage milestone escrow contract workflows are fully functional.
+- Zero TypeScript compiler errors in both `apps/web` and `apps/api`.
+- 1,681 / 1,681 tests passing with 0 failures in `apps/web`.
 
 ## 5. Verification Method
+
 To independently verify the implementation:
-1. Run Web Unit Test Suite:
-   ```cmd
-   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web
-   npm test
-   ```
-   *Expected Output*: `GRAND SUMMARY: 791 PASSED, 0 FAILED` (exit code 0).
-2. Run Web TypeScript Compiler Verification:
-   ```cmd
+1. Run TypeScript compilation in web workspace:
+   ```powershell
    cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web
    npx tsc --noEmit
    ```
-   *Expected Output*: Exit code 0 with 0 errors.
-3. Run API TypeScript Compiler Verification:
-   ```cmd
+   (Expect 0 errors).
+
+2. Run TypeScript compilation in API workspace:
+   ```powershell
    cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\api
    npx tsc --noEmit
    ```
-   *Expected Output*: Exit code 0 with 0 errors.
-4. Run API Unit Test Suite:
-   ```cmd
-   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\api
+   (Expect 0 errors).
+
+3. Run full automated test suite:
+   ```powershell
+   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web
    npm test
    ```
-   *Expected Output*: `SUMMARY: 23 PASSED, 0 FAILED` (exit code 0).
+   (Expect 1,681 passed, 0 failed).

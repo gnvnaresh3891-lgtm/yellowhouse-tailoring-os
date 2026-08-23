@@ -1,49 +1,60 @@
-# BRIEFING — Milestone 4 Implementation Worker
+# BRIEFING — 2026-08-23T14:40:00Z
 
 ## Mission
-Complete Milestone 4 implementation for YellowHouse Tailoring OS (`yellowhouse`): UI Polish, CAD Interactive Radar, Dashboard Refinements, RBAC Utility Engine & Route Guards, RBAC Test Suite, and Full Build & Test Verification.
+Milestone 4: Layer 5 Professional Stylist Directory & 3-Month Trial Onboarding ("Purple Cogs"), Navigation/RBAC Integration, Print Layouts Expansion, and Comprehensive Automated Tests.
 
 ## 🔒 My Identity
-- Archetype: implementer, qa, specialist
+- Archetype: worker
 - Roles: implementer, qa, specialist
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m4
-- Original parent: d4b86945-e001-4c77-b4b5-cf7e81e00c39
-- Milestone: Milestone 4 (UI Polish, CAD Engine, RBAC & Test Suite)
+- Original parent: f9a591e8-c80b-4dd3-86fb-962284c08b8c
+- Milestone: Milestone 4 (Stylists, Trial Onboarding, Navigation, RBAC, Print Layouts, Tests)
 
 ## 🔒 Key Constraints
-- Genuine implementation required. No hardcoded test shortcuts or facade implementations.
-- Handoff report in `handoff.md`.
+- Pure TypeScript / React (Next.js App Router), Tailwind CSS, Lucide icons
+- Zero mock/stub cheat - genuine implementation with full state persistence and calculations
+- Exact adherence to design system: glassmorphic dark theme, purple cogs styling for stylists, accessible UI
+- 0 TypeScript errors on `npx tsc --noEmit`
+- All tests passing with 0 regressions
+
+## Current Parent
+- Conversation ID: f9a591e8-c80b-4dd3-86fb-962284c08b8c
+- Updated: 2026-08-23T14:40:00Z
 
 ## Task Summary
-- **UI Polish & Design Tokens**: HSL gold design variables, glassmorphic cards, tooltips. (Completed)
-- **CAD Interactive Radar**: SVG ripple pulses, crosshair lasers, posture transforms, tooltips. (Completed)
-- **Dashboard Pages Refinements**: Refined `/dashboard`, `/customers`, `/orders`, `/production`, `/staff`, `/admin`, and `/onboarding`. (Completed)
-- **RBAC Utility Engine**: `rbac-utils.ts` and `layout.tsx` route guards. (Completed)
-- **RBAC Test Suite**: `rbac-visibility.test.ts` integrated into `run-tests.ts`. (Completed)
-- **Verification Pipeline**: `apps/web` typecheck (0 errors), `apps/api` typecheck (0 errors), `apps/web` test runner (911 passed, 0 failed), `apps/api` test runner (23 passed, 0 failed), monorepo build (0 errors). (Completed)
+- **What to build**:
+  1. `apps/web/src/components/ecosystem/stylist-card.tsx`
+  2. `apps/web/src/components/ecosystem/trial-status-banner.tsx`
+  3. `apps/web/src/app/(dashboard)/stylists/page.tsx`
+  4. `apps/web/src/app/(dashboard)/layout.tsx`, `apps/web/src/lib/rbac-utils.ts`, `apps/web/src/components/command-palette.tsx`
+  5. `apps/web/src/components/print-layouts.tsx` (Added TechPackSpecPrint, MaterialBOMPrint, MachineReservationTicketPrint)
+  6. `apps/web/src/__tests__/trial-stylist-directory.test.ts`, `apps/web/src/__tests__/print-and-rbac-expansion.test.ts`, `apps/web/src/__tests__/run-tests.ts`
+- **Success criteria**: All 6 items built, 0 TypeScript errors, 1,835 automated tests passing with 0 failures.
+
+## Key Decisions Made
+- Organized dashboard sidebar into clean "Core Operations" (7 routes) and "Fashion Ecosystem" (5 routes) sections, preserving all core operations without disruption.
+- Expanded `ROLE_PERMISSIONS` in `rbac-utils.ts` to grant granular permissions for all 7 roles across the new ecosystem routes.
+- Built full state persistence with `yh_certified_stylists`, `yh_stylist_bookings`, and `yh_tenant_trial_profile`, reactive to `yh-data-sync`.
 
 ## Change Tracker
 - **Files modified**:
-  - `apps/web/src/app/globals.css` — HSL gold design tokens & components
-  - `apps/web/tailwind.config.js` — Extended gold color palette
-  - `apps/web/src/components/Tooltip.tsx` — Reusable Tooltip component
-  - `apps/web/src/app/(dashboard)/measurements/page.tsx` — CAD interactive radar engine
-  - `apps/web/src/app/(dashboard)/dashboard/page.tsx` — Dashboard UI polish & tooltips
-  - `apps/web/src/app/(dashboard)/customers/page.tsx` — VIP pulse-gold, filters, tooltips
-  - `apps/web/src/app/(dashboard)/orders/page.tsx` — Pricing engine glass-card-gold, tooltips
-  - `apps/web/src/app/(dashboard)/production/page.tsx` — Kanban column drag-over highlight, tooltips
-  - `apps/web/src/app/(dashboard)/staff/page.tsx` — Standardized role badges, modal blur, tooltips
-  - `apps/web/src/app/(dashboard)/admin/page.tsx` — Enterprise tenant cards, tooltips, chart
-  - `apps/web/src/app/onboarding/page.tsx` — 3-step wizard with HSL gold wizard buttons
-  - `apps/web/src/lib/rbac-utils.ts` — RBAC engine & helper functions
-  - `apps/web/src/app/(dashboard)/layout.tsx` — Route guard & sidebar nav filtering
-  - `apps/web/src/__tests__/rbac-visibility.test.ts` — RBAC test suite (23 assertions)
-  - `apps/web/src/__tests__/run-tests.ts` — Integrated RBAC test suite
-- **Build status**: PASS (0 errors across typechecks, test runners, and production builds)
+  - `apps/web/src/components/ecosystem/stylist-card.tsx` (Created)
+  - `apps/web/src/components/ecosystem/trial-status-banner.tsx` (Created)
+  - `apps/web/src/app/(dashboard)/stylists/page.tsx` (Created)
+  - `apps/web/src/app/(dashboard)/layout.tsx` (Updated nav items & sidebar grouping)
+  - `apps/web/src/lib/rbac-utils.ts` (Expanded ROLE_PERMISSIONS for all 7 roles)
+  - `apps/web/src/components/command-palette.tsx` (Added ecosystem routes)
+  - `apps/web/src/components/print-layouts.tsx` (Added TechPackSpecPrint, MaterialBOMPrint, MachineReservationTicketPrint)
+  - `apps/web/src/__tests__/trial-stylist-directory.test.ts` (Created)
+  - `apps/web/src/__tests__/print-and-rbac-expansion.test.ts` (Created)
+  - `apps/web/src/__tests__/run-tests.ts` (Registered new test suites)
+- **Build status**: `npx tsc --noEmit` PASSED (0 errors), `npm test` PASSED (1,835 passed, 0 failed).
+- **Pending issues**: None
 
 ## Quality Status
-- **Web Typecheck**: PASS (`npx tsc --noEmit` -> Code 0)
-- **API Typecheck**: PASS (`npx tsc --noEmit` -> Code 0)
-- **Web Tests**: 911 PASSED, 0 FAILED (`npm test` -> Code 0)
-- **API Tests**: 23 PASSED, 0 FAILED (`npm test` -> Code 0)
-- **Monorepo Build**: PASS (`npm run build` -> Code 0)
+- **Build/test result**: 1835 tests passing cleanly across 16 suites.
+- **Lint status**: Clean TypeScript compilation with zero errors.
+- **Tests added/modified**: 2 complete new test suites covering trial evaluation, stylist filtering, booking math, expanded RBAC matrix across all 7 roles, fallback redirects, and print layout spec validation.
+
+## Loaded Skills
+- None

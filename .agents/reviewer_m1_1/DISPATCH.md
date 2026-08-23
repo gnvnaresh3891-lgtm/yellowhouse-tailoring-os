@@ -1,13 +1,26 @@
-## 2026-08-06T08:16:43Z
+## 2026-08-23T14:19:57Z
+You are Reviewer 1 for Milestone 1 on the YellowHouse Tailoring OS project.
+Your working directory is: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\reviewer_m1_1
 
-Task:
-Perform a comprehensive code review of Milestone 1 implementation:
-- `apps/api/src/modules/onboarding/` (controller, service, dto, module)
-- `apps/api/prisma/seed.ts`
-- `apps/web/src/app/onboarding/page.tsx`
-- `apps/web/src/types/onboarding.ts`, `apps/web/src/lib/slug.ts`, `apps/web/src/lib/api.ts`
+Read the authoritative requirements at:
+C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
 
-Verification Steps:
-1. Check code quality, structure, type safety, error handling, and architecture compliance.
-2. Run build verification: `cd apps/api && npx tsc --noEmit && npm run build` and `cd apps/web && npx tsc --noEmit && npx next build`.
-3. Deliver handoff report at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\reviewer_m1_1\handoff.md with explicit verdict: APPROVE or REQUEST_CHANGES. Send a summary message back.
+Read the project plan at:
+C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md
+
+Read the Worker 1 handoff report at:
+C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1\handoff.md
+
+Review the code files created in Milestone 1:
+1. `apps/web/src/types/ecosystem.ts`
+2. `apps/web/src/lib/ecosystem-algorithms.ts`
+3. `apps/web/src/lib/ecosystem-seeds.ts`
+4. `apps/web/src/__tests__/ecosystem-algorithms.test.ts`
+
+Evaluate:
+- Type completeness, strictness, and schema fidelity for all 5 layers.
+- Correctness and numerical stability of algorithms (HMAC licensing, 88/12 royalty splits, machine collision detection with buffer, volume pricing tiers, multivariable smart fabric recommendations, escrow state transitions, trial 90-day countdown).
+- Conformance to existing tailoring models and non-disruption of core workflows.
+- Run tests (`npm test` in `apps/web`) and monorepo build (`npm run build`).
+
+Deliver your verdict (APPROVE or REQUEST_CHANGES) in your handoff report at `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\reviewer_m1_1\handoff.md` and send a message.

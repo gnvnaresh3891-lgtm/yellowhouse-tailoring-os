@@ -12,7 +12,12 @@ import {
   UserCircle, 
   ShieldAlert,
   FileText,
-  Clock
+  Clock,
+  Sparkles,
+  Cpu,
+  Package,
+  Award,
+  Scissors
 } from 'lucide-react';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
 
@@ -24,6 +29,11 @@ const pages = [
   { id: '/production', title: 'Production', icon: Factory },
   { id: '/staff', title: 'Staff Management', icon: UserCircle },
   { id: '/admin', title: 'Admin Panel', icon: ShieldAlert },
+  { id: '/marketplace', title: 'Digital Asset Marketplace', icon: ShoppingBag },
+  { id: '/equipment', title: 'Workshop Equipment Rentals', icon: Cpu },
+  { id: '/supply', title: 'Vendor Material Sourcing', icon: Package },
+  { id: '/bidding', title: 'Production Bidding & Tailor Hub', icon: Award },
+  { id: '/stylists', title: 'Stylist Directory & Trial Hub', icon: Sparkles },
 ];
 
 export function useCommandPalette() {

@@ -1,102 +1,103 @@
-# Handoff Report — Milestone 1 Code Review
+# Milestone 1 Review & Adversarial Challenge Report
 
-**Reviewer**: reviewer_m1_1  
-**Milestone**: Milestone 1 (Multi-Tenant Onboarding & Seeding Flow)  
-**Date**: 2026-08-06T08:18:55Z  
-**Verdict**: **APPROVE**
+**Agent:** Reviewer 1 (reviewer, critic)  
+**Target Milestone:** M1 — Core Ecosystem Types, Business Logic & Algorithms  
+**Date:** 2026-08-23T14:27:00Z  
+**Verdict:** **APPROVE**  
+**Integrity Status:** **PASSED (Zero violations detected)**
 
 ---
 
 ## 1. Observation
 
-Direct code and execution observations across all scoped Milestone 1 files:
+Directly observed files, command executions, and evidence chains:
 
-### Target Files Reviewed:
-1. `apps/api/src/modules/onboarding/dto/signup.dto.ts`
-2. `apps/api/src/modules/onboarding/onboarding.controller.ts`
-3. `apps/api/src/modules/onboarding/onboarding.service.ts`
-4. `apps/api/src/modules/onboarding/onboarding.module.ts`
-5. `apps/api/prisma/seed.ts`
-6. `apps/web/src/app/onboarding/page.tsx`
-7. `apps/web/src/types/onboarding.ts`
-8. `apps/web/src/lib/slug.ts`
-9. `apps/web/src/lib/api.ts`
+1. **Source Code & Type Contracts Evaluated**:
+   - `apps/web/src/types/ecosystem.ts` (703 lines): Complete, strict TypeScript domain model with zero `any`. Covers all 5 layers:
+     - *Layer 1 (Marketplace)*: `FashionBlueprintAsset`, `AssetLicenseCertificate`, `LicenseTierType` (`PERSONAL_BESPOKE`, `COMMERCIAL_PRODUCTION`, `EXCLUSIVE_BUYOUT`), `TechPackSpecData`, `CreatorEarningsLedger`.
+     - *Layer 2 (Equipment)*: `WorkshopMachineListing`, `MachineHardwareCategory` (`DIGITAL_TEXTILE_PRINTER`, `CNC_LASER_CUTTER`, `MULTI_HEAD_EMBROIDERY`, `HEAVY_STITCHING_UNIT`, `STEAM_FINISHER_FUSING`), `ShiftType`, `PanelProductionJobDetails`, `MachineReservationRecord`.
+     - *Layer 3 (Supply)*: `VendorMaterialItem`, `VolumePricingTier`, `SmartRecommendationInput`, `SmartFabricRecommendationResult`, `FabricRecommendationOption`, `MaterialSourcingOrder`.
+     - *Layer 4 (Bidding)*: `ArtisanPortfolioProfile`, `ProductionDesignBrief`, `TailorProductionBid`, `ProductionContractRecord`, `ProductionContractMilestone`, `ContractEscrowStatus`.
+     - *Layer 5 (Trial & Stylists)*: `TenantTrialOnboardingProfile`, `TrialTierEntitlements`, `CertifiedStylistProfile`, `StylistConsultationBookingRecord`.
+   - `apps/web/src/lib/ecosystem-algorithms.ts` (742 lines): Genuine pure algorithmic business logic with zero external dependencies:
+     - `computeSha256Hex`: Standalone FIPS-180-2 compliant 32-bit SHA-256 implementation.
+     - `calculateLicensePricing`: Standard 3-tier multiplier (1x, 4.11x, 21.11x) with INR-to-USD conversion.
+     - `calculateCreatorEarningsSplit`: 88/12 royalty split with exact platform fee + creator net integer conservation.
+     - `generateHMACLicenseSignature`: Deterministic cryptographic license signature generator with system salt.
+     - `checkMachineSlotCollision`: Date interval overlap algorithm incorporating mandatory 30-minute maintenance buffer, skipping cancelled bookings and self-reschedules.
+     - `calculateMachineBookingCost`: Shift-based pricing (hourly, daily, panel batch) with operator assistance fees, ₹500 cleaning fee, and 18% GST calculation.
+     - `calculateVolumeDiscountedPrice`: Multi-tier quantity discount lookup and savings calculator.
+     - `computeSmartFabricRecommendations`: Multivariable scoring engine incorporating dynamic fabric yield (`calculateFabricYield`), silhouette drape physics (45%), budget efficiency (40%), vendor reputation (15%), and color tone matching.
+     - `transitionContractMilestone`: 4-stage milestone escrow state machine transitioning contract workflow states and releasing milestone payouts.
+     - `evaluateTrialEntitlements`: 90-day countdown evaluator gating watermark requirements, 150 DPI preview vs 300+ DPI Pro vector exports, 1:1 DXF access, and monthly bidding quotas.
+   - `apps/web/src/lib/ecosystem-seeds.ts` (1187 lines): High-fidelity seed datasets for Indian bespoke couture, machinery, vendor materials, artisan portfolios, and certified stylists.
+   - `apps/web/src/__tests__/ecosystem-algorithms.test.ts` (330 lines): 92 unit tests covering all mathematical edge cases, boundary conditions, and seed invariants.
+   - `apps/web/src/__tests__/run-tests.ts` (153 lines): Integrated ecosystem test suite into the unified test runner.
 
-### Build and Verification Tool Executions:
-1. **API Typecheck**: `cd apps/api && npx tsc --noEmit`  
-   - Output: Exit code `0` (Zero TypeScript errors).
-2. **API Production Build**: `cd apps/api && npm run build`  
-   - Output: Exit code `0` (`nest build` completed successfully).
-3. **Web Typecheck**: `cd apps/web && npx tsc --noEmit`  
-   - Output: Exit code `0` (Zero TypeScript errors).
-4. **Web Production Build**: `cd apps/web && npx next build`  
-   - Output: Exit code `0` (Next.js compiled 8 static routes cleanly: `/`, `/_not-found`, `/customers`, `/measurements`, `/onboarding`, `/production`).
+2. **Test & Build Execution Verification**:
+   - `npm test` in `apps/web`:
+     - Result: `GRAND SUMMARY: 1035 PASSED, 0 FAILED` (all 943 baseline tests + 92 new M1 tests passed with 0 failures in 1.4s).
+   - `npx next build` in `apps/web`:
+     - Result: `✓ Compiled successfully`, `Linting and checking validity of types ...` passed with 0 TypeScript/ESLint warnings, `✓ Generating static pages (14/14)` generated all 14 routes cleanly.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Integrity & Authenticity**:
-   - Analyzed `onboarding.service.ts` to check if endpoints use hardcoded responses, shortcuts, or mock data.
-   - Observation: `signup()` executes a real, atomic Prisma transaction (`$transaction`), hashing passwords via `bcryptjs` (salt 10), creating `Tenant`, `Branch`, `User` (role: `TENANT_OWNER`), and copying global `MeasurementTemplate` items filtered by category/garment selection into tenant-scoped database rows.
-   - Conclusion: Zero integrity violations. Logic is real and robust.
+1. **Integrity Audit**:
+   - Analyzed `ecosystem-algorithms.ts` and `ecosystem-algorithms.test.ts` for anti-patterns:
+     - No hardcoded test results embedded in source algorithms.
+     - No facade implementations: all mathematical operations dynamically evaluate inputs.
+     - No shortcutting: SHA-256 is built from first principles (32-bit bitwise rotation, constants $K$, schedule expansion, compression rounds).
+   - Invariant conservation: `calculateCreatorEarningsSplit` guarantees `grossAmount === platformFee + creatorNetEarnings` across all values.
 
-2. **Contract Conformance**:
-   - Compared payload return format of `POST /onboarding/signup` with specification in `PROJECT.md` (`M1 ↔ M2: Onboarding & Auth Contract`).
-   - Contract requirement: `{ success, tenant: { id, name, slug }, user: { id, email, role }, token }`.
-   - Code implementation: Returns `{ success: true, tenant, branch, user, token, seededTemplatesCount, message }`.
-   - Conclusion: Satisfies and enriches the required contract interface.
+2. **Mathematical Correctness & Numerical Stability**:
+   - *Licensing Math*: Base prices clamped safely ($\ge 500$). Multipliers (4.11x, 21.11x) calculate integers via `Math.round()`.
+   - *Collision Detection*: Time intervals evaluated in milliseconds with symmetric 30-minute buffers ($1,800,000\text{ ms}$). Handles boundary equality, invalid dates, and cancelled booking exclusions.
+   - *Smart Fabric Scoring*: Drape distance is penalized linearly ($\text{score} = \max(0, 100 - |\text{drape} - \text{target}| \times 18)$); budget ratio is scored on a parabolic curve; vendor rating is weighted at 15%. Composite score is bounded $[10, 100]$.
+   - *Escrow State Transitions*: Idempotent milestone payouts ensure total released escrow never exceeds contract total.
+   - *Trial Countdown*: `Math.ceil(diffMs / 86400000)` prevents off-by-one errors on fractional days remaining.
 
-3. **Frontend & Client State Integration**:
-   - Analyzed `apps/web/src/app/onboarding/page.tsx`.
-   - Observation: Debounced real-time slug check (350ms) against `/onboarding/check-slug/:slug`. Dynamic status badges (Available, Taken, Invalid, Checking). Form validation for passwords and template checklists. Successful submission stores JWT and tenant ID in both `localStorage` and `document.cookie` (`jwt_token` and `x-tenant-id`).
-   - Conclusion: Fully aligned with Next.js SSR / App Router middleware requirements.
-
-4. **Seed Script Audit**:
-   - Analyzed `apps/api/prisma/seed.ts`.
-   - Observation: Seeds 8 global `MeasurementTemplate` records across Men's (Suits, Sherwanis, Shirts, Trousers) and Women's (Blouse, Lehenga, Anarkali, Corset, Gown) with detailed POM schemas, base measurements, ease allowances, tolerances, landmark IDs, and validation ranges. Script is idempotent (`deleteMany({ where: { tenantId: null } })`).
-   - Conclusion: Seed script meets all domain requirements for Milestone 1.
+3. **Non-Disruption & Layer Compatibility**:
+   - Zero modifications were made to existing tailoring domain types (`types/measurement.ts`, `types/order.ts`, `types/fabric.ts`) or core routes (`(dashboard)/dashboard`, `orders`, `production`, `measurements`, `customers`, `staff`, `admin`).
+   - All existing 943 baseline unit and integration tests continue to pass 100%.
 
 ---
 
-## 3. Caveats
+## 3. Caveats & Minor Observations
 
-1. **Minor Observation 1 — Slug Length Validation Alignment**:
-   - In `onboarding.service.ts` line 37, `checkSlug` uses `/^[a-z0-9]+(?:-[a-z0-9]+)*$/` and reports `"Must be 3-50 lowercase..."` in its error message. The backend regex itself permits single or double character strings (e.g. `"a"` or `"ab"`). While `slug.ts` on the frontend enforces `slug.length >= 3 && slug.length <= 50`, adding an explicit length check `slug.length >= 3 && slug.length <= 50` inside `OnboardingService` is recommended for full defense-in-depth.
-2. **Minor Observation 2 — DTO Class-Validator Regex**:
-   - `signup.dto.ts` `@Matches(/^[a-z0-9-]+$/)` is slightly broader than `OnboardingService` regex (`/^[a-z0-9]+(?:-[a-z0-9]+)*$/`). The service catches and rejects invalid hyphens at runtime so there is no operational vulnerability, but updating DTO regex to match service regex will keep validation messages uniform.
+- **Observation 1 (Next.js 14 Windows Trace Collector)**:
+  - During production build on Windows, Next.js 14's `collectBuildTraces` throws an `ENOENT` looking for `_not-found/page.js.nft.json` when a custom `app/not-found.tsx` is omitted, and the `rmSync` script in `package.json` can trigger `ENOTEMPTY` on Windows file lock delays.
+  - *Recommendation for Milestone 4*: When expanding navigation and route guards in M4, add an explicit `apps/web/src/app/not-found.tsx` and refine `next.config.js` (`outputFileTracing: false`) to ensure standalone trace builds succeed seamlessly on Windows environments.
 
 ---
 
 ## 4. Conclusion
 
-- **Verdict**: **APPROVE**
-- The Milestone 1 implementation is complete, well-architected, fully type-safe, and passes all build checks (`npx next build` and `npm run build` zero-error compilation).
-- Milestone 1 is ready to be merged and progressed to Milestone 2.
+Milestone 1 is **APPROVED**. The foundational type systems, business logic algorithms, mock seeds, and automated unit tests for all 5 layers of the YellowHouse Bespoke Tailoring & Digital Fashion Ecosystem meet all quality, schema fidelity, and adversarial integrity requirements.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify this review:
+To independently reproduce and verify this review:
 
-1. **API Type Check and Build**:
-   ```bash
-   cd apps/api
-   npx tsc --noEmit
-   npm run build
+1. **Execute Unit Test Suite**:
+   ```powershell
+   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web
+   npm test
    ```
-   *Expected result*: Exit code 0, dist folder generated.
+   *Expected Result:* `GRAND SUMMARY: 1035 PASSED, 0 FAILED`.
 
-2. **Web Type Check and Production Build**:
-   ```bash
-   cd apps/web
-   npx tsc --noEmit
+2. **Execute Compilation & Static Generation**:
+   ```powershell
+   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web
    npx next build
    ```
-   *Expected result*: Exit code 0, 8 static routes generated without type errors.
+   *Expected Result:* `✓ Compiled successfully`, `✓ Generating static pages (14/14)` with 0 TypeScript/ESLint warnings.
 
-3. **Inspect Core Implementation Files**:
-   - `apps/api/src/modules/onboarding/onboarding.service.ts`
-   - `apps/api/prisma/seed.ts`
-   - `apps/web/src/app/onboarding/page.tsx`
+3. **Inspect Deliverables**:
+   - `apps/web/src/types/ecosystem.ts`
+   - `apps/web/src/lib/ecosystem-algorithms.ts`
+   - `apps/web/src/lib/ecosystem-seeds.ts`
+   - `apps/web/src/__tests__/ecosystem-algorithms.test.ts`

@@ -20,6 +20,10 @@ import {
   LogOut,
   Briefcase,
   Activity,
+  Cpu,
+  Package,
+  Award,
+  Sparkles,
 } from 'lucide-react';
 
 import { filterNavItemsForRole, canUserAccessRoute, getFallbackRedirectRoute } from '@/lib/rbac-utils';
@@ -30,7 +34,7 @@ import { Breadcrumb } from '@/components/breadcrumb';
 import { useToast } from '@/components/toast-context';
 import { useCurrency, SUPPORTED_CURRENCIES } from '@/components/currency-context';
 
-const navItems = [
+const coreNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/measurements', label: 'Measurements', icon: Ruler },
@@ -39,6 +43,16 @@ const navItems = [
   { href: '/staff', label: 'Staff Management', icon: Briefcase },
   { href: '/admin', label: 'Admin Panel', icon: Shield },
 ];
+
+const ecosystemNavItems = [
+  { href: '/marketplace', label: 'Design Marketplace', icon: ShoppingBag },
+  { href: '/equipment', label: 'Machine Rentals', icon: Cpu },
+  { href: '/supply', label: 'Material Sourcing', icon: Package },
+  { href: '/bidding', label: 'Production Bidding', icon: Award },
+  { href: '/stylists', label: 'Stylists & Trial', icon: Sparkles },
+];
+
+const navItems = [...coreNavItems, ...ecosystemNavItems];
 
 const DEFAULT_DEMO_USER = {
   id: 'usr_owner_flagship',
@@ -151,7 +165,9 @@ export default function DashboardLayout({
   };
 
   const activeUser = currentUser || DEFAULT_DEMO_USER;
-  const filteredNavItems = filterNavItemsForRole(navItems, activeUser.role || 'TENANT_OWNER');
+  const userRole = activeUser.role || 'TENANT_OWNER';
+  const filteredCoreNavItems = filterNavItemsForRole(coreNavItems, userRole);
+  const filteredEcosystemNavItems = filterNavItemsForRole(ecosystemNavItems, userRole);
 
   const unreadCount = activities.filter(a => {
     if (!a.timestamp) return false;
@@ -206,33 +222,66 @@ export default function DashboardLayout({
 
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-          <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-3">
-            Main Navigation
-          </p>
-          {filteredNavItems.map((item) => {
-            const isActive =
-              item.href === '/dashboard'
-                ? pathname === '/dashboard'
-                : pathname === item.href || pathname.startsWith(item.href + '/');
-            const Icon = item.icon;
+          {filteredCoreNavItems.length > 0 && (
+            <>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">
+                Core Operations
+              </p>
+              {filteredCoreNavItems.map((item) => {
+                const isActive =
+                  item.href === '/dashboard'
+                    ? pathname === '/dashboard'
+                    : pathname === item.href || pathname.startsWith(item.href + '/');
+                const Icon = item.icon;
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`sidebar-link ${isActive ? 'active' : ''}`}
-              >
-                <Icon
-                  className={`w-4 h-4 transition-colors ${
-                    isActive ? 'text-yellow-400' : 'text-slate-500 group-hover:text-slate-300'
-                  }`}
-                />
-                <span className="flex-1">{item.label}</span>
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-yellow-500/60 ml-auto" />}
-              </Link>
-            );
-          })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`sidebar-link ${isActive ? 'active' : ''}`}
+                  >
+                    <Icon
+                      className={`w-4 h-4 transition-colors ${
+                        isActive ? 'text-yellow-400' : 'text-slate-500 group-hover:text-slate-300'
+                      }`}
+                    />
+                    <span className="flex-1">{item.label}</span>
+                    {isActive && <ChevronRight className="w-3.5 h-3.5 text-yellow-500/60 ml-auto" />}
+                  </Link>
+                );
+              })}
+            </>
+          )}
+
+          {filteredEcosystemNavItems.length > 0 && (
+            <>
+              <p className="text-[10px] font-semibold text-purple-400/80 uppercase tracking-widest px-3 mt-5 mb-2">
+                Fashion Ecosystem
+              </p>
+              {filteredEcosystemNavItems.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`sidebar-link ${isActive ? 'active' : ''}`}
+                  >
+                    <Icon
+                      className={`w-4 h-4 transition-colors ${
+                        isActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-slate-300'
+                      }`}
+                    />
+                    <span className="flex-1">{item.label}</span>
+                    {isActive && <ChevronRight className="w-3.5 h-3.5 text-purple-400/80 ml-auto" />}
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         {/* Sidebar Footer User Info */}

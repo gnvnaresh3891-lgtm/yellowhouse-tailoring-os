@@ -1,8 +1,13 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import clsx from 'clsx';
 import { useCurrency } from './currency-context';
+import { 
+  FashionBlueprintAsset, 
+  MaterialSourcingOrder, 
+  MachineReservationRecord 
+} from '@/types/ecosystem';
 
 interface Order {
   id: string;
@@ -369,3 +374,301 @@ export function JobCardPrint({ job }: { job: JobCardItem }) {
     </div>
   );
 }
+
+export function TechPackSpecPrint({
+  asset,
+  licenseKey = 'LIC-YH-2026-X892-F91A',
+  licenseSignature = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  tenantName = 'YellowHouse Atelier'
+}: {
+  asset: FashionBlueprintAsset;
+  licenseKey?: string;
+  licenseSignature?: string;
+  tenantName?: string;
+}) {
+  return (
+    <div className="print-only hidden print:block text-black bg-white p-8 max-w-[1000px] mx-auto font-sans">
+      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold uppercase tracking-wider">{tenantName}</h1>
+          <p className="text-sm text-gray-600">3D CAD Tech Pack & Garment Engineering Specifications</p>
+        </div>
+        <div className="text-right">
+          <h2 className="text-lg font-bold">TECH PACK SPEC SHEET</h2>
+          <p className="text-xs text-gray-600">Asset: {asset.title}</p>
+          <p className="text-xs font-mono font-bold">License: {licenseKey}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 mb-6 text-xs border border-gray-300 p-4 rounded bg-gray-50">
+        <div>
+          <span className="text-gray-500 font-bold uppercase block text-[10px]">Garment Silhouette</span>
+          <span className="font-bold text-sm">{asset.garmentCategory}</span>
+        </div>
+        <div>
+          <span className="text-gray-500 font-bold uppercase block text-[10px]">Aesthetic Style</span>
+          <span className="font-bold text-sm">{asset.aestheticStyle}</span>
+        </div>
+        <div>
+          <span className="text-gray-500 font-bold uppercase block text-[10px]">Difficulty Level</span>
+          <span className="font-bold text-sm">{asset.difficultyLevel}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 mb-6">
+        <div>
+          <h3 className="font-bold uppercase text-xs border-b border-black pb-1 mb-3">Pattern & Grading Parameters</h3>
+          <table className="w-full text-xs">
+            <tbody>
+              <tr className="border-b border-gray-200">
+                <td className="py-1.5 text-gray-600">Seam Allowances:</td>
+                <td className="py-1.5 font-bold text-right">{asset.techPackSpecs.seamAllowancesMm} mm</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-1.5 text-gray-600">Pattern Pieces Count:</td>
+                <td className="py-1.5 font-bold text-right">{asset.techPackSpecs.patternPiecesCount} Pieces</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-1.5 text-gray-600">Grading Range:</td>
+                <td className="py-1.5 font-bold text-right">{asset.techPackSpecs.gradingRange.join(', ')}</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-1.5 text-gray-600">Estimated Sewing SAM:</td>
+                <td className="py-1.5 font-bold text-right">{asset.techPackSpecs.estimatedSewingSamMinutes} Mins</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-1.5 text-gray-600">Lining Spec:</td>
+                <td className="py-1.5 font-bold text-right">{asset.techPackSpecs.liningIncluded ? 'Included in Pattern' : 'Unlined'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <h3 className="font-bold uppercase text-xs border-b border-black pb-1 mb-3">Material & Construction Guide</h3>
+          <div className="text-xs space-y-2 text-gray-700">
+            <div>
+              <span className="font-bold text-gray-900 block">Recommended Fabrics:</span>
+              <p>{asset.techPackSpecs.recommendedFabrics.join(' • ')}</p>
+            </div>
+            {asset.techPackSpecs.interfacingSpecifications && (
+              <div>
+                <span className="font-bold text-gray-900 block">Interfacing Specifications:</span>
+                <p>{asset.techPackSpecs.interfacingSpecifications}</p>
+              </div>
+            )}
+            {asset.techPackSpecs.embroideryMotifLayers !== undefined && (
+              <div>
+                <span className="font-bold text-gray-900 block">Embroidery Motif Layers:</span>
+                <p>{asset.techPackSpecs.embroideryMotifLayers} Vector Layers</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="border border-black p-4 bg-gray-50 rounded mb-6 flex justify-between items-center text-xs">
+        <div>
+          <span className="font-bold block uppercase text-[10px] text-gray-500">HMAC-SHA256 Cryptographic Verification</span>
+          <span className="font-mono text-[10px] text-gray-800 break-all">{licenseSignature}</span>
+          <span className="text-[10px] text-gray-500 block mt-1">Creator: {asset.creatorName} ({asset.creatorTier})</span>
+        </div>
+        <div className="text-right flex-shrink-0 ml-4">
+          <div className="h-10 w-32 border border-black bg-white flex items-center justify-center font-mono font-bold text-xs tracking-widest">
+            |||||| ||| ||||
+          </div>
+          <span className="text-[9px] font-mono block mt-0.5">{licenseKey}</span>
+        </div>
+      </div>
+
+      <div className="pt-3 border-t border-gray-300 flex justify-between text-[10px] text-gray-500">
+        <span>YellowHouse 3D Tech Pack Engine &copy; {new Date().getFullYear()}</span>
+        <span>Lead Patternmaker Sign-off: ____________________</span>
+      </div>
+    </div>
+  );
+}
+
+export function MaterialBOMPrint({
+  order,
+  tenantName = 'YellowHouse Atelier'
+}: {
+  order: MaterialSourcingOrder;
+  tenantName?: string;
+}) {
+  const { formatCurrency } = useCurrency();
+  return (
+    <div className="print-only hidden print:block text-black bg-white p-8 max-w-[1000px] mx-auto font-sans">
+      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold uppercase tracking-wider">{tenantName}</h1>
+          <p className="text-sm text-gray-600">Material Bill of Materials (BOM) & Sourcing Invoice</p>
+        </div>
+        <div className="text-right">
+          <h2 className="text-lg font-bold">MATERIAL SOURCING ORDER</h2>
+          <p className="text-xs text-gray-600">Order Ref: {order.orderNumber}</p>
+          <p className="text-xs text-gray-600">Date: {new Date(order.createdAt).toLocaleDateString()}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-8 mb-6 text-xs">
+        <div>
+          <h3 className="font-bold uppercase text-[10px] text-gray-500 mb-1">Vendor Supplier</h3>
+          <p className="font-bold text-sm text-gray-900">{order.vendorName}</p>
+          <p className="text-gray-600">Vendor ID: {order.vendorId}</p>
+          {order.trackingNumber && <p className="text-gray-600 mt-1 font-mono">Tracking: {order.trackingNumber}</p>}
+        </div>
+        <div className="text-right">
+          <h3 className="font-bold uppercase text-[10px] text-gray-500 mb-1">Delivery Destination</h3>
+          <p className="font-bold text-sm text-gray-900">{tenantName}</p>
+          <p className="text-gray-600 max-w-xs ml-auto">{order.shippingAddress}</p>
+        </div>
+      </div>
+
+      <table className="w-full text-xs text-left border-collapse mb-6">
+        <thead>
+          <tr className="border-b-2 border-black font-bold uppercase">
+            <th className="py-2.5 px-2">SKU</th>
+            <th className="py-2.5 px-2">Material / Fiber Description</th>
+            <th className="py-2.5 px-2 text-center">Required (Meters)</th>
+            <th className="py-2.5 px-2 text-right">Volume Tier Price</th>
+            <th className="py-2.5 px-2 text-center">Discount %</th>
+            <th className="py-2.5 px-2 text-right">Line Total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {order.items.map((item, idx) => (
+            <tr key={idx}>
+              <td className="py-2.5 px-2 font-mono font-bold">{item.sku}</td>
+              <td className="py-2.5 px-2 font-semibold">{item.materialName}</td>
+              <td className="py-2.5 px-2 text-center">{item.meters} m</td>
+              <td className="py-2.5 px-2 text-right">{formatCurrency(item.unitPriceInr)}</td>
+              <td className="py-2.5 px-2 text-center">{item.discountPercent}%</td>
+              <td className="py-2.5 px-2 text-right font-bold">{formatCurrency(item.totalCostInr)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="flex justify-end mb-8">
+        <div className="w-72 space-y-2 text-xs">
+          <div className="flex justify-between text-gray-600">
+            <span>Material Subtotal:</span>
+            <span>{formatCurrency(order.subtotalInr)}</span>
+          </div>
+          <div className="flex justify-between text-gray-600">
+            <span>Shipping & Logistics:</span>
+            <span>{formatCurrency(order.shippingChargeInr)}</span>
+          </div>
+          <div className="flex justify-between text-gray-600">
+            <span>Textile GST (5%):</span>
+            <span>{formatCurrency(order.taxGstInr)}</span>
+          </div>
+          <div className="flex justify-between font-bold text-sm border-t-2 border-black pt-2 text-gray-900">
+            <span>Grand Total:</span>
+            <span>{formatCurrency(order.totalAmountInr)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-gray-300 flex justify-between text-[10px] text-gray-500">
+        <span>Payment Status: <strong>{order.paymentStatus}</strong> &bull; Order Status: <strong>{order.status}</strong></span>
+        <span>Inventory Receiving Inspector: ____________________</span>
+      </div>
+    </div>
+  );
+}
+
+export function MachineReservationTicketPrint({
+  reservation,
+  tenantName = 'YellowHouse Atelier'
+}: {
+  reservation: MachineReservationRecord;
+  tenantName?: string;
+}) {
+  const { formatCurrency } = useCurrency();
+  return (
+    <div className="print-only hidden print:block text-black bg-white p-8 max-w-[800px] mx-auto font-sans border-2 border-black">
+      <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-4">
+        <div>
+          <h1 className="text-xl font-extrabold uppercase tracking-wider">{reservation.facilityName}</h1>
+          <p className="text-xs text-gray-600">Machine Access & Workshop Equipment Sharing Ticket</p>
+        </div>
+        <div className="text-right">
+          <span className="font-mono text-sm font-extrabold block">{reservation.reservationNumber}</span>
+          <span className="text-[10px] text-gray-500 uppercase font-bold">STATUS: {reservation.reservationStatus}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-4 text-xs bg-gray-50 p-3 rounded border border-gray-200">
+        <div>
+          <span className="text-[10px] text-gray-500 uppercase font-bold block">Assigned Machine</span>
+          <p className="font-bold text-sm text-gray-900">{reservation.machineName}</p>
+          <p className="text-gray-600">Category: {reservation.machineCategory.replace(/_/g, ' ')}</p>
+        </div>
+        <div>
+          <span className="text-[10px] text-gray-500 uppercase font-bold block">Operator & Client</span>
+          <p className="font-bold text-sm text-gray-900">{reservation.userName}</p>
+          <p className="text-gray-600">
+            {reservation.includeOperator ? `Operator: ${reservation.operatorName || 'Certified Technician'}` : 'Self-Operated (Certified)'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 mb-4 text-xs border-b border-gray-300 pb-3">
+        <div>
+          <span className="text-[10px] text-gray-500 uppercase font-bold block">Scheduled Start</span>
+          <span className="font-semibold">{new Date(reservation.startTime).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-gray-500 uppercase font-bold block">Scheduled End</span>
+          <span className="font-semibold">{new Date(reservation.endTime).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-[10px] text-gray-500 uppercase font-bold block">Duration / Booking</span>
+          <span className="font-semibold">{reservation.totalDurationHours} hrs ({reservation.bookingType})</span>
+        </div>
+      </div>
+
+      {reservation.jobDetails && (
+        <div className="mb-4 text-xs">
+          <h3 className="font-bold uppercase text-[10px] text-gray-500 mb-1">Production Job Specifications</h3>
+          <div className="border border-gray-300 rounded p-2.5 bg-gray-50 space-y-1">
+            <p><strong>Job Title:</strong> {reservation.jobDetails.jobTitle}</p>
+            <p><strong>Panel Count:</strong> {reservation.jobDetails.panelCount} panels &bull; <strong>Fabric:</strong> {reservation.jobDetails.fabricType}</p>
+            {reservation.jobDetails.cutFileName && <p><strong>Cut File:</strong> {reservation.jobDetails.cutFileName} (Est. {reservation.jobDetails.estimatedRunMinutes} mins)</p>}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-4 text-xs">
+        <h3 className="font-bold uppercase text-[10px] text-gray-500 mb-1">Cost & Escrow Breakdown</h3>
+        <div className="space-y-1 text-gray-700">
+          <div className="flex justify-between"><span>Machine Rental Base:</span><span>{formatCurrency(reservation.costBreakdown.machineBaseCost)}</span></div>
+          <div className="flex justify-between"><span>Operator Assistance Fee:</span><span>{formatCurrency(reservation.costBreakdown.operatorFee)}</span></div>
+          <div className="flex justify-between"><span>Cleaning & Bed Prep:</span><span>{formatCurrency(reservation.costBreakdown.cleaningFee)}</span></div>
+          <div className="flex justify-between"><span>Security Deposit (Refundable):</span><span>{formatCurrency(reservation.costBreakdown.securityDeposit)}</span></div>
+          <div className="flex justify-between"><span>GST Taxes (18%):</span><span>{formatCurrency(reservation.costBreakdown.taxesInr)}</span></div>
+          <div className="flex justify-between font-bold text-sm border-t border-black pt-1 mt-1 text-gray-900">
+            <span>Total Escrow Amount:</span>
+            <span>{formatCurrency(reservation.costBreakdown.totalAmountInr)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t-2 border-black pt-3 flex justify-between items-center text-[10px] text-gray-500">
+        <div>
+          <p>Check-In Inspection: _____________________</p>
+          <p className="mt-1">Check-Out Inspection: _____________________</p>
+        </div>
+        <div className="text-center font-mono">
+          <div className="h-8 w-28 border border-black bg-gray-50 flex items-center justify-center font-bold">
+            ||| | ||||| | ||
+          </div>
+          <span>{reservation.reservationNumber}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+

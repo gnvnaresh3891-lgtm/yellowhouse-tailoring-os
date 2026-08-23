@@ -44,4 +44,25 @@ Your Tasks:
    - Execute `npm test` and `npx tsc --noEmit` in both `apps/web` and `apps/api`.
    - Verify 0 TypeScript errors and 100% tests pass.
 
-Deliver your complete report in `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m3\handoff.md` and send a message when done.
+## 2026-08-23T14:27:48Z
+
+Scope and Exclusively Owned Files for Milestone 3:
+1. `apps/web/src/components/ecosystem/vendor-material-card.tsx`:
+   - Interactive card for vendor materials (Silk, Cotton, Velvet, Organza, Linings, Trims, Interfacing).
+   - Real-time stock level indicator with low-stock warnings, volume discount breakdown popover (1-9m, 10-49m @ 10%, 50-199m @ 22%, 200m+ @ 35%), swatch color preview, drape coefficient, GSM, bolt width, vendor rating, and quick-order button.
+2. `apps/web/src/components/ecosystem/fabric-recommendation-widget.tsx`:
+   - Interactive Smart Fabric Recommendation Engine widget.
+   - User inputs: target garment category (`mens-suit`, `womens-lehenga`, `womens-anarkali`, `womens-gown`, `womens-corset`, etc.), max budget per meter, required yield meters, and preferred color tone.
+   - Computes recommendations via `computeSmartFabricRecommendations` and displays Best Match, Budget Saver, and Luxury Upgrade options with drape score, savings percentage, and 1-click add-to-sourcing-order action.
+3. `apps/web/src/app/(dashboard)/supply/page.tsx`:
+   - Full responsive glassmorphic page for Supply Layer — Vendor Material Sourcing & Smart Recommendations.
+   - Material category filters (Fabrics, Linings, Trims, Interfacing), color/weave filter, in-stock only toggle, volume tier comparison matrix, active sourcing orders tracker, and BOM Sourcing preview modal.
+   - Safe LocalStorage persistence (`yh_vendor_materials`, `yh_fabric_sourcing_orders`) with `SEED_VENDOR_MATERIALS` fallback and `yh-data-sync` event reactivity.
+4. `apps/web/src/components/ecosystem/tailor-bid-card.tsx`:
+   - Portfolio & Bid card showcasing artisan specialization (Zardozi, Master Cutting, Tuxedos, Lehengas, Corsetry), experience years, completed projects, sample gallery modal, hourly/fixed rates, capacity status, and in-app bid acceptance button.
+5. `apps/web/src/components/ecosystem/brief-submission-modal.tsx`:
+   - Design brief submission workflow where ateliers/designers publish custom briefs (title, garment type, target completion date, budget range, tech pack attachment, POM reference, special instructions). Persists to `yh_production_briefs` and notifies artisans.
+6. `apps/web/src/app/(dashboard)/bidding/page.tsx`:
+   - Full responsive glassmorphic page for Production Bidding & Tailor / Manufacturer Ecosystem.
+   - Dual view: (1) Artisan & Master Tailor Directory with specialization filters and portfolio previews, (2) Active Design Briefs & Competitive Bidding Arena with bid submission form, comparison drawer, 4-stage milestone contract generator, and in-app bid acceptance workflow.
+   - Safe LocalStorage persistence (`yh_artisan_portfolios`, `yh_production_briefs`, `yh_tailor_bids`) with `SEED_ARTISAN_PROFILES` fallback and `yh-data-sync` event reactivity.
