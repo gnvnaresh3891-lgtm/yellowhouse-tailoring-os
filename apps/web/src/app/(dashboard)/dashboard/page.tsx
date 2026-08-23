@@ -21,6 +21,7 @@ import { Order, OrderStatus, JobCardItem, syncAllOrdersToJobs, ActivityItem, dis
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
 import { Tooltip } from '@/components/Tooltip';
 import { useToast } from '@/components/toast-context';
+import { useCurrency } from '@/components/currency-context';
 
 const DEFAULT_INITIAL_ORDERS: Order[] = [
   {
@@ -203,14 +204,7 @@ export default function DashboardPage() {
     });
   }, [orders]);
 
-  // Format currency
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(val);
-  };
+  const { formatCurrency } = useCurrency();
 
   // Status badge utility
   const renderStatusBadge = (status: OrderStatus) => {

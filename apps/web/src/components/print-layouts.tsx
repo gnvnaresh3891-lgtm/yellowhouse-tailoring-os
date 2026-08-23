@@ -2,6 +2,7 @@
 
 import React from 'react';
 import clsx from 'clsx';
+import { useCurrency } from './currency-context';
 
 // Simplified types for the print layouts to avoid missing imports, 
 // assuming these match the actual types in the project
@@ -37,6 +38,7 @@ interface JobCardItem {
 }
 
 export function OrderReceipt({ order, tenantName = 'YellowHouse' }: { order: Order; tenantName?: string }) {
+  const { formatCurrency } = useCurrency();
   return (
     <div className="print-only hidden print:block text-black bg-white p-8 max-w-[800px] mx-auto font-sans">
       <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-6">
@@ -79,8 +81,8 @@ export function OrderReceipt({ order, tenantName = 'YellowHouse' }: { order: Ord
               <td className="py-3 font-semibold">{item.garmentType}</td>
               <td className="py-3 text-gray-600">{item.fabric || '-'}</td>
               <td className="py-3 text-center">{item.quantity}</td>
-              <td className="py-3 text-right">₹{item.unitPrice.toFixed(2)}</td>
-              <td className="py-3 text-right font-semibold">₹{item.subtotal.toFixed(2)}</td>
+              <td className="py-3 text-right">{formatCurrency(item.unitPrice)}</td>
+              <td className="py-3 text-right font-semibold">{formatCurrency(item.subtotal)}</td>
             </tr>
           ))}
         </tbody>
@@ -90,17 +92,17 @@ export function OrderReceipt({ order, tenantName = 'YellowHouse' }: { order: Ord
         <div className="w-64 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Subtotal:</span>
-            <span>₹{order.subtotal.toFixed(2)}</span>
+            <span>{formatCurrency(order.subtotal)}</span>
           </div>
           {order.advancePaid !== undefined && (
             <div className="flex justify-between text-gray-600">
               <span>Advance Paid:</span>
-              <span>-₹{order.advancePaid.toFixed(2)}</span>
+              <span>-{formatCurrency(order.advancePaid)}</span>
             </div>
           )}
           <div className="flex justify-between font-bold text-lg border-t border-black pt-2 mt-2">
             <span>Balance Due:</span>
-            <span>₹{order.balanceDue.toFixed(2)}</span>
+            <span>{formatCurrency(order.balanceDue)}</span>
           </div>
         </div>
       </div>

@@ -38,6 +38,7 @@ import { calculateBespokePricing } from '@/lib/pricing-calculator';
 import { calculateFabricYield } from '@/lib/fabric-yield';
 import { GarmentCategory } from '@/types/measurement';
 import { Tooltip } from '@/components/Tooltip';
+import { useCurrency } from '@/components/currency-context';
 
 export type OrderStatus =
   | 'DRAFT'
@@ -206,6 +207,7 @@ const garmentOptions: { label: string; value: string; defaultMeters: number; def
 ];
 
 export default function OrderManagementPage() {
+  const { formatCurrency } = useCurrency();
   const [activeTab, setActiveTab] = useState<'active' | 'create'>('active');
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [searchQuery, setSearchQuery] = useState('');
@@ -422,11 +424,6 @@ export default function OrderManagementPage() {
       CANCELLED: ['CANCELLED']
     };
     return transitions[current] || ['CANCELLED'];
-  };
-
-  // Helper to format currency
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
   };
 
   const formatDueDate = (dateStr: string) => {
