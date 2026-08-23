@@ -5,11 +5,12 @@ import {
   Ruler, Eye, Save, RotateCcw, ChevronDown, ChevronUp,
   Activity, Calculator, Clock, GitCompare, AlertCircle,
   CheckCircle2, Info, Sparkles, History, ArrowRight, 
-  ArrowUpRight, ArrowDownRight, Minus, X
+  ArrowUpRight, ArrowDownRight, Minus, X, Printer
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
 import { Tooltip } from '@/components/Tooltip';
+import { MeasurementCard } from '@/components/print-layouts';
 
 // ============================================================
 // TYPE DEFINITIONS (inline for self-contained page)
@@ -573,6 +574,16 @@ function MeasurementsContent() {
           <p className="text-sm text-slate-400 mt-1">2D landmark SVG vector engine with live CAD laser alignment & posture profiling</p>
         </div>
         <div className="flex items-center space-x-2">
+          <Tooltip content="Print current CAD anatomical measurement specification sheet">
+            <button
+              onClick={() => window.print()}
+              className="btn-ghost px-4 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 border-slate-700 text-slate-300 hover:text-white cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5 text-yellow-400" />
+              <span>Print Chart</span>
+            </button>
+          </Tooltip>
+
           <Tooltip content="Inspect past CAD measurement snapshots and version logs">
             <button
               onClick={() => setShowHistory(!showHistory)}
@@ -1095,6 +1106,17 @@ function MeasurementsContent() {
           </div>
         </div>
       )}
+
+      {/* Printable Measurement Card Chart (Hidden on screen, rendered on Print) */}
+      <MeasurementCard 
+        customerName={customerName || 'Bespoke Client'}
+        garmentType={selectedGarment}
+        fitPref={fitPref}
+        measurements={activePoms.reduce((acc, pom) => {
+          acc[pom.name] = measurements[pom.id] || pom.base;
+          return acc;
+        }, {} as Record<string, number>)}
+      />
     </div>
   );
 }

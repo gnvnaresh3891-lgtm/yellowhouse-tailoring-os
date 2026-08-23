@@ -10,6 +10,7 @@ import {
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
 import { syncJobToOrdersStorage } from '@/lib/state-sync-utils';
 import { Tooltip } from '@/components/Tooltip';
+import { JobCardPrint, ScheduleListPrint } from '@/components/print-layouts';
 
 // ============================================================
 // TYPES & DEFINITIONS
@@ -656,6 +657,16 @@ export default function ProductionKanbanPage() {
 
         {/* Quick Actions */}
         <div className="flex items-center space-x-3">
+          <Tooltip content="Print current workshop job cards & production schedule">
+            <button
+              onClick={() => window.print()}
+              className="btn-ghost flex items-center space-x-2 py-2 px-3 text-xs cursor-pointer border-slate-700 text-slate-300 hover:text-white"
+            >
+              <Printer className="w-4 h-4 text-yellow-400" />
+              <span>Print Schedule & Jobs</span>
+            </button>
+          </Tooltip>
+
           <Tooltip content="Dispatch new workshop job card for active client order">
             <button
               onClick={() => setShowCreateJobModal(true)}
@@ -1973,6 +1984,21 @@ export default function ProductionKanbanPage() {
           {toastMsg}
         </div>
       )}
+
+      {/* Printable Schedule & Workshop Board (Hidden on screen, rendered on Print) */}
+      <ScheduleListPrint 
+        title="Karigar Workshop Production Schedule & Active Jobs"
+        schedules={jobs.map((j) => ({
+          id: j.id,
+          title: `${j.garment} (${j.orderId})`,
+          date: `Due: ${j.dueDate}`,
+          clientName: j.client,
+          karigar: j.karigar,
+          stage: j.stage,
+          status: `${j.priority} priority &bull; ${j.progress}%`,
+          notes: j.notes || j.fabricDetails || 'Active production card'
+        }))} 
+      />
     </div>
   );
 }

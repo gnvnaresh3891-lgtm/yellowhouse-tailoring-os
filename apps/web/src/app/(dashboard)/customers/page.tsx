@@ -22,13 +22,15 @@ import {
   UserCheck,
   Clock,
   Trash2,
-  ShoppingBag
+  ShoppingBag,
+  Printer
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
 import { Tooltip } from '@/components/Tooltip';
 import { useToast } from '@/components/toast-context';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { CustomerListPrint } from '@/components/print-layouts';
 import { logActivity } from '@/lib/state-sync-utils';
 
 interface Customer {
@@ -353,15 +355,26 @@ export default function CustomerDirectoryPage() {
             </div>
           </div>
         </div>
-        <Tooltip content="Create new client profile with fit notes & contact info">
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="btn-gold flex items-center space-x-2 self-start sm:self-auto cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Add Customer</span>
-          </button>
-        </Tooltip>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <Tooltip content="Print complete client roster & fit preferences">
+            <button
+              onClick={() => window.print()}
+              className="btn-ghost flex items-center space-x-2 py-2 px-3 text-xs cursor-pointer border-slate-700 text-slate-300 hover:text-white"
+            >
+              <Printer className="w-4 h-4 text-yellow-400" />
+              <span>Print Roster</span>
+            </button>
+          </Tooltip>
+          <Tooltip content="Create new client profile with fit notes & contact info">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="btn-gold flex items-center space-x-2 cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Add Customer</span>
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       {/* KPI Stats Cards */}
@@ -1091,6 +1104,20 @@ export default function CustomerDirectoryPage() {
           </div>
         </div>
       )}
+
+      {/* Printable Client Roster (Hidden on screen, rendered on Print) */}
+      <CustomerListPrint customers={filteredCustomers.map(c => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        email: c.email,
+        gender: c.gender,
+        preferredFit: c.preferredFit,
+        isVip: c.isVip,
+        measurementsCount: c.measurementsCount,
+        lastVisit: c.lastVisit,
+        notes: c.notes
+      }))} />
     </div>
   );
 }

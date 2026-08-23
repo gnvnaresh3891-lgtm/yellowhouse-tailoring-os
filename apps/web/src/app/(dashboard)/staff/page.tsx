@@ -21,10 +21,12 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Clock
+  Clock,
+  Printer
 } from 'lucide-react';
 import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
 import { Tooltip } from '@/components/Tooltip';
+import { ScheduleListPrint } from '@/components/print-layouts';
 
 interface StaffMember {
   id: string;
@@ -290,15 +292,27 @@ export default function StaffPage() {
           </div>
         </div>
 
-        <Tooltip content="Recruit new atelier artisan, manager, or tailor profile">
-          <button
-            onClick={() => setModalOpen(true)}
-            className="btn-gold flex items-center justify-center gap-2 self-start cursor-pointer"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Hire New Specialist</span>
-          </button>
-        </Tooltip>
+        <div className="flex items-center gap-3 self-start">
+          <Tooltip content="Print current staff roster or timesheet schedule">
+            <button
+              onClick={() => window.print()}
+              className="btn-ghost flex items-center space-x-2 py-2 px-3 text-xs cursor-pointer border-slate-700 text-slate-300 hover:text-white"
+            >
+              <Printer className="w-4 h-4 text-yellow-400" />
+              <span>Print Schedule / Staff</span>
+            </button>
+          </Tooltip>
+
+          <Tooltip content="Recruit new atelier artisan, manager, or tailor profile">
+            <button
+              onClick={() => setModalOpen(true)}
+              className="btn-gold flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Hire New Specialist</span>
+            </button>
+          </Tooltip>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -791,6 +805,20 @@ export default function StaffPage() {
           </div>
         </div>
       )}
+
+      {/* Printable Schedule & Staff Register (Hidden on screen, rendered on Print) */}
+      <ScheduleListPrint 
+        title={activeTab === 'timesheets' ? 'Artisan Timesheet & Schedule Log' : 'Specialist & Staff Directory'}
+        schedules={staffList.map((st) => ({
+          id: st.id,
+          title: st.name,
+          date: `Hired: ${st.hiredAt}`,
+          karigar: st.name,
+          stage: st.branch,
+          status: `${st.role.replace(/_/g, ' ')} (${st.status})`,
+          notes: st.email
+        }))} 
+      />
     </div>
   );
 }
