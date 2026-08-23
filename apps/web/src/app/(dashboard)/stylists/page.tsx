@@ -327,7 +327,7 @@ export default function StylistsPage() {
             </h1>
           </div>
           <p className="text-sm text-slate-400 mt-1">
-            Layer 5: Purple Cogs Onboarding Journey, Certified Area Stylists & Haute Draping Consultation
+            Layer 5: RedHouse OS Onboarding Journey, Certified Area Stylists & Haute Draping Consultation
           </p>
         </div>
 
@@ -547,7 +547,7 @@ export default function StylistsPage() {
               <Calendar className="w-8 h-8 text-purple-400/40 mx-auto mb-3" />
               <h3 className="text-base font-bold text-slate-200">No consultations booked yet</h3>
               <p className="text-xs text-slate-400 mt-1">
-                Explore our certified Purple Cogs stylists to schedule your first bridal or bespoke session.
+                Explore our certified RedHouse OS stylists to schedule your first bridal or bespoke session.
               </p>
               <button
                 onClick={() => setActiveTab('directory')}
@@ -648,13 +648,13 @@ export default function StylistsPage() {
           <div className="p-6 rounded-2xl bg-slate-900/80 border border-purple-500/30 backdrop-blur-xl space-y-6 shadow-xl">
             <div>
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase tracking-wider">
-                Purple Cogs Architecture
+                RedHouse OS Architecture
               </span>
               <h2 className="text-xl font-bold text-slate-100 mt-2">
                 Atelier Onboarding Tiers & Security Entitlement Matrix
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Comparing current Purple Cogs 90-Day Free Trial capabilities against Atelier Pro and Haute Enterprise.
+                Comparing current RedHouse OS 90-Day Free Trial capabilities against Atelier Pro and Haute Enterprise.
               </p>
             </div>
 
@@ -668,7 +668,7 @@ export default function StylistsPage() {
                   </span>
                   <span className="text-xs font-mono font-bold text-slate-400">90-Day Free</span>
                 </div>
-                <h3 className="text-base font-bold text-slate-100">Purple Cogs Trial</h3>
+                <h3 className="text-base font-bold text-slate-100">RedHouse OS Trial</h3>
                 <p className="text-xs text-slate-400 mt-1">Designed for emerging studios, fashion design schools & indie creators.</p>
                 <div className="mt-4 pt-4 border-t border-slate-800 space-y-2 text-xs text-slate-300">
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> 5 Blueprint creations / mo</div>

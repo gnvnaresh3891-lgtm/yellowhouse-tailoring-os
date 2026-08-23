@@ -6,7 +6,7 @@
  * Layer 2: Machine Access & Workshop Equipment Sharing Marketplace
  * Layer 3: Supply Layer — Vendor Material Sourcing & Smart Recommendations
  * Layer 4: Production Bidding & Tailor / Manufacturer Ecosystem
- * Layer 5: 3-Month Free Trial Onboarding & Professional Stylist Directory ("Purple Cogs")
+ * Layer 5: 3-Month Free Trial Onboarding & Professional Stylist Directory ("RedHouse OS")
  */
 
 import { GarmentCategory } from './measurement';
@@ -589,7 +589,7 @@ export interface ProductionContractRecord {
 }
 
 // ============================================================================
-// LAYER 5: 3-MONTH FREE TRIAL ONBOARDING & STYLIST DIRECTORY ("PURPLE COGS")
+// LAYER 5: 3-MONTH FREE TRIAL ONBOARDING & STYLIST DIRECTORY ("REDHOUSE OS")
 // ============================================================================
 
 export type SubscriptionTierType = 'PURPLE_COGS_FREE_TRIAL' | 'ATELIER_PRO' | 'HAUTE_ENTERPRISE';

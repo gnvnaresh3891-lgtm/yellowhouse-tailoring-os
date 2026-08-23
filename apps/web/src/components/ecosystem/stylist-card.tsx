@@ -41,7 +41,7 @@ export const SPECIALTY_LABELS: Record<StylistSpecialization, { label: string; ic
 
 export const BADGE_CONFIG: Record<StylistBadgeLevel, { title: string; subtitle: string; badgeColor: string }> = {
   PURPLE_COGS_CERTIFIED: {
-    title: 'Purple Cogs Certified',
+    title: 'RedHouse OS Certified',
     subtitle: 'Vetted Master Stylist',
     badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm shadow-purple-500/20'
   },

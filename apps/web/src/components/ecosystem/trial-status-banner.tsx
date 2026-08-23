@@ -102,7 +102,7 @@ export const TrialStatusBanner: React.FC<TrialStatusBannerProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-extrabold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm">
-                Purple Cogs 90-Day Free Trial
+                RedHouse OS 90-Day Free Trial
               </span>
               {evaluation.isExpired ? (
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
