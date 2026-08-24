@@ -211,15 +211,19 @@ const customerList = [
   { id: 'CUST-008', name: 'Meera Reddy', phone: '+91 98765 43217', isVip: false }
 ];
 
-const garmentOptions: { label: string; value: string; defaultMeters: number; defaultPrice: number; skuPrefix: string }[] = [
-  { label: 'Sherwani', value: 'Sherwani', defaultMeters: 4.5, defaultPrice: 28000, skuPrefix: 'SKU-SHER-901' },
-  { label: '3-Piece Suit', value: 'Suit', defaultMeters: 3.8, defaultPrice: 35000, skuPrefix: 'SKU-SUIT-804' },
-  { label: 'Kurta Set', value: 'Kurta', defaultMeters: 3.0, defaultPrice: 8500, skuPrefix: 'SKU-KRT-302' },
-  { label: 'Blouse', value: 'Blouse', defaultMeters: 1.2, defaultPrice: 4000, skuPrefix: 'SKU-BLS-112' },
-  { label: 'Lehenga Choli', value: 'Lehenga', defaultMeters: 6.0, defaultPrice: 68000, skuPrefix: 'SKU-LHG-509' },
-  { label: 'Anarkali Gown', value: 'Anarkali', defaultMeters: 5.5, defaultPrice: 28000, skuPrefix: 'SKU-ANK-440' },
-  { label: 'Corset Blouse', value: 'Corset', defaultMeters: 1.5, defaultPrice: 22000, skuPrefix: 'SKU-CST-201' },
-  { label: 'Evening Gown', value: 'Gown', defaultMeters: 5.0, defaultPrice: 32000, skuPrefix: 'SKU-GWN-710' }
+const garmentOptions: { label: string; value: string; defaultMeters: number; defaultPrice: number; skuPrefix: string; boltWidth?: number; bufferNote?: string }[] = [
+  { label: 'Saree Blouse (Single)', value: 'Blouse', defaultMeters: 1.0, defaultPrice: 3500, skuPrefix: 'SKU-BLS-112', boltWidth: 44, bufferNote: '1.0m (up to 42" bust) + 0.8m lining' },
+  { label: 'Corset Blouse / Bustier', value: 'Corset', defaultMeters: 1.2, defaultPrice: 6500, skuPrefix: 'SKU-CST-201', boltWidth: 44, bufferNote: '1.2m + fused interlining' },
+  { label: 'Bespoke Shirt (Full Sleeve)', value: 'Shirt', defaultMeters: 2.2, defaultPrice: 2800, skuPrefix: 'SKU-SHRT-101', boltWidth: 44, bufferNote: '2.2m (44" width) or 1.6m (58" width)' },
+  { label: 'Bespoke Trouser / Pants', value: 'Trouser', defaultMeters: 1.4, defaultPrice: 3200, skuPrefix: 'SKU-TRS-102', boltWidth: 58, bufferNote: '1.4m (58" width) or 2.2m (44" width)' },
+  { label: '2-Piece Suit (Jacket + Trouser)', value: '2-Piece Suit', defaultMeters: 3.2, defaultPrice: 28000, skuPrefix: 'SKU-SUIT-2PC', boltWidth: 58, bufferNote: '3.2m (58" width wool/linen)' },
+  { label: '3-Piece Suit (Jacket + Vest + Trouser)', value: '3-Piece Suit', defaultMeters: 4.0, defaultPrice: 38000, skuPrefix: 'SKU-SUIT-3PC', boltWidth: 58, bufferNote: '4.0m (58" width) + 3.0m satin lining' },
+  { label: 'Sherwani + Churidar', value: 'Sherwani', defaultMeters: 4.5, defaultPrice: 32000, skuPrefix: 'SKU-SHER-901', boltWidth: 44, bufferNote: '4.5m brocade/raw silk + 2.5m churidar' },
+  { label: 'Bandhgala / Jodhpuri Suit', value: 'Bandhgala', defaultMeters: 3.5, defaultPrice: 24000, skuPrefix: 'SKU-BDG-401', boltWidth: 58, bufferNote: '3.5m (58" width)' },
+  { label: 'Kurta Pyjama Set', value: 'Kurta', defaultMeters: 3.8, defaultPrice: 7500, skuPrefix: 'SKU-KRT-302', boltWidth: 44, bufferNote: '2.4m Kurta + 2.2m Pyjama/Salwar' },
+  { label: 'Bridal Lehenga (16-24 Kali Flare)', value: 'Lehenga', defaultMeters: 5.5, defaultPrice: 65000, skuPrefix: 'SKU-LHG-509', boltWidth: 44, bufferNote: '5.5m main silk + 4.5m lining + 4m cancan' },
+  { label: 'Anarkali Gown / Floor Length Suit', value: 'Anarkali', defaultMeters: 5.0, defaultPrice: 26000, skuPrefix: 'SKU-ANK-440', boltWidth: 44, bufferNote: '5.0m flare georgette + 4.0m crepe lining' },
+  { label: 'Evening Haute Couture Gown', value: 'Gown', defaultMeters: 4.8, defaultPrice: 35000, skuPrefix: 'SKU-GWN-710', boltWidth: 58, bufferNote: '4.8m (58" satin/crepe) + 1.2m train' }
 ];
 
 export default function OrderManagementPage() {
@@ -1527,12 +1531,27 @@ export default function OrderManagementPage() {
                         />
                       </div>
 
-                      {/* Fabric Meters (Auto-Calculated / Editable using pom-input) */}
+                      {/* Fabric Meters & Width Calculator */}
                       <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-gold-400 flex items-center justify-between">
-                          <span>Fabric Required (m)</span>
-                          <span className="text-[9px] text-slate-500">Auto</span>
-                        </label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-semibold text-gold-400 flex items-center gap-1">
+                            <span>Fabric Required</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-gold-400/10 text-gold-300 font-mono">Yield Calc</span>
+                          </label>
+                          <div className="flex items-center space-x-1 text-[9px] text-slate-400 font-mono">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const preset = garmentOptions.find(g => g.value === item.garmentType);
+                                if (preset) handleUpdateItem(item.id, 'fabricMeters', preset.defaultMeters);
+                              }}
+                              className="hover:text-gold-400 underline decoration-dotted"
+                              title="Reset to recommended standard yield"
+                            >
+                              Standard
+                            </button>
+                          </div>
+                        </div>
                         <div className="relative">
                           <input
                             type="number"
@@ -1540,10 +1559,18 @@ export default function OrderManagementPage() {
                             min="0.5"
                             value={item.fabricMeters}
                             onChange={(e) => handleUpdateItem(item.id, 'fabricMeters', parseFloat(e.target.value) || 0)}
-                            className="pom-input text-xs"
+                            className="pom-input text-xs font-mono font-bold text-gold-300"
                           />
                           <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gold-400/80 font-mono">meters</span>
                         </div>
+                        {(() => {
+                          const preset = garmentOptions.find(g => g.value === item.garmentType);
+                          return preset?.bufferNote ? (
+                            <p className="text-[9px] text-slate-500 italic truncate font-sans">
+                              {preset.bufferNote}
+                            </p>
+                          ) : null;
+                        })()}
                       </div>
 
                       {/* Unit Price Input */}
