@@ -50,6 +50,7 @@ const SERVICES_GRID = [
     price: 990,
     rating: 4.9,
     reviews: 1420,
+    image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80',
     tags: ['Princess Cut', 'Padded', 'Maggam Work', 'Deep Back'],
     categoryBadge: 'Most Popular',
     turnaround: '7 Days',
@@ -62,6 +63,7 @@ const SERVICES_GRID = [
     price: 2499,
     rating: 5.0,
     reviews: 890,
+    image: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80',
     tags: ['Can-Can Flare', 'Double Dupatta', 'Heavy Zari', 'Custom Fit'],
     categoryBadge: 'Bridal Choice',
     turnaround: '10 Days',
@@ -74,6 +76,7 @@ const SERVICES_GRID = [
     price: 1199,
     rating: 4.8,
     reviews: 2150,
+    image: 'https://images.unsplash.com/photo-1609357605129-26f69add5d6e?auto=format&fit=crop&w=800&q=80',
     tags: ['Pant Suit', 'Churidar', 'Sharara / Gharara', 'Lining Added'],
     categoryBadge: 'Everyday Couture',
     turnaround: '7 Days',
@@ -86,6 +89,7 @@ const SERVICES_GRID = [
     price: 1899,
     rating: 4.9,
     reviews: 620,
+    image: 'https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=800&q=80',
     tags: ['Draped Pleats', 'Jacket Overlay', 'Couture Cut', 'Cocktail'],
     categoryBadge: 'Trending',
     turnaround: '7 Days',
@@ -98,6 +102,7 @@ const SERVICES_GRID = [
     price: 3499,
     rating: 4.9,
     reviews: 410,
+    image: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=800&q=80',
     tags: ['Built-in Cups', 'Floor Train', 'Illusion Mesh', 'Cocktail'],
     categoryBadge: 'Haute Couture',
     turnaround: '10 Days',
@@ -111,6 +116,7 @@ const SERVICES_GRID = [
     unit: '/ hr',
     rating: 5.0,
     reviews: 320,
+    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
     tags: ['Mimaki Sublimation', 'Lectra Laser', 'Tajima Embroidery', '30m Buffers'],
     categoryBadge: 'B2B Hardware',
     turnaround: 'Instant Slots',
@@ -382,6 +388,39 @@ export default function ProfessionalUrbanStitchPage() {
                 Enjoy 15+ years of master craftsmanship. From bridal Maggam blouses and designer lehengas to stylish Indo-western wear — our Master Stylists measure, stitch, and deliver right to your home.
               </p>
 
+              {/* HERO VISUAL SHOWCASE TILES */}
+              <div className="grid grid-cols-3 gap-3 py-2">
+                <div className="relative rounded-xl overflow-hidden h-24 border border-slate-800 group">
+                  <img
+                    src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=400&q=80"
+                    alt="Bridal Blouses"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                  <span className="absolute bottom-1.5 left-2 text-[10px] font-bold text-white">Maggam Blouses</span>
+                </div>
+
+                <div className="relative rounded-xl overflow-hidden h-24 border border-slate-800 group">
+                  <img
+                    src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=400&q=80"
+                    alt="Bridal Lehengas"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                  <span className="absolute bottom-1.5 left-2 text-[10px] font-bold text-white">Bridal Lehengas</span>
+                </div>
+
+                <div className="relative rounded-xl overflow-hidden h-24 border border-slate-800 group">
+                  <img
+                    src="https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=400&q=80"
+                    alt="Indo-Western"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+                  <span className="absolute bottom-1.5 left-2 text-[10px] font-bold text-white">Indo-Western</span>
+                </div>
+              </div>
+
               {/* CTA BUTTONS */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
                 <button
@@ -513,58 +552,82 @@ export default function ProfessionalUrbanStitchPage() {
             {SERVICES_GRID.map((srv) => (
               <div
                 key={srv.id}
-                className="bg-[#0B0F19] rounded-2xl p-6 border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between shadow-sm"
+                className="bg-[#0B0F19] rounded-2xl border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between overflow-hidden group shadow-md"
               >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                {/* Visual Image Header */}
+                <div className="relative h-48 w-full overflow-hidden bg-slate-900">
+                  <img
+                    src={srv.image}
+                    alt={srv.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F19] via-[#0B0F19]/20 to-transparent" />
+                  
+                  <div className="absolute top-3 left-3">
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-rose-300 border border-rose-500/30">
                       {srv.categoryBadge}
                     </span>
-                    <span className="text-xs text-slate-400 flex items-center gap-1 font-semibold">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      {srv.rating} ({srv.reviews})
+                  </div>
+
+                  <div className="absolute top-3 right-3">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-950/80 backdrop-blur-md text-slate-200 border border-slate-800 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-amber-400" />
+                      {srv.turnaround}
                     </span>
                   </div>
 
-                  <div>
-                    <h3 className="text-lg font-bold text-white">{srv.name}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">{srv.tagline}</p>
-                  </div>
-
-                  <div className="flex items-baseline gap-2 pt-2">
-                    <span className="text-xs text-slate-400">Starting from</span>
-                    <span className="text-2xl font-extrabold text-white font-mono">
-                      {formatCurrency(srv.price)}
-                    </span>
-                    {srv.unit && <span className="text-xs text-slate-400">{srv.unit}</span>}
-                  </div>
-
-                  <div className="flex items-center gap-1.5 flex-wrap pt-2">
-                    {srv.tags.map((t) => (
-                      <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
-                        {t}
-                      </span>
-                    ))}
+                  <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-amber-400 text-xs font-bold bg-slate-950/70 backdrop-blur-sm px-2 py-0.5 rounded border border-slate-800/80">
+                      <Star className="w-3 h-3 fill-amber-400" />
+                      <span>{srv.rating}</span>
+                      <span className="text-slate-400 font-normal">({srv.reviews})</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-6 mt-4 border-t border-slate-800/80 flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setPickupForm({ ...pickupForm, service: srv.name });
-                      setIsPickupModalOpen(true);
-                    }}
-                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-bold text-xs shadow transition-all"
-                  >
-                    Book Pickup
-                  </button>
-                  <Link
-                    href={srv.href}
-                    className="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-bold transition-colors"
-                    title="View Technical Details"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
+                <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-white group-hover:text-rose-300 transition-colors">
+                      {srv.name}
+                    </h3>
+                    <p className="text-xs text-slate-400">{srv.tagline}</p>
+
+                    <div className="flex items-baseline gap-2 pt-1">
+                      <span className="text-xs text-slate-400">Starting from</span>
+                      <span className="text-2xl font-extrabold text-white font-mono">
+                        {formatCurrency(srv.price)}
+                      </span>
+                      {srv.unit && <span className="text-xs text-slate-400">{srv.unit}</span>}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                      {srv.tags.map((t) => (
+                        <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-5 mt-4 border-t border-slate-800/80 flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setPickupForm({ ...pickupForm, service: srv.name });
+                        setIsPickupModalOpen(true);
+                      }}
+                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-bold text-xs shadow transition-all"
+                    >
+                      Book Pickup
+                    </button>
+                    <Link
+                      href={srv.href}
+                      className="px-3 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-bold transition-colors"
+                      title="View Technical Details"
+                    >
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
