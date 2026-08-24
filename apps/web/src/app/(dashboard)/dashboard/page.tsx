@@ -15,7 +15,8 @@ import {
   Clock,
   ArrowRight,
   AlertTriangle,
-  DollarSign
+  DollarSign,
+  Sparkles
 } from 'lucide-react';
 import { Order, OrderStatus, JobCardItem, syncAllOrdersToJobs, ActivityItem, dispatchSyncEvent } from '@/lib/state-sync-utils';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
@@ -251,20 +252,35 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-8 animate-fade-in pb-12">
       {/* Welcome Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            Workspace Dashboard
+      <div className="glass-card-gold rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-yellow-500/30 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-transparent blur-3xl pointer-events-none" />
+        
+        <div className="space-y-2 relative z-10">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Master Atelier Command Hub</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-1" />
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+            Executive Control Center
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Real-time control center for your bespoke tailoring boutique.
+          <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
+            Real-time operations, client fit intelligence, SAM labor estimation, and automated production telemetry for your bespoke tailoring atelier.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-wrap items-center gap-3 relative z-10">
           <Tooltip content="Launch new bespoke order draft & pricing engine">
-            <Link href="/orders" className="btn-gold">
-              <Plus className="w-4 h-4 mr-2" />
-              <span>New Order</span>
+            <Link href="/orders" className="btn-gold shadow-xl shadow-yellow-500/20">
+              <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
+              <span>Create Bespoke Order</span>
+            </Link>
+          </Tooltip>
+          
+          <Tooltip content="Open 2D CAD silhouette & posture measurement engine">
+            <Link href="/measurements" className="btn-ghost border-slate-700/80 bg-slate-900/60 hover:border-yellow-500/30">
+              <Ruler className="w-4 h-4 mr-2 text-yellow-400" />
+              <span>Fit Profiles</span>
             </Link>
           </Tooltip>
         </div>
