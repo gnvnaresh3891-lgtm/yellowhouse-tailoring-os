@@ -33,6 +33,7 @@ import { CommandPalette, useCommandPalette } from '@/components/command-palette'
 import { Breadcrumb } from '@/components/breadcrumb';
 import { useToast } from '@/components/toast-context';
 import { useCurrency, SUPPORTED_CURRENCIES } from '@/components/currency-context';
+import { getTenantPluginSettings } from '@/lib/plugin-registry';
 
 const coreNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -167,8 +168,35 @@ export default function DashboardLayout({
 
   const activeUser = currentUser || DEFAULT_DEMO_USER;
   const userRole = activeUser.role || 'TENANT_OWNER';
+  
+  const [pluginSettings, setPluginSettings] = useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    setPluginSettings(getTenantPluginSettings());
+    const handlePluginUpdate = (e: any) => {
+      if (e.detail) setPluginSettings(e.detail);
+      else setPluginSettings(getTenantPluginSettings());
+    };
+    window.addEventListener('redhouse_plugins_updated', handlePluginUpdate);
+    return () => window.removeEventListener('redhouse_plugins_updated', handlePluginUpdate);
+  }, []);
+
+  const routeToPluginId: Record<string, string> = {
+    '/redhouse/marketplace': 'plugin-marketplace',
+    '/redhouse/equipment': 'plugin-equipment-sharing',
+    '/redhouse/supply': 'plugin-material-sourcing',
+    '/redhouse/bidding': 'plugin-tailor-bidding',
+    '/redhouse/stylists': 'plugin-stylist-directory',
+  };
+
+  const enabledEcosystemNavItems = ecosystemNavItems.filter((item) => {
+    if (item.href === '/redhouse') return true; // Hub is always accessible
+    const pId = routeToPluginId[item.href];
+    return !pId || pluginSettings[pId] !== false;
+  });
+
   const filteredCoreNavItems = filterNavItemsForRole(coreNavItems, userRole);
-  const filteredEcosystemNavItems = filterNavItemsForRole(ecosystemNavItems, userRole);
+  const filteredEcosystemNavItems = filterNavItemsForRole(enabledEcosystemNavItems, userRole);
 
   const unreadCount = activities.filter(a => {
     if (!a.timestamp) return false;
