@@ -173,7 +173,7 @@ const TESTIMONIALS = [
     name: 'Sravani Reddy',
     location: 'Banjara Hills, Hyderabad',
     service: 'Bridal Lehenga Blouse & Maggam Work',
-    quote: 'Urban Tailor stitched 4 blouses for my wedding. The Maggam embroidery precision and neckline fit were far superior to any local boutique.',
+    quote: 'UrbanStitch stitched 4 blouses for my wedding. The Maggam embroidery precision and neckline fit were far superior to any local boutique.',
     stars: 5
   },
   {
@@ -210,12 +210,12 @@ const FAQS = [
     a: 'Yes, absolutely. You can supply your own material, or choose from our authenticated vendor fabric catalogs (pure silk, velvet, organza, linen).'
   },
   {
-    q: 'How is RedHouse OS connected to Urban Tailor?',
+    q: 'How is RedHouse OS connected to UrbanStitch?',
     a: 'RedHouse OS is the underlying digital fashion engine powering our 3D tech packs, machine rental sharing, and artisan bidding network. You can access the professional atelier tools anytime.'
   }
 ];
 
-export default function ProfessionalUrbanTailorPage() {
+export default function ProfessionalUrbanStitchPage() {
   const { formatCurrency } = useCurrency();
   const toast = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -262,7 +262,7 @@ export default function ProfessionalUrbanTailorPage() {
             <span className="inline-flex items-center gap-1 font-semibold text-rose-400">
               <Sparkles className="w-3.5 h-3.5" /> Festive Bridal Offer:
             </span>
-            <span>Flat ₹300 OFF on First Doorstep Order. Use code: <strong>URBAN300</strong></span>
+            <span>Flat ₹300 OFF on First Doorstep Order. Use code: <strong>STITCH300</strong></span>
           </div>
           <div className="flex items-center gap-4 text-[11px] text-slate-400">
             <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-400" /> +91 87908 42828</span>
@@ -286,7 +286,7 @@ export default function ProfessionalUrbanTailorPage() {
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg text-white tracking-tight">Urban Tailor</span>
+                  <span className="font-bold text-lg text-white tracking-tight">UrbanStitch</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 font-bold border border-rose-500/20">Bespoke</span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-medium tracking-wide">Premium Doorstep Tailoring</span>
@@ -725,7 +725,7 @@ export default function ProfessionalUrbanTailorPage() {
       <footer className="bg-[#05070A] py-12 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-2">
-            <div className="font-bold text-sm text-white">Urban Tailor</div>
+            <div className="font-bold text-sm text-white">UrbanStitch</div>
             <p className="text-slate-400 leading-relaxed">
               Premium custom tailoring and doorstep measuring in Hyderabad. Powered by RedHouse OS & YellowHouse Tailoring Platform.
             </p>
