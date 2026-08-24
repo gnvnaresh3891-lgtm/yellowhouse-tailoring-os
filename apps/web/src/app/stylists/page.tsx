@@ -1,1 +1,7 @@
-export { default } from '../(dashboard)/redhouse/stylists/page';
+'use client';
+
+import StylistsPage from '../(dashboard)/redhouse/stylists/page';
+
+export default function StandaloneStylistsPage() {
+  return <StylistsPage />;
+}

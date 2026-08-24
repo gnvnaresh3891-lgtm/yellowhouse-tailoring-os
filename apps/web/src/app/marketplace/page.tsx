@@ -1,1 +1,7 @@
-export { default } from '../(dashboard)/redhouse/marketplace/page';
+'use client';
+
+import MarketplacePage from '../(dashboard)/redhouse/marketplace/page';
+
+export default function StandaloneMarketplacePage() {
+  return <MarketplacePage />;
+}
