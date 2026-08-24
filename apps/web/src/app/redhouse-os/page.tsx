@@ -109,17 +109,17 @@ const SERVICES_GRID = [
     href: '/redhouse/stylists'
   },
   {
-    id: 'machinery-hardware',
-    name: 'Textile Print & Laser Cutting',
-    tagline: 'Industrial Machinery On-Demand',
-    price: 450,
-    unit: '/ hr',
-    rating: 5.0,
-    reviews: 320,
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-    tags: ['Mimaki Sublimation', 'Lectra Laser', 'Tajima Embroidery', '30m Buffers'],
-    categoryBadge: 'B2B Hardware',
-    turnaround: 'Instant Slots',
+    id: 'custom-print',
+    name: 'Custom Fabric Printing',
+    tagline: 'Digital Sublimation, Silk & Cotton Prints',
+    price: 349,
+    unit: '/ mtr',
+    rating: 4.9,
+    reviews: 640,
+    image: 'https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?auto=format&fit=crop&w=800&q=80',
+    tags: ['Pure Silk Print', 'Organic Cotton', 'High-Res Sublimation', 'Custom Motifs'],
+    categoryBadge: 'Print Studio',
+    turnaround: '3 Days',
     href: '/redhouse/equipment'
   }
 ];
@@ -479,6 +479,7 @@ export default function ProfessionalStitchlyLightPage() {
                       <option>Salwar Suit & Anarkali (From ₹1,199)</option>
                       <option>Indo-Western & Crop Top (From ₹1,899)</option>
                       <option>Evening Gown / Western Wear (From ₹3,499)</option>
+                      <option>Custom Fabric Printing (From ₹349/mtr)</option>
                     </select>
                   </div>
 
@@ -908,6 +909,7 @@ export default function ProfessionalStitchlyLightPage() {
                   <option>Salwar Kameez & Anarkali (Starting ₹1,199)</option>
                   <option>Indo-Western & Crop Top Set (Starting ₹1,899)</option>
                   <option>Evening Gown / Western Dress (Starting ₹3,499)</option>
+                  <option>Custom Fabric Printing (Starting ₹349/mtr)</option>
                   <option>Fabric & Custom Alterations</option>
                 </select>
               </div>
