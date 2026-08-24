@@ -52,6 +52,16 @@ export type OrderStatus =
   | 'DELIVERED'
   | 'CANCELLED';
 
+export interface BOMItem {
+  id: string;
+  name: string;
+  category: 'thread' | 'zipper' | 'button' | 'lining' | 'canvas' | 'lace' | 'hook' | 'piping' | 'other';
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  isOptional?: boolean;
+}
+
 export interface OrderItemRow {
   id: string;
   garmentType: string;
@@ -61,6 +71,7 @@ export interface OrderItemRow {
   fabricImage?: string;
   liningImage?: string;
   materialNotes?: string;
+  bomItems?: BOMItem[];
 }
 
 export interface Order {
@@ -377,6 +388,187 @@ export default function OrderManagementPage() {
   const handleRemoveItem = (id: string) => {
     if (items.length <= 1) return;
     setItems(items.filter((item) => item.id !== id));
+  };
+
+  // Helper: Default BOM generation based on garment type
+  const getDefaultBOMForGarment = (garmentType: string): BOMItem[] => {
+    const g = garmentType.toLowerCase();
+    const items: BOMItem[] = [
+      {
+        id: `bom-${Date.now()}-1`,
+        name: 'Matching Spun Poly / Silk Thread Spools',
+        category: 'thread',
+        quantity: 2,
+        unit: 'spools',
+        unitCost: 60,
+        isOptional: false
+      }
+    ];
+
+    if (g.includes('trouser') || g.includes('suit') || g.includes('churidar')) {
+      items.push({
+        id: `bom-${Date.now()}-2`,
+        name: 'YKK Concealed Metal Trouser Zipper (7 inch)',
+        category: 'zipper',
+        quantity: 1,
+        unit: 'pcs',
+        unitCost: 45,
+        isOptional: false
+      });
+      items.push({
+        id: `bom-${Date.now()}-3`,
+        name: 'Waistband Canvas Stiffener (Interlining)',
+        category: 'canvas',
+        quantity: 1.2,
+        unit: 'meters',
+        unitCost: 120,
+        isOptional: true
+      });
+      items.push({
+        id: `bom-${Date.now()}-4`,
+        name: 'Horn / Resin Jacket Buttons (Set of 6)',
+        category: 'button',
+        quantity: 1,
+        unit: 'set',
+        unitCost: 250,
+        isOptional: true
+      });
+    } else if (g.includes('blouse') || g.includes('corset') || g.includes('choli')) {
+      items.push({
+        id: `bom-${Date.now()}-2`,
+        name: 'Heavy Duty Side Invisible Zipper (12 inch)',
+        category: 'zipper',
+        quantity: 1,
+        unit: 'pcs',
+        unitCost: 55,
+        isOptional: false
+      });
+      items.push({
+        id: `bom-${Date.now()}-3`,
+        name: 'Back Eyelet / Braided Dori Hooks & Loops',
+        category: 'hook',
+        quantity: 8,
+        unit: 'pairs',
+        unitCost: 15,
+        isOptional: true
+      });
+      items.push({
+        id: `bom-${Date.now()}-4`,
+        name: 'Padded Cup Inserts & Boning Strips',
+        category: 'canvas',
+        quantity: 1,
+        unit: 'pair',
+        unitCost: 180,
+        isOptional: true
+      });
+    } else if (g.includes('sherwani') || g.includes('bandhgala') || g.includes('kurta')) {
+      items.push({
+        id: `bom-${Date.now()}-2`,
+        name: 'Gold Plated / Antique Metal Kurta Buttons',
+        category: 'button',
+        quantity: 7,
+        unit: 'pcs',
+        unitCost: 80,
+        isOptional: false
+      });
+      items.push({
+        id: `bom-${Date.now()}-3`,
+        name: 'Horsehair Canvas Chest Piece Reinforcement',
+        category: 'canvas',
+        quantity: 1.5,
+        unit: 'meters',
+        unitCost: 350,
+        isOptional: true
+      });
+      items.push({
+        id: `bom-${Date.now()}-4`,
+        name: 'Gold Zari Border Piping Trim',
+        category: 'piping',
+        quantity: 3.5,
+        unit: 'meters',
+        unitCost: 90,
+        isOptional: true
+      });
+    } else if (g.includes('lehenga') || g.includes('gown') || g.includes('anarkali')) {
+      items.push({
+        id: `bom-${Date.now()}-2`,
+        name: 'Cancan Mesh Netting for Flare Volume',
+        category: 'canvas',
+        quantity: 4.0,
+        unit: 'meters',
+        unitCost: 110,
+        isOptional: true
+      });
+      items.push({
+        id: `bom-${Date.now()}-3`,
+        name: 'Heavy Zari Waistband Latkan Tassels',
+        category: 'lace',
+        quantity: 2,
+        unit: 'pcs',
+        unitCost: 220,
+        isOptional: true
+      });
+      items.push({
+        id: `bom-${Date.now()}-4`,
+        name: 'Concealed Side Zipper (18 inch)',
+        category: 'zipper',
+        quantity: 1,
+        unit: 'pcs',
+        unitCost: 65,
+        isOptional: false
+      });
+    }
+
+    return items;
+  };
+
+  // Add BOM Item to an Order Item Row
+  const handleAddBOMItem = (itemId: string) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id === itemId) {
+          const currentBOM = item.bomItems || getDefaultBOMForGarment(item.garmentType);
+          const newBOMItem: BOMItem = {
+            id: `bom-${Date.now()}-${currentBOM.length + 1}`,
+            name: 'New Accessory / Trim',
+            category: 'thread',
+            quantity: 1,
+            unit: 'pcs',
+            unitCost: 50,
+            isOptional: true
+          };
+          return { ...item, bomItems: [...currentBOM, newBOMItem] };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Update BOM Item Field
+  const handleUpdateBOMItem = (itemId: string, bomId: string, field: keyof BOMItem, value: any) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id === itemId) {
+          const currentBOM = item.bomItems || getDefaultBOMForGarment(item.garmentType);
+          const updatedBOM = currentBOM.map((b) => (b.id === bomId ? { ...b, [field]: value } : b));
+          return { ...item, bomItems: updatedBOM };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Remove BOM Item
+  const handleRemoveBOMItem = (itemId: string, bomId: string) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id === itemId) {
+          const currentBOM = item.bomItems || getDefaultBOMForGarment(item.garmentType);
+          return { ...item, bomItems: currentBOM.filter((b) => b.id !== bomId) };
+        }
+        return item;
+      })
+    );
   };
 
   // Update Item Field
@@ -1467,6 +1659,112 @@ export default function OrderManagementPage() {
                           />
                         </div>
                       </div>
+
+                      {/* BILL OF MATERIALS (BOM) & TRIMS SECTION */}
+                      <div className="bg-slate-950/80 rounded-xl border border-slate-800/90 p-3.5 mt-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Scissors className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="text-[11px] font-bold text-white uppercase tracking-wider">Bill of Materials (BOM) & Trims</span>
+                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 font-mono font-semibold">
+                              {(item.bomItems || getDefaultBOMForGarment(item.garmentType)).length} Items Required
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleAddBOMItem(item.id)}
+                            className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center space-x-1 transition-all"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Material</span>
+                          </button>
+                        </div>
+
+                        {/* BOM Items Table / List */}
+                        <div className="space-y-2">
+                          {(item.bomItems || getDefaultBOMForGarment(item.garmentType)).map((bom) => (
+                            <div
+                              key={bom.id}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 text-xs"
+                            >
+                              <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={!bom.isOptional}
+                                  onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'isOptional', !e.target.checked)}
+                                  className="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer shrink-0"
+                                  title="Check if mandatory for production, uncheck if optional"
+                                />
+                                <input
+                                  type="text"
+                                  value={bom.name}
+                                  onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'name', e.target.value)}
+                                  placeholder="Material / Trim description"
+                                  className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 flex-1"
+                                />
+                              </div>
+
+                              <div className="flex items-center space-x-2">
+                                <select
+                                  value={bom.category}
+                                  onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'category', e.target.value as any)}
+                                  className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-300 focus:outline-none"
+                                >
+                                  <option value="thread">Thread</option>
+                                  <option value="zipper">Zipper</option>
+                                  <option value="button">Buttons</option>
+                                  <option value="lining">Lining</option>
+                                  <option value="canvas">Canvas / Interlining</option>
+                                  <option value="lace">Lace / Latkan</option>
+                                  <option value="hook">Hooks</option>
+                                  <option value="piping">Piping</option>
+                                  <option value="other">Other Trim</option>
+                                </select>
+
+                                <div className="flex items-center space-x-1">
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    min="0.1"
+                                    value={bom.quantity}
+                                    onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'quantity', parseFloat(e.target.value) || 0)}
+                                    className="bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-xs text-right text-slate-200 w-12 font-mono"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={bom.unit}
+                                    onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'unit', e.target.value)}
+                                    className="bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-slate-400 w-14 text-center font-mono"
+                                    placeholder="unit"
+                                  />
+                                </div>
+
+                                <div className="flex items-center space-x-1">
+                                  <span className="text-[10px] text-slate-500 font-mono">₹</span>
+                                  <input
+                                    type="number"
+                                    value={bom.unitCost}
+                                    onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'unitCost', parseFloat(e.target.value) || 0)}
+                                    className="bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-xs text-right text-amber-300 w-14 font-mono font-semibold"
+                                  />
+                                </div>
+
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${bom.isOptional ? 'bg-slate-800 text-slate-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                                  {bom.isOptional ? 'Optional' : 'Required'}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveBOMItem(item.id, bom.id)}
+                                  className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1691,6 +1989,46 @@ export default function OrderManagementPage() {
               </div>
             </div>
 
+            {/* Bill of Materials (BOM) Summary in Inspection Drawer */}
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                  <Scissors className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Required Materials & Trims (BOM)</span>
+                </span>
+                <span className="text-[10px] text-amber-400 font-mono">
+                  {selectedOrder.items?.reduce((acc, it) => acc + (it.bomItems?.length || 0), 0) || 0} items
+                </span>
+              </div>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {selectedOrder.items && selectedOrder.items.some(it => it.bomItems && it.bomItems.length > 0) ? (
+                  selectedOrder.items.map((it) => (
+                    <div key={it.id} className="space-y-1.5">
+                      <div className="text-[11px] font-bold text-slate-300 border-b border-slate-800/60 pb-0.5">
+                        {it.garmentType} ({it.fabricSku})
+                      </div>
+                      {it.bomItems?.map((bom) => (
+                        <div key={bom.id} className="flex items-center justify-between text-xs py-0.5 px-2 rounded bg-slate-900/60 border border-slate-800/50">
+                          <span className="text-slate-300 truncate max-w-[200px]">{bom.name}</span>
+                          <div className="flex items-center space-x-2 shrink-0">
+                            <span className="font-mono text-slate-400 text-[10px]">{bom.quantity} {bom.unit}</span>
+                            <span className={`text-[9px] px-1.5 rounded font-bold uppercase ${bom.isOptional ? 'bg-slate-800 text-slate-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                              {bom.isOptional ? 'Optional' : 'Required'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-2 text-xs text-slate-500">
+                    Standard materials (threads, canvas, zipper) provisioned on cutting allocation.
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex justify-end space-x-3 pt-2">
               <button
                 onClick={() => setSelectedOrder(null)}
@@ -1783,14 +2121,29 @@ export default function OrderManagementPage() {
             </div>
 
             <div className="space-y-4 mb-8">
-              <h4 className="text-xs text-slate-500 print:text-gray-500 uppercase font-bold border-b border-slate-800 print:border-black pb-2">Order Items</h4>
+              <h4 className="text-xs text-slate-500 print:text-gray-500 uppercase font-bold border-b border-slate-800 print:border-black pb-2">Order Items & Material BOM</h4>
               {printModalOrder.items?.map((item, idx) => (
-                <div key={item.id} className="flex justify-between items-start border-b border-slate-800/50 print:border-gray-300 pb-3">
-                  <div>
-                    <p className="font-bold text-slate-200 print:text-black">{idx + 1}. {item.garmentType}</p>
-                    <p className="text-xs text-slate-400 print:text-gray-600">Fabric: {item.fabricSku} ({item.fabricMeters}m)</p>
-                    {item.materialNotes && <p className="text-xs text-slate-400 print:text-gray-600 italic mt-1">Note: {item.materialNotes}</p>}
+                <div key={item.id} className="border-b border-slate-800/50 print:border-gray-300 pb-3 space-y-1.5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-slate-200 print:text-black">{idx + 1}. {item.garmentType}</p>
+                      <p className="text-xs text-slate-400 print:text-gray-600">Fabric: {item.fabricSku} ({item.fabricMeters}m)</p>
+                      {item.materialNotes && <p className="text-xs text-slate-400 print:text-gray-600 italic mt-1">Note: {item.materialNotes}</p>}
+                    </div>
                   </div>
+                  {item.bomItems && item.bomItems.length > 0 && (
+                    <div className="bg-slate-900/60 print:bg-gray-100 p-2 rounded text-[11px] print:text-[10px] space-y-1">
+                      <div className="font-semibold text-amber-400 print:text-gray-700 uppercase tracking-wider text-[9px]">Material BOM / Trims:</div>
+                      <div className="grid grid-cols-2 gap-1 text-slate-300 print:text-black">
+                        {item.bomItems.map(b => (
+                          <div key={b.id} className="flex items-center justify-between pr-2">
+                            <span>• {b.name}</span>
+                            <span className="font-mono text-slate-400 print:text-gray-600">{b.quantity} {b.unit} ({b.isOptional ? 'Optional' : 'Req'})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
