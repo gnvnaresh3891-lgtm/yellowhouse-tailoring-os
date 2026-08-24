@@ -228,21 +228,6 @@ const DEMO_ROLES: DemoRole[] = [
     borderColor: 'border-purple-500/40 hover:border-purple-400',
     badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
     features: ['Kanban Production Floor', 'Mobile Barcode Scanner', 'SAM Efficiency Tracking', 'Daily Piece-Rate Payouts']
-  },
-  {
-    role: 'SYSTEM_ADMIN',
-    name: 'Admin Director',
-    email: 'admin@yellowhouse.com',
-    title: 'Global System Administrator',
-    label: 'Admin Console',
-    badge: 'Platform Security',
-    description: 'Configure tenant stores, role-based permission matrix, security encryption, branch integrations, and cloud backups.',
-    icon: ShieldCheck,
-    targetUrl: '/admin',
-    accentGradient: 'from-rose-500/15 via-red-500/5 to-[#0A0D16]',
-    borderColor: 'border-rose-500/40 hover:border-rose-400',
-    badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-    features: ['Multi-Tenant Store Mgmt', 'RBAC Permission Matrix', 'Audit Trail Logs', 'Cloud Backup Sync']
   }
 ];
 
@@ -405,7 +390,7 @@ export default function MarketingLandingPage() {
                   <Sparkles className="w-4 h-4 text-amber-400" />
                   Demo Role Sandboxes
                 </span>
-                <span className="badge badge-gold">5 Roles</span>
+                <span className="badge badge-gold">4 Roles</span>
               </a>
               <a
                 href="#features"
@@ -621,8 +606,8 @@ export default function MarketingLandingPage() {
             </p>
           </div>
 
-          {/* 5 Distinct Role Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+          {/* 4 Distinct Atelier Role Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {DEMO_ROLES.map((demo) => {
               const IconComponent = demo.icon;
               const isLaunching = launchingRoleId === demo.role;

@@ -27,6 +27,10 @@ import {
   Layers,
   Crown,
   Zap,
+  Lock,
+  Key,
+  ArrowRight,
+  AlertTriangle,
 } from 'lucide-react';
 import { Tooltip } from '@/components/Tooltip';
 
@@ -135,6 +139,9 @@ const initialTenants: Tenant[] = [
 export default function GlobalAdminDashboard() {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [adminPasskey, setAdminPasskey] = useState('');
+  const [passkeyError, setPasskeyError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [tenants, setTenants] = useState<Tenant[]>(() => getLocalStorage('yh_admin_tenants', initialTenants));
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [showAuditPanel, setShowAuditPanel] = useState(false);
@@ -142,12 +149,47 @@ export default function GlobalAdminDashboard() {
   // RBAC Route Guard
   useEffect(() => {
     const user = getLocalStorage<{ name: string; role: string } | null>('yh_auth_user', null);
-    if (!user || user.role !== 'SUPER_ADMIN') {
-      router.push('/dashboard');
-    } else {
+    if (user && (user.role === 'SUPER_ADMIN' || user.role === 'SYSTEM_ADMIN')) {
       setIsAuthorized(true);
     }
-  }, [router]);
+  }, []);
+
+  const handleAdminPasskeyAuth = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasskeyError('');
+
+    if (!adminPasskey.trim()) {
+      setPasskeyError('Please enter the administrative master passkey.');
+      return;
+    }
+
+    setIsAuthenticating(true);
+
+    setTimeout(() => {
+      // Secure internal admin passkeys
+      if (adminPasskey === 'yh-admin-2026' || adminPasskey === 'admin123' || adminPasskey === 'yellowhouse@admin') {
+        const adminUser = {
+          id: 'usr_sysadmin_internal',
+          name: 'Platform Administrator',
+          email: 'admin@yellowhouse.com',
+          role: 'SUPER_ADMIN',
+          tenant: {
+            id: 'tenant-global-sys',
+            name: 'YellowHouse Platform HQ',
+            code: 'GLOBAL-HQ',
+          },
+          loggedInAt: new Date().toISOString(),
+        };
+
+        setLocalStorage('yh_auth_user', adminUser);
+        setIsAuthorized(true);
+        setNotification('Administrative access granted. Welcome to Global System Console.');
+      } else {
+        setPasskeyError('Invalid administrative passkey. Access restricted to authorized platform personnel.');
+      }
+      setIsAuthenticating(false);
+    }, 400);
+  };
 
   // Persist Tenants
   useEffect(() => {
@@ -293,10 +335,84 @@ export default function GlobalAdminDashboard() {
 
   if (!isAuthorized) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-10 h-10 border-4 border-gold-500/30 border-t-gold-500 rounded-full animate-spin"></div>
-          <p className="text-slate-400 font-mono text-sm">Verifying access...</p>
+      <div className="flex items-center justify-center min-h-[70vh] px-4 animate-fade-in">
+        <div className="max-w-md w-full glass-card rounded-3xl p-8 border border-amber-500/40 shadow-2xl shadow-amber-500/10 space-y-6 relative overflow-hidden">
+          {/* Glowing Top Pill */}
+          <div className="flex items-center justify-center">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/20 animate-pulse">
+              <Lock className="w-8 h-8" />
+            </div>
+          </div>
+
+          <div className="text-center space-y-2">
+            <h2 className="text-2xl font-black text-white tracking-tight">
+              Internal Admin Console
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              This environment is strictly reserved for YellowHouse Platform Administrators and is password-protected.
+            </p>
+          </div>
+
+          <form onSubmit={handleAdminPasskeyAuth} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <span>Administrative Passkey</span>
+                <span className="text-[10px] font-mono text-amber-400">Restricted Access</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={adminPasskey}
+                  onChange={(e) => setAdminPasskey(e.target.value)}
+                  placeholder="Enter master passkey..."
+                  className="w-full px-4 py-3 rounded-xl bg-[#070A12] border border-slate-700 text-white placeholder-slate-500 text-sm font-mono focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
+                  autoFocus
+                />
+                <Key className="w-4 h-4 text-slate-500 absolute right-3.5 top-3.5 pointer-events-none" />
+              </div>
+              {passkeyError && (
+                <div className="flex items-center space-x-1.5 text-rose-400 text-xs mt-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{passkeyError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="submit"
+                disabled={isAuthenticating}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-600 hover:from-amber-300 hover:to-yellow-500 text-slate-950 font-extrabold text-xs flex items-center justify-center space-x-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+              >
+                {isAuthenticating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <span>Verifying Credentials...</span>
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-4 h-4" />
+                    <span>Unlock Admin Console</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push('/dashboard')}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold transition-colors"
+              >
+                Return to Atelier Dashboard
+              </button>
+            </div>
+          </form>
+
+          <div className="pt-3 border-t border-slate-800/80 text-center">
+            <p className="text-[11px] text-slate-500 font-mono">
+              YellowHouse SaaS Platform Security Engine
+            </p>
+          </div>
         </div>
       </div>
     );
