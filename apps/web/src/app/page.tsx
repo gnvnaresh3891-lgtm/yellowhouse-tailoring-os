@@ -343,21 +343,83 @@ export default function MarketingLandingPage() {
           </p>
 
           {/* HERO CTA BUTTONS */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <button
               onClick={() => handlePlanChoice('starter')}
-              className="btn-gold w-full sm:w-auto px-8 py-4 text-base font-bold flex items-center justify-center space-x-3 shadow-xl shadow-yellow-500/25"
+              className="btn-gold w-full sm:w-auto px-8 py-4 text-base font-bold flex items-center justify-center space-x-3 shadow-xl shadow-yellow-500/25 transition-transform hover:scale-105"
             >
               <span>Get Started Free</span>
               <ArrowRight className="w-5 h-5" />
             </button>
+            <Link
+              href="/redhouse-os"
+              className="w-full sm:w-auto px-8 py-4 text-base font-bold flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-rose-600/20 via-purple-600/20 to-amber-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all shadow-lg"
+            >
+              <Sparkles className="w-5 h-5 text-rose-400" />
+              <span>Stitchly Consumer Portal</span>
+            </Link>
             <a
               href="#cad-engine"
               className="btn-ghost w-full sm:w-auto px-8 py-4 text-base font-semibold flex items-center justify-center space-x-2"
             >
               <Eye className="w-5 h-5 text-slate-400" />
-              <span>Request Interactive Demo</span>
+              <span>Interactive CAD Demo</span>
             </a>
+          </div>
+
+          {/* VISUAL ATELIER PREVIEW STRIP */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-5xl mx-auto mb-16">
+            <div className="relative rounded-2xl overflow-hidden h-36 border border-slate-800 shadow-xl group">
+              <img
+                src="https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=600&q=80"
+                alt="Bespoke Tailoring Cutting"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute bottom-3 left-3 text-left">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-400">Master Cutting</span>
+                <div className="text-xs font-bold text-white">Savile Row & Custom Suits</div>
+              </div>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden h-36 border border-slate-800 shadow-xl group">
+              <img
+                src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80"
+                alt="Indian Bridal Couture"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute bottom-3 left-3 text-left">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Heritage Couture</span>
+                <div className="text-xs font-bold text-white">Bridal Maggam & Zardozi</div>
+              </div>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden h-36 border border-slate-800 shadow-xl group">
+              <img
+                src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=600&q=80"
+                alt="CAD Digital Tech Pack"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute bottom-3 left-3 text-left">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Garment CAD</span>
+                <div className="text-xs font-bold text-white">Dynamic SVG Landmarks</div>
+              </div>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden h-36 border border-slate-800 shadow-xl group">
+              <img
+                src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
+                alt="Karigar Production Board"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute bottom-3 left-3 text-left">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Karigar Tracking</span>
+                <div className="text-xs font-bold text-white">Real-Time Piece Rates</div>
+              </div>
+            </div>
           </div>
 
           {/* LIVE SYSTEM STATUS BAR */}
