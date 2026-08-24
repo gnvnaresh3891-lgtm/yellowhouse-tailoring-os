@@ -28,8 +28,15 @@ import {
   Package,
   Award,
   ShieldCheck,
-  Zap
+  Zap,
+  Crown,
+  Shield,
+  UserCheck,
+  Key,
+  PlayCircle,
+  Compass
 } from 'lucide-react';
+import { setLocalStorage, getLocalStorage } from '@/lib/storage-utils';
 
 interface LandmarkData {
   id: string;
@@ -145,11 +152,106 @@ const FAQS = [
   }
 ];
 
+interface DemoRole {
+  role: string;
+  name: string;
+  email: string;
+  title: string;
+  label: string;
+  badge: string;
+  description: string;
+  icon: any;
+  targetUrl: string;
+  accentGradient: string;
+  borderColor: string;
+  badgeColor: string;
+  features: string[];
+}
+
+const DEMO_ROLES: DemoRole[] = [
+  {
+    role: 'TENANT_OWNER',
+    name: 'Latif Khan',
+    email: 'owner@yellowhouse.com',
+    title: 'Tenant Owner & Founder',
+    label: 'Owner Sandbox',
+    badge: 'Executive Command',
+    description: 'Complete visibility into multi-branch financials, store profit margins, master orders, and atelier growth analytics.',
+    icon: Crown,
+    targetUrl: '/dashboard',
+    accentGradient: 'from-amber-500/15 via-yellow-500/5 to-[#0A0D16]',
+    borderColor: 'border-amber-500/40 hover:border-amber-400',
+    badgeColor: 'bg-amber-400/15 text-amber-300 border-amber-400/30',
+    features: ['Revenue & P&L Telemetry', 'Multi-Boutique Inventory', 'Automated Pricing Rules', 'Executive Audit Logs']
+  },
+  {
+    role: 'MASTER_TAILOR',
+    name: 'Master Latif',
+    email: 'master@yellowhouse.com',
+    title: 'Master Tailor & Pattern Cutter',
+    label: 'Master Workbench',
+    badge: '2D CAD Studio',
+    description: 'Access the cutting table with real-time anatomical body landmark mapping, posture delta compensations, and version snapshots.',
+    icon: Scissors,
+    targetUrl: '/measurements',
+    accentGradient: 'from-yellow-500/15 via-amber-500/5 to-[#0A0D16]',
+    borderColor: 'border-yellow-500/40 hover:border-yellow-400',
+    badgeColor: 'bg-yellow-400/15 text-yellow-300 border-yellow-400/30',
+    features: ['2D Landmark Vector Engine', 'Posture Delta Calculation', 'Fitting Trial History', 'Measurement Card Printing']
+  },
+  {
+    role: 'BRANCH_MANAGER',
+    name: 'Sarah Jenkins',
+    email: 'manager@yellowhouse.com',
+    title: 'Boutique Branch Manager',
+    label: 'Store Operations',
+    badge: 'Store Operations',
+    description: 'Manage daily client appointments, custom order intake, QR/barcode tagging, payment balance collections, and delivery dates.',
+    icon: Building2,
+    targetUrl: '/orders',
+    accentGradient: 'from-blue-500/15 via-indigo-500/5 to-[#0A0D16]',
+    borderColor: 'border-blue-500/40 hover:border-blue-400',
+    badgeColor: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+    features: ['Real-Time Order Tracking', 'QR & Barcode Generation', 'Client Fitting Reminders', 'Automated Invoicing & Receipts']
+  },
+  {
+    role: 'KARIGAR',
+    name: 'Rafi Craftsman',
+    email: 'karigar@yellowhouse.com',
+    title: 'Artisan Karigar & Craftsman',
+    label: 'Karigar Floor',
+    badge: 'Workshop Floor',
+    description: 'Live mobile-first workshop floor board to track Standard Allowed Minutes (SAM), stage completion, and piece-rate earnings.',
+    icon: Zap,
+    targetUrl: '/production',
+    accentGradient: 'from-purple-500/15 via-pink-500/5 to-[#0A0D16]',
+    borderColor: 'border-purple-500/40 hover:border-purple-400',
+    badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+    features: ['Kanban Production Floor', 'Mobile Barcode Scanner', 'SAM Efficiency Tracking', 'Daily Piece-Rate Payouts']
+  },
+  {
+    role: 'SYSTEM_ADMIN',
+    name: 'Admin Director',
+    email: 'admin@yellowhouse.com',
+    title: 'Global System Administrator',
+    label: 'Admin Console',
+    badge: 'Platform Security',
+    description: 'Configure tenant stores, role-based permission matrix, security encryption, branch integrations, and cloud backups.',
+    icon: ShieldCheck,
+    targetUrl: '/admin',
+    accentGradient: 'from-rose-500/15 via-red-500/5 to-[#0A0D16]',
+    borderColor: 'border-rose-500/40 hover:border-rose-400',
+    badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    features: ['Multi-Tenant Store Mgmt', 'RBAC Permission Matrix', 'Audit Trail Logs', 'Cloud Backup Sync']
+  }
+];
+
 export default function MarketingLandingPage() {
   const router = useRouter();
 
   // State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [launchingRoleId, setLaunchingRoleId] = useState<string | null>(null);
   
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -179,6 +281,27 @@ export default function MarketingLandingPage() {
 
   const handlePlanChoice = (plan: string) => {
     router.push(`/onboarding?plan=${plan}`);
+  };
+
+  const handleQuickDemoLogin = (demo: DemoRole) => {
+    setLaunchingRoleId(demo.role);
+    const userObject = {
+      id: `usr_demo_${demo.role.toLowerCase()}`,
+      name: demo.name,
+      email: demo.email,
+      role: demo.role,
+      tenant: {
+        id: 'tenant-flagship-01',
+        name: 'Grand Atelier Flagship',
+        code: 'GA-01',
+      },
+      loggedInAt: new Date().toISOString(),
+    };
+
+    setLocalStorage('yh_auth_user', userObject);
+    setTimeout(() => {
+      router.push(demo.targetUrl);
+    }, 400);
   };
 
   const nextTestimonial = () => {
@@ -218,6 +341,10 @@ export default function MarketingLandingPage() {
 
             {/* NAVIGATION LINKS (DESKTOP) */}
             <nav className="hidden md:flex items-center space-x-8 text-sm font-semibold text-slate-300">
+              <a href="#demo-accounts" className="hover:text-amber-400 transition-colors flex items-center space-x-1.5 text-amber-300">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>Demo Roles</span>
+              </a>
               <a href="#features" className="hover:text-amber-400 transition-colors">
                 Features
               </a>
@@ -238,6 +365,10 @@ export default function MarketingLandingPage() {
 
             {/* ACTION BUTTONS (DESKTOP) */}
             <div className="hidden md:flex items-center space-x-4">
+              <a href="#demo-accounts" className="px-3.5 py-2 rounded-xl text-amber-300 bg-amber-400/10 border border-amber-400/30 hover:bg-amber-400/20 font-bold text-xs transition-colors flex items-center space-x-1.5">
+                <Crown className="w-3.5 h-3.5 text-amber-400" />
+                <span>Demo Sandboxes</span>
+              </a>
               <Link href="/login" className="px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 font-semibold text-xs transition-colors">
                 Log In
               </Link>
@@ -265,6 +396,17 @@ export default function MarketingLandingPage() {
         {isMobileMenuOpen && (
           <div className="md:hidden glass-card border-b border-slate-800 px-4 pt-2 pb-6 space-y-4 animate-fade-in">
             <nav className="flex flex-col space-y-3 text-sm font-medium text-slate-300 pt-2">
+              <a
+                href="#demo-accounts"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-lg bg-amber-400/10 border border-amber-400/20 text-amber-300 font-bold flex items-center justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  Demo Role Sandboxes
+                </span>
+                <span className="badge badge-gold">5 Roles</span>
+              </a>
               <a
                 href="#features"
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -350,11 +492,18 @@ export default function MarketingLandingPage() {
               <ArrowRight className="w-5 h-5" />
             </button>
             <a
+              href="#demo-accounts"
+              className="w-full sm:w-auto px-7 py-4 text-base font-bold flex items-center justify-center space-x-2.5 rounded-2xl bg-amber-500/15 border border-amber-400/40 text-amber-300 hover:bg-amber-400 hover:text-slate-950 transition-all duration-300 shadow-lg shadow-amber-500/10"
+            >
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              <span>⚡ Try 1-Click Demo Accounts</span>
+            </a>
+            <a
               href="#cad-engine"
-              className="btn-ghost w-full sm:w-auto px-8 py-4 text-base font-semibold flex items-center justify-center space-x-2"
+              className="btn-ghost w-full sm:w-auto px-6 py-4 text-base font-semibold flex items-center justify-center space-x-2"
             >
               <Eye className="w-5 h-5 text-slate-400" />
-              <span>Interactive CAD Demo</span>
+              <span>CAD Pattern Table</span>
             </a>
           </div>
 
@@ -441,6 +590,115 @@ export default function MarketingLandingPage() {
                 <div className="text-xs text-slate-400">Fabric Yield Gain</div>
                 <div className="text-lg font-extrabold text-emerald-400">+14.2%</div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* SEPARATE INTERACTIVE DEMO ROLES & 1-CLICK ATELIER SANDBOX   */}
+      {/* ============================================================ */}
+      <section id="demo-accounts" className="py-20 md:py-28 bg-[#070A12] border-t border-amber-500/25 relative overflow-hidden">
+        {/* Ambient background glow pools */}
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/10 blur-[130px] pointer-events-none" />
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/10 blur-[130px] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Section Header */}
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-400/15 via-yellow-500/15 to-amber-600/15 text-amber-300 border border-amber-400/40 text-xs font-extrabold uppercase tracking-wider shadow-lg shadow-amber-500/10">
+              <Crown className="w-4 h-4 text-amber-400 animate-bounce" />
+              <span>Separate Live Demo Workspaces</span>
+            </div>
+            <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-tight">
+              Experience the OS with{' '}
+              <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
+                Dedicated Demo Accounts
+              </span>
+            </h2>
+            <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
+              Explore YellowHouse Tailoring OS tailored specifically to each role. Select any persona below to immediately launch an authentic interactive session — <span className="text-amber-300 font-semibold">no password or credit card required</span>.
+            </p>
+          </div>
+
+          {/* 5 Distinct Role Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+            {DEMO_ROLES.map((demo) => {
+              const IconComponent = demo.icon;
+              const isLaunching = launchingRoleId === demo.role;
+
+              return (
+                <div
+                  key={demo.role}
+                  className={`rounded-2xl border ${demo.borderColor} bg-gradient-to-b ${demo.accentGradient} p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl group shadow-xl backdrop-blur-xl relative overflow-hidden`}
+                >
+                  {/* Card Header & Content */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="w-11 h-11 rounded-xl bg-slate-900/90 border border-slate-700/80 flex items-center justify-center text-amber-400 shadow-md group-hover:scale-110 group-hover:border-amber-400/50 transition-all duration-300">
+                        <IconComponent className="w-5 h-5" />
+                      </div>
+                      <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full border ${demo.badgeColor}`}>
+                        {demo.badge}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-bold text-white group-hover:text-amber-300 transition-colors">
+                        {demo.title}
+                      </h3>
+                      <div className="flex items-center space-x-1.5 text-xs text-slate-400 font-mono mt-1">
+                        <span className="font-semibold text-slate-200">{demo.name}</span>
+                        <span>•</span>
+                        <span className="text-[11px] text-slate-500 truncate">{demo.email}</span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed min-h-[56px]">
+                      {demo.description}
+                    </p>
+
+                    {/* Features checklist */}
+                    <div className="space-y-2 pt-3 border-t border-slate-800/80">
+                      {demo.features.map((feat, idx) => (
+                        <div key={idx} className="flex items-center space-x-2 text-[11px] text-slate-300">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span className="truncate">{feat}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 1-Click Launch Button */}
+                  <div className="pt-6 mt-4 border-t border-slate-800/80">
+                    <button
+                      onClick={() => handleQuickDemoLogin(demo)}
+                      disabled={isLaunching}
+                      className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-amber-400 text-slate-100 hover:text-slate-950 border border-slate-700 hover:border-amber-400 font-extrabold text-xs flex items-center justify-center space-x-2 transition-all duration-300 shadow-lg group/btn cursor-pointer"
+                    >
+                      {isLaunching ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                          <span>Launching Session...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Launch {demo.label}</span>
+                          <ArrowRight className="w-4 h-4 transform group-hover/btn:translate-x-1 transition-transform text-amber-400 group-hover/btn:text-slate-950" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick Notice Banner */}
+          <div className="mt-12 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs text-slate-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Each demo persona operates in an isolated pre-loaded atelier sandbox with authentic sample orders, CAD patterns, and metrics.</span>
             </div>
           </div>
         </div>
