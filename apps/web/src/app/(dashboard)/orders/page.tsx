@@ -55,11 +55,13 @@ export type OrderStatus =
 export interface BOMItem {
   id: string;
   name: string;
-  category: 'thread' | 'zipper' | 'button' | 'lining' | 'canvas' | 'lace' | 'hook' | 'piping' | 'other';
+  category: 'thread' | 'zipper' | 'button' | 'lining' | 'canvas' | 'lace' | 'hook' | 'piping' | 'fabric' | 'other';
   quantity: number;
   unit: string;
   unitCost: number;
   isOptional?: boolean;
+  isCustomerProvided?: boolean; // Customer brought their own zipper/buttons/lace/fabric
+  receivedDate?: string;
 }
 
 export interface OrderItemRow {
@@ -71,6 +73,8 @@ export interface OrderItemRow {
   fabricImage?: string;
   liningImage?: string;
   materialNotes?: string;
+  isCustomerFabric?: boolean; // Customer provided their own main garment fabric
+  customerFabricNotes?: string;
   bomItems?: BOMItem[];
 }
 
@@ -1492,15 +1496,34 @@ export default function OrderManagementPage() {
                         </select>
                       </div>
 
-                      {/* Fabric SKU Input */}
+                      {/* Fabric SKU / Customer Fabric Input */}
                       <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-400">Fabric SKU</label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-semibold text-slate-400">
+                            {item.isCustomerFabric ? 'Customer Fabric Detail' : 'Fabric SKU'}
+                          </label>
+                          <label className="flex items-center space-x-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!item.isCustomerFabric}
+                              onChange={(e) => {
+                                const isCust = e.target.checked;
+                                handleUpdateItem(item.id, 'isCustomerFabric', isCust);
+                                if (isCust && !item.fabricSku.startsWith('CUST-FAB-')) {
+                                  handleUpdateItem(item.id, 'fabricSku', `CUST-FAB-${Date.now().toString(36).toUpperCase()}`);
+                                }
+                              }}
+                              className="w-3 h-3 accent-emerald-500 rounded cursor-pointer"
+                            />
+                            <span className="text-[9px] font-bold text-emerald-400">Customer Given</span>
+                          </label>
+                        </div>
                         <input
                           type="text"
                           value={item.fabricSku}
                           onChange={(e) => handleUpdateItem(item.id, 'fabricSku', e.target.value)}
-                          placeholder="e.g. SKU-SILK-902"
-                          className="input-dark text-xs font-mono"
+                          placeholder={item.isCustomerFabric ? 'e.g. Brought Raw Silk Saree / 4.5m Banarasi' : 'e.g. SKU-SILK-902'}
+                          className={`input-dark text-xs font-mono ${item.isCustomerFabric ? 'border-emerald-500/40 text-emerald-300' : ''}`}
                         />
                       </div>
 
@@ -1718,6 +1741,7 @@ export default function OrderManagementPage() {
                                   <option value="lace">Lace / Latkan</option>
                                   <option value="hook">Hooks</option>
                                   <option value="piping">Piping</option>
+                                  <option value="fabric">Extra Fabric/Patch</option>
                                   <option value="other">Other Trim</option>
                                 </select>
 
@@ -1749,7 +1773,21 @@ export default function OrderManagementPage() {
                                   />
                                 </div>
 
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${bom.isOptional ? 'bg-slate-800 text-slate-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                                {/* Customer Provided Toggle */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateBOMItem(item.id, bom.id, 'isCustomerProvided', !bom.isCustomerProvided)}
+                                  className={`text-[9px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wider transition-all border ${
+                                    bom.isCustomerProvided
+                                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/20'
+                                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-300'
+                                  }`}
+                                  title="Toggle if customer provided this material directly"
+                                >
+                                  {bom.isCustomerProvided ? '✓ Client Given' : 'Atelier Supplied'}
+                                </button>
+
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${bom.isOptional ? 'bg-slate-800 text-slate-400' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}`}>
                                   {bom.isOptional ? 'Optional' : 'Required'}
                                 </span>
 
@@ -2005,12 +2043,22 @@ export default function OrderManagementPage() {
                 {selectedOrder.items && selectedOrder.items.some(it => it.bomItems && it.bomItems.length > 0) ? (
                   selectedOrder.items.map((it) => (
                     <div key={it.id} className="space-y-1.5">
-                      <div className="text-[11px] font-bold text-slate-300 border-b border-slate-800/60 pb-0.5">
-                        {it.garmentType} ({it.fabricSku})
+                      <div className="text-[11px] font-bold text-slate-300 border-b border-slate-800/60 pb-0.5 flex items-center justify-between">
+                        <span>{it.garmentType}</span>
+                        <span className={`text-[9px] font-mono font-semibold ${it.isCustomerFabric ? 'text-emerald-400' : 'text-slate-400'}`}>
+                          {it.isCustomerFabric ? '✓ Client Fabric: ' : 'SKU: '}{it.fabricSku}
+                        </span>
                       </div>
                       {it.bomItems?.map((bom) => (
                         <div key={bom.id} className="flex items-center justify-between text-xs py-0.5 px-2 rounded bg-slate-900/60 border border-slate-800/50">
-                          <span className="text-slate-300 truncate max-w-[200px]">{bom.name}</span>
+                          <div className="flex items-center space-x-1.5 truncate max-w-[200px]">
+                            {bom.isCustomerProvided && (
+                              <span className="text-[8px] font-extrabold px-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+                                CLIENT GIVEN
+                              </span>
+                            )}
+                            <span className="text-slate-300 truncate">{bom.name}</span>
+                          </div>
                           <div className="flex items-center space-x-2 shrink-0">
                             <span className="font-mono text-slate-400 text-[10px]">{bom.quantity} {bom.unit}</span>
                             <span className={`text-[9px] px-1.5 rounded font-bold uppercase ${bom.isOptional ? 'bg-slate-800 text-slate-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
@@ -2127,7 +2175,9 @@ export default function OrderManagementPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-bold text-slate-200 print:text-black">{idx + 1}. {item.garmentType}</p>
-                      <p className="text-xs text-slate-400 print:text-gray-600">Fabric: {item.fabricSku} ({item.fabricMeters}m)</p>
+                      <p className="text-xs text-slate-400 print:text-gray-600">
+                        {item.isCustomerFabric ? '✓ Client Provided Fabric: ' : 'Fabric SKU: '}{item.fabricSku} ({item.fabricMeters}m)
+                      </p>
                       {item.materialNotes && <p className="text-xs text-slate-400 print:text-gray-600 italic mt-1">Note: {item.materialNotes}</p>}
                     </div>
                   </div>
@@ -2137,7 +2187,7 @@ export default function OrderManagementPage() {
                       <div className="grid grid-cols-2 gap-1 text-slate-300 print:text-black">
                         {item.bomItems.map(b => (
                           <div key={b.id} className="flex items-center justify-between pr-2">
-                            <span>• {b.name}</span>
+                            <span>• {b.name} {b.isCustomerProvided ? '(Client Given)' : ''}</span>
                             <span className="font-mono text-slate-400 print:text-gray-600">{b.quantity} {b.unit} ({b.isOptional ? 'Optional' : 'Req'})</span>
                           </div>
                         ))}
