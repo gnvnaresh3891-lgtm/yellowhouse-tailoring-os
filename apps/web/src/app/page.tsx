@@ -446,170 +446,135 @@ export default function MarketingLandingPage() {
         </div>
       </section>
 
-      {/* CLO3D INTERACTIVE 3D/2D GARMENT SIMULATION ENGINE */}
+      {/* BESPOKE ATELIER CAD & MEASUREMENT STUDIO (CLEAN, ELEGANT & REALISTIC) */}
       <section id="cad-engine" className="py-20 md:py-28 bg-[#05070B] border-y border-amber-500/20 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 text-xs font-extrabold uppercase tracking-wider mb-4">
-              <Cpu className="w-4 h-4 text-cyan-400" />
-              <span>CLO3D-Style Garment Physics & Pattern Engine</span>
+          <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/30 text-xs font-extrabold uppercase tracking-wider">
+              <Ruler className="w-3.5 h-3.5 text-amber-400" />
+              <span>Digital Cutting Table & CAD Pattern Studio</span>
             </div>
-            <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-4 tracking-tight">
-              Interactive <span className="bg-gradient-to-r from-cyan-400 via-amber-300 to-yellow-400 bg-clip-text text-transparent">3D Digital Avatar</span> & Pattern CAD
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+              Precision <span className="bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 bg-clip-text text-transparent">Bespoke Pattern</span> Engineering
             </h2>
             <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
-              Real-time parametric cloth simulation, fabric tension heatmap strain analysis, and dynamic 2D DXF pattern sync directly on the cutting table.
+              Real-time anatomical landmark mapping, posture delta compensations, and automatic ease allowances tailored for master cutters.
             </p>
           </div>
 
-          {/* CLO3D WORKBENCH INTERFACE */}
+          {/* CLEAN ATELIER CAD WORKSTATION */}
           <div className="rounded-3xl border border-amber-500/30 bg-[#0A0D16] shadow-2xl overflow-hidden">
-            {/* WORKSTATION TOP CONTROL BAR */}
-            <div className="bg-[#0D111D] px-6 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-rose-500/80" />
-                  <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-                  <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
+            {/* WORKSTATION HEADER BAR */}
+            <div className="bg-[#0D111D] px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold text-xs">
+                  CAD
                 </div>
-                <span className="text-xs font-mono font-bold text-slate-400 border-l border-slate-800 pl-4">
-                  YellowHouse CLO-Engine // Workspace: <span className="text-amber-400">Bespoke_Sherwani_Tux_v4.2.zprj</span>
-                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Bespoke Pattern Draft Studio</h4>
+                  <p className="text-[11px] text-slate-400 font-mono">Profile: Master Savile Row & Heritage Sherwani</p>
+                </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <span className="px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-[11px] font-mono font-bold text-cyan-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                  Physics: 60 FPS
+              <div className="flex items-center space-x-3 text-xs">
+                <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Pattern Verified
                 </span>
-                <span className="px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-[11px] font-mono font-bold text-amber-300">
-                  Strain Map: Active
+                <span className="px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 font-mono font-semibold">
+                  Yield: 98.4%
                 </span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-              {/* 3D AVATAR SIMULATOR VIEWPORT (LEFT SIDE) */}
-              <div className="lg:col-span-7 p-6 sm:p-8 bg-[#07090E] border-r border-slate-800 relative flex flex-col items-center justify-center min-h-[500px]">
-                {/* Viewport Floating Controls */}
-                <div className="absolute top-4 left-4 flex items-center space-x-2 z-20">
-                  <span className="px-3 py-1 rounded-lg bg-slate-900/90 border border-slate-800 text-xs font-bold text-slate-300">
-                    3D Simulation Viewport
-                  </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-xs font-extrabold text-amber-300">
-                    {postureCompensation} Silhouette
-                  </span>
-                </div>
+              {/* REALISTIC TAILOR PATTERN VISUALIZER (LEFT 7 COLS) */}
+              <div className="lg:col-span-7 p-6 sm:p-8 bg-[#07090E] border-r border-slate-800 flex flex-col items-center justify-center min-h-[460px] relative">
+                {/* Blueprint Grid Canvas */}
+                <div className="w-full max-w-md bg-[#0A0D16] rounded-2xl border border-slate-800/80 p-6 relative overflow-hidden shadow-inner flex flex-col items-center justify-center">
+                  {/* Subtle cutting table grid lines */}
+                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:24px_24px]" />
 
-                {/* CLO3D HIGH-TECH INTERACTIVE SVG AVATAR & 3D WIREFRAME */}
-                <div className="relative w-full max-w-md h-[460px] flex items-center justify-center overflow-hidden">
-                  <svg viewBox="0 0 400 460" className="w-full h-full relative z-10 filter drop-shadow-2xl">
-                    <defs>
-                      <radialGradient id="mesh-glow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#0B0F19" stopOpacity="0" />
-                      </radialGradient>
-                      <linearGradient id="fabric-silk" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#1E293B" stopOpacity="0.9" />
-                        <stop offset="50%" stopColor="#334155" stopOpacity="0.8" />
-                        <stop offset="100%" stopColor="#0F172A" stopOpacity="0.95" />
-                      </linearGradient>
-                      <pattern id="wireframe-grid" width="16" height="16" patternUnits="userSpaceOnUse">
-                        <path d="M 16 0 L 0 0 0 16" fill="none" stroke="#0284C7" strokeWidth="0.5" strokeOpacity="0.3" />
-                      </pattern>
-                    </defs>
+                  {/* Clean Garment Blueprint Graphic */}
+                  <div className="relative z-10 w-full max-w-[280px] h-[320px] flex items-center justify-center">
+                    <svg viewBox="0 0 280 320" className="w-full h-full">
+                      {/* Outer Garment Outline */}
+                      <path
+                        d="M 90 40 L 140 50 L 190 40 L 230 75 L 210 135 L 190 125 L 190 280 L 90 280 L 90 125 L 70 135 L 50 75 Z"
+                        fill="#0F172A"
+                        stroke="#F59E0B"
+                        strokeWidth="2"
+                        strokeLinejoin="round"
+                        className="transition-all duration-500"
+                      />
+                      {/* Lapel & Collar Lines */}
+                      <path d="M 120 45 L 140 140 L 160 45" fill="none" stroke="#FBBF24" strokeWidth="1.5" strokeDasharray="4 2" />
+                      <line x1="140" y1="140" x2="140" y2="280" stroke="#FBBF24" strokeWidth="1.5" />
+                      {/* Pocket Lines */}
+                      <line x1="98" y1="200" x2="128" y2="200" stroke="#94A3B8" strokeWidth="1.5" />
+                      <line x1="152" y1="200" x2="182" y2="200" stroke="#94A3B8" strokeWidth="1.5" />
+                      <line x1="102" y1="110" x2="126" y2="110" stroke="#94A3B8" strokeWidth="1.5" />
 
-                    {/* Radial Atmosphere Glow */}
-                    <circle cx="200" cy="230" r="180" fill="url(#mesh-glow)" />
+                      {/* Interactive Measurement Callouts */}
+                      {LANDMARKS.map((lm) => {
+                        const isSelected = activeLandmark.id === lm.id;
+                        // Map coordinates to clean SVG box
+                        const coords: Record<string, { x: number; y: number; label: string }> = {
+                          chest: { x: 140, y: 120, label: 'Chest 42.5"' },
+                          shoulder: { x: 140, y: 48, label: 'Shoulder 18.5"' },
+                          waist: { x: 140, y: 190, label: 'Waist 36.0"' },
+                          sleeve: { x: 58, y: 105, label: 'Sleeve 25.0"' },
+                          inseam: { x: 140, y: 280, label: 'Length 42.0"' }
+                        };
+                        const pt = coords[lm.id] || { x: 140, y: 120, label: lm.name };
 
-                    {/* 3D Wireframe Silhouette Mesh */}
-                    <g className="fill-[url(#fabric-silk)] stroke-[#0284C7] stroke-[1.2]">
-                      {/* Avatar Head / Collar Mount */}
-                      <ellipse cx="200" cy="45" rx="26" ry="32" fill="#0F172A" stroke="#38BDF8" strokeWidth="1.5" opacity="0.6" />
-                      {/* Torso Garment Form with 3D Contour Curves */}
-                      <path d="M 174 52 C 145 60, 115 80, 105 105 C 95 130, 92 180, 94 230 C 96 290, 102 340, 110 390 C 130 400, 180 405, 200 405 C 220 405, 270 400, 290 390 C 298 340, 304 290, 306 230 C 308 180, 305 130, 295 105 C 285 80, 255 60, 226 52 Z" />
-                      {/* Left Sleeve Drape */}
-                      <path d="M 105 105 C 80 140, 65 200, 58 280 C 72 286, 92 284, 98 276 C 105 210, 115 160, 125 125 Z" opacity="0.85" />
-                      {/* Right Sleeve Drape */}
-                      <path d="M 295 105 C 320 140, 335 200, 342 280 C 328 286, 308 284, 302 276 C 295 210, 285 160, 275 125 Z" opacity="0.85" />
-                    </g>
-
-                    {/* CLO3D 3D CONTOUR TOPOLOGY ISOLINES */}
-                    <g stroke="#38BDF8" strokeWidth="0.8" opacity="0.4" fill="none">
-                      <path d="M 120 120 Q 200 145 280 120" />
-                      <path d="M 112 165 Q 200 195 288 165" />
-                      <path d="M 108 215 Q 200 245 292 215" />
-                      <path d="M 106 265 Q 200 295 294 265" />
-                      <path d="M 108 315 Q 200 340 292 315" />
-                      <path d="M 110 365 Q 200 385 290 365" />
-                      {/* Vertical Seam Line */}
-                      <line x1="200" y1="52" x2="200" y2="405" stroke="#F59E0B" strokeWidth="1.5" strokeDasharray="3 2" />
-                    </g>
-
-                    {/* FABRIC STRAIN / TENSION HEATMAP OVERLAY */}
-                    <g opacity="0.6">
-                      {/* Shoulder tension (High strain zone) */}
-                      <ellipse cx="140" cy="95" rx="20" ry="12" fill="#EF4444" filter="blur(8px)" opacity="0.5" />
-                      <ellipse cx="260" cy="95" rx="20" ry="12" fill="#EF4444" filter="blur(8px)" opacity="0.5" />
-                      {/* Waist comfort ease (Optimal tension green zone) */}
-                      <ellipse cx="200" cy="235" rx="55" ry="18" fill="#10B981" filter="blur(10px)" opacity="0.4" />
-                    </g>
-
-                    {/* DYNAMIC LANDMARK HOTSPOTS */}
-                    {LANDMARKS.map((lm) => {
-                      const isSelected = activeLandmark.id === lm.id;
-                      const r = 7;
-                      return (
-                        <g
-                          key={lm.id}
-                          className="cursor-pointer transition-all duration-300"
-                          onClick={() => setActiveLandmark(lm)}
-                        >
-                          <circle cx={lm.cx} cy={lm.cy} r={r + 14} fill="transparent" />
-                          {isSelected && (
-                            <circle cx={lm.cx} cy={lm.cy} r={r + 8} fill="none" stroke="#F59E0B" strokeWidth="2">
-                              <animate attributeName="r" values={`${r + 4};${r + 18};${r + 4}`} dur="2s" repeatCount="indefinite" />
-                              <animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
-                            </circle>
-                          )}
-                          <circle
-                            cx={lm.cx}
-                            cy={lm.cy}
-                            r={isSelected ? r + 3 : r}
-                            className={isSelected ? 'fill-amber-400 stroke-white' : 'fill-cyan-400 stroke-slate-900'}
-                            strokeWidth="2"
-                          />
-                          <text
-                            x={lm.cx + (lm.cx > 200 ? 18 : -18)}
-                            y={lm.cy + 4}
-                            textAnchor={lm.cx > 200 ? 'start' : 'end'}
-                            className={`text-[11px] font-mono font-extrabold ${isSelected ? 'fill-amber-400' : 'fill-cyan-300'}`}
+                        return (
+                          <g
+                            key={lm.id}
+                            className="cursor-pointer group"
+                            onClick={() => setActiveLandmark(lm)}
                           >
-                            {lm.name.split(' ')[0]}
-                          </text>
-                        </g>
-                      );
-                    })}
-                  </svg>
+                            {/* Hotspot Target */}
+                            <circle
+                              cx={pt.x}
+                              cy={pt.y}
+                              r={isSelected ? 9 : 6}
+                              className={isSelected ? 'fill-amber-400 stroke-white' : 'fill-slate-800 stroke-amber-400 group-hover:fill-amber-400'}
+                              strokeWidth="2"
+                            />
+                            {isSelected && (
+                              <circle cx={pt.x} cy={pt.y} r={16} fill="none" stroke="#F59E0B" strokeWidth="1.5" opacity="0.6">
+                                <animate attributeName="r" values="9;20;9" dur="2.5s" repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0.8;0;0.8" dur="2.5s" repeatCount="indefinite" />
+                              </circle>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
 
-                  {/* 3D HUD Tooltips */}
-                  <div className="absolute bottom-3 left-3 bg-[#0A0D16]/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-amber-500/30 text-xs text-slate-300 flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>CLO-Tension: <strong className="text-white">Optimal 14.2 kPa</strong></span>
+                  {/* Active Dimension Pill */}
+                  <div className="mt-4 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 flex items-center justify-between w-full">
+                    <span className="font-semibold text-white flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      Active Point: {activeLandmark.name}
+                    </span>
+                    <span className="font-mono font-bold text-amber-400">{activeLandmark.baseVal} {activeLandmark.unit}</span>
                   </div>
                 </div>
               </div>
 
-              {/* 2D PATTERN & POSTURE PARAMETER CONTROLS (RIGHT SIDE) */}
+              {/* CLEAN MEASUREMENT CONTROLS (RIGHT 5 COLS) */}
               <div className="lg:col-span-5 p-6 sm:p-8 space-y-6 flex flex-col justify-between bg-[#0A0D16]">
                 <div className="space-y-5">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-widest text-amber-400">Parametric Point of Measurement</span>
-                      <h3 className="text-xl font-extrabold text-white">{activeLandmark.name}</h3>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Selected Landmark</span>
+                      <h3 className="text-xl font-bold text-white">{activeLandmark.name}</h3>
                     </div>
-                    <span className="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-400">
-                      ID: #{activeLandmark.id.toUpperCase()}
+                    <span className="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-xs font-mono font-bold text-slate-400">
+                      #{activeLandmark.id.toUpperCase()}
                     </span>
                   </div>
 
@@ -617,36 +582,36 @@ export default function MarketingLandingPage() {
                     {activeLandmark.description}
                   </p>
 
-                  {/* MEASUREMENT READOUTS */}
+                  {/* MEASUREMENT & POSTURE DELTA TILES */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-[#07090E] p-3.5 rounded-xl border border-slate-800">
-                      <div className="text-[11px] text-slate-400 font-semibold">Net Body Circumference</div>
+                      <span className="text-[11px] text-slate-400 font-semibold">Net Body Dimension</span>
                       <div className="text-2xl font-extrabold text-white mt-1 font-mono">
                         {activeLandmark.baseVal} <span className="text-xs font-normal text-slate-400">{activeLandmark.unit}</span>
                       </div>
                     </div>
 
                     <div className="bg-[#07090E] p-3.5 rounded-xl border border-amber-500/30">
-                      <div className="text-[11px] text-amber-400 font-semibold">Posture Compensation</div>
+                      <span className="text-[11px] text-amber-400 font-semibold">Posture Allowance</span>
                       <div className="text-xs font-bold text-amber-300 mt-2 leading-tight">
                         {activeLandmark.delta}
                       </div>
                     </div>
                   </div>
 
-                  {/* POSTURE PRESET SWITCHER */}
+                  {/* POSTURE MORPH SELECTION */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
-                      Avatar Spine & Posture Morph:
+                      Posture & Postural Slope:
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       {['Standard Erect', 'Stooped', 'High Shoulder', 'Hollow Back'].map((pst) => (
                         <button
                           key={pst}
                           onClick={() => setPostureCompensation(pst)}
-                          className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                          className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                             postureCompensation === pst
-                              ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/20'
+                              ? 'bg-amber-400 text-slate-950 shadow-md font-extrabold'
                               : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800'
                           }`}
                         >
@@ -657,14 +622,14 @@ export default function MarketingLandingPage() {
                   </div>
                 </div>
 
-                {/* WORKFLOW SYNC STATUS */}
-                <div className="bg-cyan-950/20 border border-cyan-500/30 p-4 rounded-2xl flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0 border border-cyan-500/20">
-                    <Zap className="w-5 h-5" />
+                {/* AUTOMATED DXF PATTERN SYNC NOTE */}
+                <div className="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-2xl flex items-center space-x-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0">
+                    <Scissors className="w-4 h-4" />
                   </div>
-                  <div className="text-xs">
-                    <div className="font-extrabold text-white">DXF/AAMA Pattern Sync Active</div>
-                    <div className="text-slate-400 mt-0.5">3D draping variations automatically recalculate 2D cutting table yields in real-time.</div>
+                  <div className="text-xs text-slate-300 leading-snug">
+                    <strong className="text-white block font-semibold">Live CAD Cutting Sync</strong>
+                    Adjustments automatically recalculate piece-rates, seam allowances, and cutting yield.
                   </div>
                 </div>
               </div>
