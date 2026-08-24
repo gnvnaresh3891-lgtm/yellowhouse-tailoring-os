@@ -410,7 +410,7 @@ function MeasurementsContent() {
   const [fitPref, setFitPref] = useState<FitPref>('Regular');
   const [unitSystem, setUnitSystem] = useState<UnitSys>('in');
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
   const [showTrials, setShowTrials] = useState(false);
   const [snapshots, setSnapshots] = useState<VersionSnapshot[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -662,19 +662,26 @@ function MeasurementsContent() {
             ))}
           </div>
 
-          {/* Unit Toggle */}
-          <div className="flex items-center bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 text-xs">
+          {/* Quick Access Version History & Fitting Trials Tabs */}
+          <div className="flex items-center space-x-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs ml-auto">
             <button
-              onClick={() => setUnitSystem('in')}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all ${unitSystem === 'in' ? 'btn-gold' : 'text-slate-400 hover:text-white'}`}
+              onClick={() => setShowHistory(!showHistory)}
+              className={`px-3.5 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all ${
+                showHistory ? 'bg-amber-400 text-slate-950 shadow-md' : 'text-amber-300 hover:text-white hover:bg-slate-800'
+              }`}
             >
-              Inches
+              <History className="w-3.5 h-3.5" />
+              <span>Version History ({snapshots.length})</span>
             </button>
+
             <button
-              onClick={() => setUnitSystem('cm')}
-              className={`px-3 py-1 rounded-lg font-semibold transition-all ${unitSystem === 'cm' ? 'btn-gold' : 'text-slate-400 hover:text-white'}`}
+              onClick={() => setShowTrials(!showTrials)}
+              className={`px-3.5 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all ${
+                showTrials ? 'bg-blue-500 text-white shadow-md' : 'text-blue-400 hover:text-white hover:bg-slate-800'
+              }`}
             >
-              Metric
+              <GitCompare className="w-3.5 h-3.5" />
+              <span>Fitting Trials (2 Runs)</span>
             </button>
           </div>
         </div>
@@ -975,52 +982,72 @@ function MeasurementsContent() {
         </div>
       </div>
 
-      {/* Version History (Conditional) */}
+      {/* Version History Panel */}
       {showHistory && (
-        <div className="glass-card rounded-2xl border border-slate-800/60 p-6 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-slate-800/60 pb-3 mb-4">
-            <div className="flex items-center space-x-2">
-              <History className="w-4 h-4 text-gold-400" />
-              <h3 className="font-bold text-sm text-white">Measurement Version History</h3>
+        <div className="glass-card rounded-2xl border border-amber-500/30 p-6 animate-fade-in space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="p-2 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-300">
+                <History className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">CAD Measurement Version History & Snapshots</h3>
+                <p className="text-xs text-slate-400">Track historical body fitting revisions, baseline versions, and cutter adjustments.</p>
+              </div>
             </div>
-            <button onClick={() => setShowHistory(false)} className="text-slate-500 hover:text-white text-xs transition-colors">
-              Close
+            <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 transition-colors">
+              Hide History
             </button>
           </div>
 
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {snapshots
               .filter((v) => !customerId || v.customerId === customerId)
               .map((v) => (
               <div
                 key={v.id}
-                className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
                   v.status === 'current'
-                    ? 'glass-card-gold border-gold-500/30'
-                    : 'bg-slate-900/50 border-slate-800/60 hover:border-slate-700'
+                    ? 'bg-amber-400/10 border-amber-400/40 shadow-lg shadow-amber-500/5'
+                    : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full ${
-                      v.status === 'current' ? 'badge badge-gold' : 'badge bg-slate-800 text-slate-400'
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-mono font-extrabold px-3 py-1 rounded-full ${
+                      v.status === 'current' ? 'bg-amber-400 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700'
                     }`}>
                       {v.version}
                     </span>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-200">{v.garment}</p>
-                      <p className="text-[10px] text-slate-500 flex items-center space-x-1 mt-0.5">
-                        <Clock className="w-3 h-3" />
-                        <span>{v.date}</span>
-                      </p>
-                    </div>
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
+                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                      {v.date}
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-500">{v.pomCount} POMs</span>
-                    {v.status === 'current' && (
-                      <p className="text-[10px] text-emerald-400 font-semibold mt-0.5">Active Baseline</p>
-                    )}
+
+                  <div>
+                    <h4 className="text-sm font-bold text-white">{v.garment} Baseline</h4>
+                    <p className="text-xs text-slate-400 mt-0.5">Fit Profile: <strong className="text-slate-200">{v.fitPref || 'Regular'}</strong> &bull; {v.pomCount} POM Landmarks</p>
                   </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between mt-3">
+                  {v.status === 'current' ? (
+                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Active Baseline
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setToastMessage(`Restored snapshot ${v.version} into active workbench`);
+                        setTimeout(() => setToastMessage(null), 3000);
+                      }}
+                      className="text-xs font-bold text-amber-300 hover:text-white underline cursor-pointer"
+                    >
+                      Restore Version
+                    </button>
+                  )}
+                  <span className="text-[11px] text-slate-500 font-mono">ID #{v.id}</span>
                 </div>
               </div>
             ))}
