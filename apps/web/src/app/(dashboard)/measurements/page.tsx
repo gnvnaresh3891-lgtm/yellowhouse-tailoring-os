@@ -5,7 +5,9 @@ import {
   Ruler, Eye, Save, RotateCcw, ChevronDown, ChevronUp,
   Activity, Calculator, Clock, GitCompare, AlertCircle,
   CheckCircle2, Info, Sparkles, History, ArrowRight, 
-  ArrowUpRight, ArrowDownRight, Minus, X, Printer
+  ArrowUpRight, ArrowDownRight, Minus, Plus, X, Printer,
+  ZoomIn, ZoomOut, Maximize2, Layers, Crosshair, Grid,
+  SlidersHorizontal, EyeOff, Tag, Compass, Scissors
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
@@ -151,13 +153,17 @@ const fittingDeltas: FittingDelta[] = [
 // ============================================================
 // SVG BODY SILHOUETTE COMPONENT (ENHANCED WITH INTERACTIVE HOTSPOTS)
 // ============================================================
+// ============================================================
+// LUXURY 2D CAD VECTOR DRESS FORM & PATTERN STUDIO CANVAS
+// ============================================================
 function BodySilhouetteSvg({
-  gender, viewMode, activePoms, focusedId, measurements, validationErrors,
-  shoulderSlope, chestStance, backPosture, heelHeight,
-  onSelectHotspot, onHoverHotspot
+  gender, viewMode, selectedGarment, activePoms, focusedId, measurements, validationErrors,
+  shoulderSlope, chestStance, backPosture, heelHeight, unitSystem, fitPref,
+  onSelectHotspot, onHoverHotspot, onUpdateMeasurement
 }: {
   gender: Gender;
   viewMode: ViewMode;
+  selectedGarment: GarmentType;
   activePoms: PomField[];
   focusedId: string | null;
   measurements: Record<string, number>;
@@ -166,233 +172,646 @@ function BodySilhouetteSvg({
   chestStance: ChestStance;
   backPosture: BackPosture;
   heelHeight: number;
+  unitSystem: UnitSys;
+  fitPref: FitPref;
   onSelectHotspot: (id: string) => void;
   onHoverHotspot: (id: string | null) => void;
+  onUpdateMeasurement?: (id: string, val: number) => void;
 }) {
-  // Dynamic posture modifier offsets
-  const shoulderOffsetY = shoulderSlope === 'Sloped' ? 6 : shoulderSlope === 'Square' ? -6 : 0;
-  const chestCurveD = chestStance === 'Forward'
-    ? 'M 155 170 C 165 195, 195 205, 200 205 C 205 205, 235 195, 245 170'
-    : chestStance === 'Barrel'
-    ? 'M 150 170 C 160 205, 190 215, 200 215 C 210 215, 240 205, 250 170'
-    : 'M 155 170 C 170 185, 190 190, 200 190 C 210 190, 230 185, 245 170';
+  // CAD Canvas Layer Toggles & Zoom State
+  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
+  const [showDrapeOverlay, setShowDrapeOverlay] = useState<boolean>(true);
+  const [showDimensions, setShowDimensions] = useState<boolean>(true);
+  const [showDatumLasers, setShowDatumLasers] = useState<boolean>(true);
+  const [showGridScales, setShowGridScales] = useState<boolean>(true);
 
-  const spineDashArray = backPosture === 'Stooped' ? '2 2' : backPosture === 'Erect' ? '8 2' : '4 4';
-  const heelOffsetY = (gender === 'Women' && heelHeight > 0) ? heelHeight * 4 : 0;
+  // Dynamic posture modifier offsets
+  const shoulderOffsetY = shoulderSlope === 'Sloped' ? 8 : shoulderSlope === 'Square' ? -8 : 0;
+  const chestCurveD = chestStance === 'Forward'
+    ? 'M 160 170 C 170 200, 205 210, 210 210 C 215 210, 250 200, 260 170'
+    : chestStance === 'Barrel'
+    ? 'M 155 170 C 165 212, 200 222, 210 222 C 220 222, 255 212, 265 170'
+    : 'M 160 170 C 175 188, 200 192, 210 192 C 220 192, 245 188, 260 170';
+
+  const spineDashArray = backPosture === 'Stooped' ? '3 3' : backPosture === 'Erect' ? '10 2' : '5 5';
+  const heelOffsetY = (gender === 'Women' && heelHeight > 0) ? heelHeight * 5 : 0;
+
+  const unitLabel = unitSystem === 'cm' ? 'cm' : 'in';
+  const formatVal = (v: number) => unitSystem === 'cm' ? (v * 2.54).toFixed(1) : v.toString();
+
+  const handleZoom = (delta: number) => {
+    setZoomLevel(prev => Math.min(Math.max(Number((prev + delta).toFixed(2)), 0.8), 1.35));
+  };
 
   return (
-    <div className="relative flex flex-col items-center justify-center p-4 bg-[#0B0F19] rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
-      {/* Background Ambient Glows */}
-      <div className="absolute top-1/4 -left-10 w-36 h-36 bg-cyan-500/10 blur-[40px] pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-10 w-36 h-36 bg-amber-500/15 blur-[40px] pointer-events-none" />
-      
-      <svg viewBox="0 0 400 800" className="w-full max-w-[340px] h-auto select-none relative z-10" style={{ filter: 'drop-shadow(0px 8px 20px rgba(0,0,0,0.7))' }}>
-        <defs>
-          <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#38BDF8" floodOpacity="0.8" />
-          </filter>
-          <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#FACC15" floodOpacity="0.9" />
-          </filter>
-          <linearGradient id="body-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#1E293B" stopOpacity="0.8" />
-            <stop offset="50%" stopColor="#0F172A" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#020617" stopOpacity="0.95" />
-          </linearGradient>
-          <pattern id="cad-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-            <rect width="20" height="20" fill="none" />
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1E293B" strokeWidth="0.5" />
-          </pattern>
-          <pattern id="cad-grid-large" width="100" height="100" patternUnits="userSpaceOnUse">
-            <rect width="100" height="100" fill="url(#cad-grid)" />
-            <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#334155" strokeWidth="1" opacity="0.5" />
-          </pattern>
-        </defs>
+    <div className="relative flex flex-col items-center bg-[#070A12] rounded-3xl border border-slate-800/80 shadow-2xl overflow-hidden group/canvas">
+      {/* CAD Toolbar / Layer Control HUD Bar */}
+      <div className="w-full px-4 py-2.5 bg-slate-950/90 border-b border-slate-800/90 flex flex-wrap items-center justify-between gap-2 z-20 text-xs backdrop-blur-md">
+        {/* Layer Toggles */}
+        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5">
+          <button
+            onClick={() => setShowDrapeOverlay(!showDrapeOverlay)}
+            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+              showDrapeOverlay ? 'bg-amber-400/15 text-amber-300 border border-amber-400/30' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+            }`}
+            title="Toggle Garment Drape Overlay Silhouette"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Drape</span>
+          </button>
 
-        {/* Base Blueprint Grid */}
-        <rect width="400" height="800" fill="url(#cad-grid-large)" className="opacity-40" />
+          <button
+            onClick={() => setShowDimensions(!showDimensions)}
+            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+              showDimensions ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+            }`}
+            title="Toggle Caliper Dimension Callouts"
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>Calipers</span>
+          </button>
 
-        {/* CAD Horizontal Alignment Lasers */}
-        <g className="opacity-50">
-          <line x1="0" y1="120" x2="400" y2="120" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
-          <text x="10" y="115" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Neck Base Line</text>
+          <button
+            onClick={() => setShowDatumLasers(!showDatumLasers)}
+            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+              showDatumLasers ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+            }`}
+            title="Toggle Horizontal Laser Datum Lines"
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            <span>Lasers</span>
+          </button>
 
-          <line x1="0" y1="200" x2="400" y2="200" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
-          <text x="10" y="195" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Chest Datum</text>
+          <button
+            onClick={() => setShowGridScales(!showGridScales)}
+            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+              showGridScales ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+            }`}
+            title="Toggle CAD Blueprint Grid & Rulers"
+          >
+            <Grid className="w-3.5 h-3.5" />
+            <span>Grid</span>
+          </button>
+        </div>
 
-          <line x1="0" y1="280" x2="400" y2="280" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
-          <text x="10" y="275" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Natural Waistline</text>
+        {/* Zoom & Reset Controls */}
+        <div className="flex items-center space-x-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800">
+          <button
+            onClick={() => handleZoom(-0.1)}
+            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            title="Zoom Out"
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-[10px] font-mono font-bold text-amber-400 px-1.5 select-none min-w-[42px] text-center">
+            {Math.round(zoomLevel * 100)}%
+          </span>
+          <button
+            onClick={() => handleZoom(0.1)}
+            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            title="Zoom In"
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </button>
+          {zoomLevel !== 1.0 && (
+            <button
+              onClick={() => setZoomLevel(1.0)}
+              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors ml-1 text-[10px] font-semibold"
+              title="Reset Zoom"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
 
-          <line x1="0" y1="360" x2="400" y2="360" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
-          <text x="10" y="355" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Seat Height</text>
-          
-          <line x1="0" y1="550" x2="400" y2="550" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
-          <text x="10" y="545" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Outseam Boundary</text>
-        </g>
+      {/* Main Vector Drawing Viewport */}
+      <div className="relative w-full flex items-center justify-center p-2 sm:p-4 overflow-hidden min-h-[560px]">
+        {/* Ambient Backlight Glows */}
+        <div className="absolute top-1/4 -left-12 w-48 h-48 bg-cyan-500/10 blur-[50px] pointer-events-none" />
+        <div className="absolute bottom-1/4 -right-12 w-48 h-48 bg-amber-500/15 blur-[50px] pointer-events-none" />
 
-        {/* Mannequin Silhouette with Posture Modifiers */}
-        {gender === 'Men' ? (
-          viewMode === 'front' ? (
-            <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
-              {/* Head & Neck */}
-              <path d="M 175 65 C 175 30, 225 30, 225 65 C 225 85, 212 95, 208 105 L 208 120 L 192 120 L 192 105 C 188 95, 175 85, 175 65 Z" />
-              {/* Torso & Legs with Shoulder Slope Adjustment */}
-              <path d={`M 192 120 C 165 120, 135 ${125 + shoulderOffsetY}, 125 ${140 + shoulderOffsetY} C 115 ${155 + shoulderOffsetY}, 110 200, 108 230 C 105 270, 105 320, 108 370 C 112 375, 118 375, 120 370 C 122 330, 125 285, 130 240 C 135 240, 142 235, 145 220 C 148 200, 148 185, 150 180 C 150 240, 150 280, 148 340 C 145 370, 145 390, 145 405 C 140 460, 135 550, 130 630 C 125 700, 120 750, 120 760 C 130 765, 145 765, 155 760 C 160 700, 170 600, 180 500 C 185 450, 195 420, 200 405 C 205 420, 215 450, 220 500 C 230 600, 240 700, 245 760 C 255 765, 270 765, 280 760 C 280 750, 275 700, 270 630 C 265 550, 260 460, 255 405 C 255 390, 255 370, 252 340 C 250 280, 250 240, 250 180 C 252 185, 252 200, 255 220 C 258 235, 265 240, 270 240 C 275 285, 278 330, 280 370 C 282 375, 288 375, 292 370 C 295 320, 295 270, 292 230 C 290 200, 285 ${155 + shoulderOffsetY}, 275 ${140 + shoulderOffsetY} C 265 ${125 + shoulderOffsetY}, 235 120, 208 120 Z`} />
-              {/* Dynamic Chest Stance Curve */}
-              <path d={chestCurveD} fill="none" stroke={chestStance !== 'Normal' ? '#FACC15' : '#334155'} strokeWidth={chestStance !== 'Normal' ? '1.5' : '1'} />
-              {/* Collarbone */}
-              <path d={`M 160 ${135 + shoulderOffsetY} Q 200 ${150 + shoulderOffsetY} 240 ${135 + shoulderOffsetY}`} fill="none" stroke="#334155" strokeWidth="1" />
+        {/* SVG Viewport with Dynamic Zoom Scale */}
+        <div 
+          className="w-full flex items-center justify-center transition-transform duration-300 ease-out"
+          style={{ transform: `scale(${zoomLevel})` }}
+        >
+          <svg
+            viewBox="0 0 420 840"
+            className="w-full max-w-[370px] h-auto select-none relative z-10"
+            style={{ filter: 'drop-shadow(0px 12px 28px rgba(0,0,0,0.85))' }}
+          >
+            <defs>
+              <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#38BDF8" floodOpacity="0.85" />
+              </filter>
+              <filter id="glow-gold" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#FACC15" floodOpacity="0.95" />
+              </filter>
+              <filter id="glow-emerald" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#10B981" floodOpacity="0.85" />
+              </filter>
+
+              {/* High-End Tailor Dress Form Realistic Mannequin Gradients */}
+              <linearGradient id="mannequin-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#1E293B" stopOpacity="0.9" />
+                <stop offset="40%" stopColor="#111827" stopOpacity="0.95" />
+                <stop offset="80%" stopColor="#0B0F19" stopOpacity="0.98" />
+                <stop offset="100%" stopColor="#030712" stopOpacity="1" />
+              </linearGradient>
+
+              <linearGradient id="metallic-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#FEF08A" />
+                <stop offset="50%" stopColor="#F59E0B" />
+                <stop offset="100%" stopColor="#B45309" />
+              </linearGradient>
+
+              <linearGradient id="stand-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#0F172A" />
+                <stop offset="50%" stopColor="#334155" />
+                <stop offset="100%" stopColor="#0F172A" />
+              </linearGradient>
+
+              {/* Fine CAD Blueprint Grids */}
+              <pattern id="cad-grid-fine" width="20" height="20" patternUnits="userSpaceOnUse">
+                <rect width="20" height="20" fill="none" />
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1E293B" strokeWidth="0.5" opacity="0.6" />
+              </pattern>
+              <pattern id="cad-grid-major" width="100" height="100" patternUnits="userSpaceOnUse">
+                <rect width="100" height="100" fill="url(#cad-grid-fine)" />
+                <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#334155" strokeWidth="0.8" opacity="0.4" />
+              </pattern>
+            </defs>
+
+            {/* Base CAD Blueprint Canvas Grid */}
+            {showGridScales && (
+              <rect x="20" y="20" width="380" height="800" fill="url(#cad-grid-major)" className="opacity-50" />
+            )}
+
+            {/* Precision CAD Calibration Ruler Borders */}
+            {showGridScales && (
+              <g className="opacity-60 select-none">
+                {/* Top Ruler Bar */}
+                <rect x="20" y="5" width="380" height="15" fill="#0B0F19" stroke="#1E293B" strokeWidth="0.5" />
+                {[50, 100, 150, 200, 250, 300, 350, 400].map((tick) => (
+                  <g key={`top-tick-${tick}`}>
+                    <line x1={tick} y1="5" x2={tick} y2="15" stroke="#475569" strokeWidth="0.8" />
+                    <text x={tick} y="13" textAnchor="middle" className="fill-slate-500 text-[6px] font-mono font-bold">{tick}</text>
+                  </g>
+                ))}
+
+                {/* Left Ruler Bar */}
+                <rect x="5" y="20" width="15" height="800" fill="#0B0F19" stroke="#1E293B" strokeWidth="0.5" />
+                {[100, 200, 300, 400, 500, 600, 700, 800].map((tick) => (
+                  <g key={`left-tick-${tick}`}>
+                    <line x1="5" y1={tick} x2="15" y2={tick} stroke="#475569" strokeWidth="0.8" />
+                    <text x="13" y={tick + 2} textAnchor="end" className="fill-slate-500 text-[6px] font-mono font-bold">{tick}</text>
+                  </g>
+                ))}
+              </g>
+            )}
+
+            {/* Horizontal CAD Laser Datum Alignment Lasers */}
+            {showDatumLasers && (
+              <g className="opacity-70 transition-opacity">
+                {/* Neck Datum */}
+                <line x1="20" y1="120" x2="400" y2="120" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+                <text x="26" y="115" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Neck Datum (Y:120)</text>
+
+                {/* Chest / Bust Datum */}
+                <line x1="20" y1="200" x2="400" y2="200" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+                <text x="26" y="195" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Chest / Scye Line (Y:200)</text>
+
+                {/* Natural Waistline */}
+                <line x1="20" y1="280" x2="400" y2="280" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+                <text x="26" y="275" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Natural Waistline (Y:280)</text>
+
+                {/* Seat / Hip Height */}
+                <line x1="20" y1="360" x2="400" y2="360" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+                <text x="26" y="355" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Seat Datum (Y:360)</text>
+                
+                {/* Outseam / Hem Boundary */}
+                <line x1="20" y1="550" x2="400" y2="550" stroke="#38BDF8" strokeWidth="1" strokeDasharray="3 3" />
+                <text x="26" y="545" className="fill-[#38BDF8] text-[8px] font-mono tracking-widest uppercase">Knee / Outseam (Y:550)</text>
+              </g>
+            )}
+
+            {/* Atelier Mannequin Stand Base & Polished Finial */}
+            <g>
+              {/* Wooden / Metallic Top Finial */}
+              <ellipse cx="210" cy="55" rx="14" ry="7" fill="url(#metallic-gold)" stroke="#D97706" strokeWidth="1.5" />
+              <path d="M 204 55 L 206 40 Q 210 32 214 40 L 216 55 Z" fill="url(#metallic-gold)" />
+              <circle cx="210" cy="32" r="5" fill="url(#metallic-gold)" stroke="#D97706" strokeWidth="1" />
+
+              {/* Cast Iron Stand Base (Bottom) */}
+              <rect x="207" y="740" width="6" height="60" fill="url(#stand-grad)" stroke="#475569" strokeWidth="1" />
+              <ellipse cx="210" cy="800" rx="45" ry="12" fill="#0B0F19" stroke="#F59E0B" strokeWidth="1.5" />
+              <ellipse cx="210" cy="800" rx="35" ry="8" fill="#1E293B" stroke="#334155" strokeWidth="1" />
             </g>
-          ) : (
-            <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
-              {/* Head & Neck Back */}
-              <path d="M 175 65 C 175 30, 225 30, 225 65 C 225 85, 212 95, 208 105 L 208 120 L 192 120 L 192 105 C 188 95, 175 85, 175 65 Z" />
-              {/* Torso & Legs Back */}
-              <path d={`M 192 120 C 165 120, 135 ${125 + shoulderOffsetY}, 125 ${140 + shoulderOffsetY} C 115 ${155 + shoulderOffsetY}, 110 200, 108 230 C 105 270, 105 320, 108 370 C 112 375, 118 375, 120 370 C 122 330, 125 285, 130 240 C 135 240, 142 235, 145 220 C 148 200, 148 185, 150 180 C 150 240, 150 280, 148 340 C 145 370, 145 390, 145 405 C 140 460, 135 550, 130 630 C 125 700, 120 750, 120 760 C 130 765, 145 765, 155 760 C 160 700, 170 600, 180 500 C 185 450, 195 420, 200 405 C 205 420, 215 450, 220 500 C 230 600, 240 700, 245 760 C 255 765, 270 765, 280 760 C 280 750, 275 700, 270 630 C 265 550, 260 460, 255 405 C 255 390, 255 370, 252 340 C 250 280, 250 240, 250 180 C 252 185, 252 200, 255 220 C 258 235, 265 240, 270 240 C 275 285, 278 330, 280 370 C 282 375, 288 375, 292 370 C 295 320, 295 270, 292 230 C 290 200, 285 ${155 + shoulderOffsetY}, 275 ${140 + shoulderOffsetY} C 265 ${125 + shoulderOffsetY}, 235 120, 208 120 Z`} />
-              {/* Back center seam with dynamic posture dash array */}
-              <line x1="200" y1="120" x2="200" y2="390" stroke={backPosture !== 'Normal' ? '#FACC15' : '#334155'} strokeWidth="1.5" strokeDasharray={spineDashArray} />
-              {/* Shoulder Blades */}
-              <path d={`M 160 ${160 + shoulderOffsetY} C 170 ${170 + shoulderOffsetY}, 185 ${175 + shoulderOffsetY}, 195 ${160 + shoulderOffsetY}`} fill="none" stroke="#334155" strokeWidth="1" />
-              <path d={`M 240 ${160 + shoulderOffsetY} C 230 ${170 + shoulderOffsetY}, 215 ${175 + shoulderOffsetY}, 205 ${160 + shoulderOffsetY}`} fill="none" stroke="#334155" strokeWidth="1" />
-            </g>
-          )
-        ) : (
-          viewMode === 'front' ? (
-            <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
-              {/* Head & Neck Female */}
-              <path d="M 178 62 C 178 35, 222 35, 222 62 C 222 80, 210 90, 206 102 L 206 118 L 194 118 L 194 102 C 190 90, 178 80, 178 62 Z" />
-              {/* Torso & Legs Female with Heel Height Shift */}
-              <path d={`M 194 118 C 175 118, 145 ${125 + shoulderOffsetY}, 135 ${135 + shoulderOffsetY} C 125 ${145 + shoulderOffsetY}, 115 195, 112 220 C 108 260, 108 310, 112 355 C 115 362, 122 362, 125 355 C 128 320, 132 270, 138 230 C 142 230, 145 225, 148 210 C 150 195, 148 185, 150 180 C 152 230, 155 260, 158 290 C 160 320, 158 370, 158 400 C 155 450, 145 540, 140 620 C 135 690, 130 740, 130 ${750 - heelOffsetY} C 138 ${755 - heelOffsetY}, 150 ${755 - heelOffsetY}, 158 ${750 - heelOffsetY} C 165 690, 175 580, 185 480 C 190 430, 195 400, 200 390 C 205 400, 210 430, 215 480 C 225 580, 235 690, 242 ${750 - heelOffsetY} C 250 ${755 - heelOffsetY}, 262 ${755 - heelOffsetY}, 270 ${750 - heelOffsetY} C 270 740, 265 690, 260 620 C 255 540, 245 450, 242 400 C 242 370, 240 320, 242 290 C 245 260, 248 230, 250 180 C 252 185, 250 195, 252 210 C 255 225, 258 230, 262 230 C 268 270, 272 320, 275 355 C 278 362, 285 362, 288 355 C 292 310, 292 260, 288 220 C 285 195, 275 ${145 + shoulderOffsetY}, 265 ${135 + shoulderOffsetY} C 255 ${125 + shoulderOffsetY}, 225 118, 206 118 Z`} />
-              {/* Bust Curves */}
-              <path d={chestCurveD} fill="none" stroke={chestStance !== 'Normal' ? '#FACC15' : '#334155'} strokeWidth={chestStance !== 'Normal' ? '1.5' : '1'} />
-              {/* Hip definition */}
-              <path d="M 155 300 C 145 330, 145 360, 158 390" fill="none" stroke="#334155" strokeWidth="1" opacity="0.6" />
-              <path d="M 245 300 C 255 330, 255 360, 242 390" fill="none" stroke="#334155" strokeWidth="1" opacity="0.6" />
-            </g>
-          ) : (
-            <g className="fill-[url(#body-grad)] stroke-[#475569] stroke-[1.5]">
-              {/* Head & Neck Female Back */}
-              <path d="M 178 62 C 178 35, 222 35, 222 62 C 222 80, 210 90, 206 102 L 206 118 L 194 118 L 194 102 C 190 90, 178 80, 178 62 Z" />
-              {/* Torso & Legs Female Back */}
-              <path d={`M 194 118 C 175 118, 145 ${125 + shoulderOffsetY}, 135 ${135 + shoulderOffsetY} C 125 ${145 + shoulderOffsetY}, 115 195, 112 220 C 108 260, 108 310, 112 355 C 115 362, 122 362, 125 355 C 128 320, 132 270, 138 230 C 142 230, 145 225, 148 210 C 150 195, 148 185, 150 180 C 152 230, 155 260, 158 290 C 160 320, 158 370, 158 400 C 155 450, 145 540, 140 620 C 135 690, 130 740, 130 ${750 - heelOffsetY} C 138 ${755 - heelOffsetY}, 150 ${755 - heelOffsetY}, 158 ${750 - heelOffsetY} C 165 690, 175 580, 185 480 C 190 430, 195 400, 200 390 C 205 400, 210 430, 215 480 C 225 580, 235 690, 242 ${750 - heelOffsetY} C 250 ${755 - heelOffsetY}, 262 ${755 - heelOffsetY}, 270 ${750 - heelOffsetY} C 270 740, 265 690, 260 620 C 255 540, 245 450, 242 400 C 242 370, 240 320, 242 290 C 245 260, 248 230, 250 180 C 252 185, 250 195, 252 210 C 255 225, 258 230, 262 230 C 268 270, 272 320, 275 355 C 278 362, 285 362, 288 355 C 292 310, 292 260, 288 220 C 285 195, 275 ${145 + shoulderOffsetY}, 265 ${135 + shoulderOffsetY} C 255 ${125 + shoulderOffsetY}, 225 118, 206 118 Z`} />
-              {/* Back center seam */}
-              <line x1="200" y1="120" x2="200" y2="380" stroke={backPosture !== 'Normal' ? '#FACC15' : '#334155'} strokeWidth="1.5" strokeDasharray={spineDashArray} />
-            </g>
-          )
-        )}
 
-        {/* Hotspot Nodes with Radar Ripple & CAD Lasers */}
-        {activePoms.map((pom) => {
-          let x = pom.landmarkX ?? 200;
-          let y = pom.landmarkY;
+            {/* ============================================================ */}
+            {/* MANNEQUIN SILHOUETTE BODY FORM (ANATOMICALLY CONTOURED)      */}
+            {/* ============================================================ */}
+            {gender === 'Men' ? (
+              viewMode === 'front' ? (
+                <g className="fill-[url(#mannequin-grad)] stroke-[#475569] stroke-[1.5]">
+                  {/* Head & Neck Base */}
+                  <path d="M 185 65 C 185 40, 235 40, 235 65 C 235 85, 222 98, 218 108 L 218 120 L 202 120 L 202 108 C 198 98, 185 85, 185 65 Z" />
+                  
+                  {/* Torso Silhouette with Dynamic Shoulder Slope */}
+                  <path d={`M 202 120 C 175 120, 145 ${125 + shoulderOffsetY}, 135 ${140 + shoulderOffsetY} C 125 ${155 + shoulderOffsetY}, 120 200, 118 230 C 115 270, 115 320, 118 370 C 122 375, 128 375, 130 370 C 132 330, 135 285, 140 240 C 145 240, 152 235, 155 220 C 158 200, 158 185, 160 180 C 160 240, 160 280, 158 340 C 155 370, 155 390, 155 405 C 150 460, 145 550, 140 630 C 135 700, 130 750, 130 760 C 140 765, 155 765, 165 760 C 170 700, 180 600, 190 500 C 195 450, 205 420, 210 405 C 215 420, 225 450, 230 500 C 240 600, 250 700, 255 760 C 265 765, 280 765, 290 760 C 290 750, 285 700, 280 630 C 275 550, 270 460, 265 405 C 265 390, 265 370, 262 340 C 260 280, 260 240, 260 180 C 262 185, 262 200, 265 220 C 268 235, 275 240, 280 240 C 285 285, 288 330, 290 370 C 292 375, 298 375, 302 370 C 305 320, 305 270, 302 230 C 300 200, 295 ${155 + shoulderOffsetY}, 285 ${140 + shoulderOffsetY} C 275 ${125 + shoulderOffsetY}, 245 120, 218 120 Z`} />
+                  
+                  {/* Princess Seams & Clavicles */}
+                  <path d={`M 170 ${135 + shoulderOffsetY} Q 210 ${150 + shoulderOffsetY} 250 ${135 + shoulderOffsetY}`} fill="none" stroke="#334155" strokeWidth="1.2" />
+                  <path d="M 180 180 C 180 240, 175 280, 180 340" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="4 2" />
+                  <path d="M 240 180 C 240 240, 245 280, 240 340" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="4 2" />
+                  
+                  {/* Chest Stance Curve */}
+                  <path d={chestCurveD} fill="none" stroke={chestStance !== 'Normal' ? '#FACC15' : '#334155'} strokeWidth={chestStance !== 'Normal' ? '1.8' : '1'} />
+                </g>
+              ) : (
+                <g className="fill-[url(#mannequin-grad)] stroke-[#475569] stroke-[1.5]">
+                  {/* Head & Neck Back */}
+                  <path d="M 185 65 C 185 40, 235 40, 235 65 C 235 85, 222 98, 218 108 L 218 120 L 202 120 L 202 108 C 198 98, 185 85, 185 65 Z" />
+                  
+                  {/* Torso Silhouette Back */}
+                  <path d={`M 202 120 C 175 120, 145 ${125 + shoulderOffsetY}, 135 ${140 + shoulderOffsetY} C 125 ${155 + shoulderOffsetY}, 120 200, 118 230 C 115 270, 115 320, 118 370 C 122 375, 128 375, 130 370 C 132 330, 135 285, 140 240 C 145 240, 152 235, 155 220 C 158 200, 158 185, 160 180 C 160 240, 160 280, 158 340 C 155 370, 155 390, 155 405 C 150 460, 145 550, 140 630 C 135 700, 130 750, 130 760 C 140 765, 155 765, 165 760 C 170 700, 180 600, 190 500 C 195 450, 205 420, 210 405 C 215 420, 225 450, 230 500 C 240 600, 250 700, 255 760 C 265 765, 280 765, 290 760 C 290 750, 285 700, 280 630 C 275 550, 270 460, 265 405 C 265 390, 265 370, 262 340 C 260 280, 260 240, 260 180 C 262 185, 262 200, 265 220 C 268 235, 275 240, 280 240 C 285 285, 288 330, 290 370 C 292 375, 298 375, 302 370 C 305 320, 305 270, 302 230 C 300 200, 295 ${155 + shoulderOffsetY}, 285 ${140 + shoulderOffsetY} C 275 ${125 + shoulderOffsetY}, 245 120, 218 120 Z`} />
+                  
+                  {/* Center Back Spine Seam with Posture Adaptation */}
+                  <line x1="210" y1="120" x2="210" y2="390" stroke={backPosture !== 'Normal' ? '#FACC15' : '#475569'} strokeWidth="1.8" strokeDasharray={spineDashArray} />
+                  
+                  {/* Scapula Shoulder Blades */}
+                  <path d={`M 170 ${160 + shoulderOffsetY} C 180 ${170 + shoulderOffsetY}, 195 ${175 + shoulderOffsetY}, 205 ${160 + shoulderOffsetY}`} fill="none" stroke="#334155" strokeWidth="1.2" />
+                  <path d={`M 250 ${160 + shoulderOffsetY} C 240 ${170 + shoulderOffsetY}, 225 ${175 + shoulderOffsetY}, 215 ${160 + shoulderOffsetY}`} fill="none" stroke="#334155" strokeWidth="1.2" />
+                </g>
+              )
+            ) : (
+              viewMode === 'front' ? (
+                <g className="fill-[url(#mannequin-grad)] stroke-[#475569] stroke-[1.5]">
+                  {/* Female Head & Neck */}
+                  <path d="M 188 62 C 188 38, 232 38, 232 62 C 232 80, 220 90, 216 102 L 216 118 L 204 118 L 204 102 C 200 90, 188 80, 188 62 Z" />
+                  
+                  {/* Female Torso Silhouette with Heel Offset */}
+                  <path d={`M 204 118 C 185 118, 155 ${125 + shoulderOffsetY}, 145 ${135 + shoulderOffsetY} C 135 ${145 + shoulderOffsetY}, 125 195, 122 220 C 118 260, 118 310, 122 355 C 125 362, 132 362, 135 355 C 138 320, 142 270, 148 230 C 152 230, 155 225, 158 210 C 160 195, 158 185, 160 180 C 162 230, 165 260, 168 290 C 170 320, 168 370, 168 400 C 165 450, 155 540, 150 620 C 145 690, 140 740, 140 ${750 - heelOffsetY} C 148 ${755 - heelOffsetY}, 160 ${755 - heelOffsetY}, 168 ${750 - heelOffsetY} C 175 690, 185 580, 195 480 C 200 430, 205 400, 210 390 C 215 400, 220 430, 225 480 C 235 580, 245 690, 252 ${750 - heelOffsetY} C 260 ${755 - heelOffsetY}, 272 ${755 - heelOffsetY}, 280 ${750 - heelOffsetY} C 280 740, 275 690, 270 620 C 265 540, 255 450, 252 400 C 252 370, 250 320, 252 290 C 255 260, 258 230, 260 180 C 262 185, 260 195, 262 210 C 265 225, 268 230, 272 230 C 278 270, 282 320, 285 355 C 288 362, 295 362, 298 355 C 302 310, 302 260, 298 220 C 295 195, 285 ${145 + shoulderOffsetY}, 275 ${135 + shoulderOffsetY} C 265 ${125 + shoulderOffsetY}, 235 118, 216 118 Z`} />
+                  
+                  {/* Bust Contours & Princess Lines */}
+                  <path d={chestCurveD} fill="none" stroke={chestStance !== 'Normal' ? '#FACC15' : '#334155'} strokeWidth={chestStance !== 'Normal' ? '1.8' : '1'} />
+                  <path d="M 175 190 Q 185 240 180 290" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="3 2" />
+                  <path d="M 245 190 Q 235 240 240 290" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="3 2" />
+                  <path d="M 165 300 C 155 330, 155 360, 168 390" fill="none" stroke="#334155" strokeWidth="1" opacity="0.7" />
+                  <path d="M 255 300 C 265 330, 265 360, 252 390" fill="none" stroke="#334155" strokeWidth="1" opacity="0.7" />
+                </g>
+              ) : (
+                <g className="fill-[url(#mannequin-grad)] stroke-[#475569] stroke-[1.5]">
+                  {/* Female Head & Neck Back */}
+                  <path d="M 188 62 C 188 38, 232 38, 232 62 C 232 80, 220 90, 216 102 L 216 118 L 204 118 L 204 102 C 200 90, 188 80, 188 62 Z" />
+                  
+                  {/* Female Torso Back */}
+                  <path d={`M 204 118 C 185 118, 155 ${125 + shoulderOffsetY}, 145 ${135 + shoulderOffsetY} C 135 ${145 + shoulderOffsetY}, 125 195, 122 220 C 118 260, 118 310, 122 355 C 125 362, 132 362, 135 355 C 138 320, 142 270, 148 230 C 152 230, 155 225, 158 210 C 160 195, 158 185, 160 180 C 162 230, 165 260, 168 290 C 170 320, 168 370, 168 400 C 165 450, 155 540, 150 620 C 145 690, 140 740, 140 ${750 - heelOffsetY} C 148 ${755 - heelOffsetY}, 160 ${755 - heelOffsetY}, 168 ${750 - heelOffsetY} C 175 690, 185 580, 195 480 C 200 430, 205 400, 210 390 C 215 400, 220 430, 225 480 C 235 580, 245 690, 252 ${750 - heelOffsetY} C 260 ${755 - heelOffsetY}, 272 ${755 - heelOffsetY}, 280 ${750 - heelOffsetY} C 280 740, 275 690, 270 620 C 265 540, 255 450, 252 400 C 252 370, 250 320, 252 290 C 255 260, 258 230, 260 180 C 262 185, 260 195, 262 210 C 265 225, 268 230, 272 230 C 278 270, 282 320, 285 355 C 288 362, 295 362, 298 355 C 302 310, 302 260, 298 220 C 295 195, 285 ${145 + shoulderOffsetY}, 275 ${135 + shoulderOffsetY} C 265 ${125 + shoulderOffsetY}, 235 118, 216 118 Z`} />
+                  
+                  {/* Center Back Spine Seam */}
+                  <line x1="210" y1="120" x2="210" y2="380" stroke={backPosture !== 'Normal' ? '#FACC15' : '#475569'} strokeWidth="1.8" strokeDasharray={spineDashArray} />
+                </g>
+              )
+            )}
 
-          // Apply shoulder slope offset to shoulder landmark Y
-          if (shoulderOffsetY !== 0 && (pom.code.includes('SH-03') || pom.code.includes('SU-03') || pom.code.includes('BL-04') || pom.code.includes('AN-05'))) {
-            y += shoulderOffsetY;
-          }
-          if (heelOffsetY > 0 && (pom.code.includes('LH-03') || pom.code.includes('AN-04') || pom.code.includes('GO-04'))) {
-            y -= heelOffsetY;
-          }
+            {/* ============================================================ */}
+            {/* GARMENT-SPECIFIC VECTOR DRAPE OVERLAYS                       */}
+            {/* ============================================================ */}
+            {showDrapeOverlay && (
+              <g className="transition-all duration-300">
+                {/* 1. SHERWANI OVERLAY (Royal Bandhgala Placket & Mandarin Collar) */}
+                {selectedGarment === 'Sherwani' && (
+                  <g className="stroke-[#F59E0B] stroke-[1.8] fill-none">
+                    {/* Mandarin Collar Band */}
+                    <path d="M 196 112 Q 210 118 224 112 L 224 122 Q 210 128 196 122 Z" fill="#F59E0B" fillOpacity="0.15" />
+                    {/* Front Center Placket */}
+                    <line x1="210" y1="122" x2="210" y2="450" stroke="#F59E0B" strokeWidth="2" />
+                    {/* Sherwani Ornate Button Dots */}
+                    {[145, 175, 205, 235, 265, 295, 325, 355, 385].map((btnY) => (
+                      <circle key={`sh-btn-${btnY}`} cx="210" cy={btnY} r="2.5" fill="#FACC15" stroke="#78350F" strokeWidth="0.8" />
+                    ))}
+                    {/* Chest Welt Pocket & Pocket Square */}
+                    <line x1="162" y1="195" x2="185" y2="195" stroke="#F59E0B" strokeWidth="1.5" />
+                    <path d="M 168 195 L 173 186 L 178 195 Z" fill="#FACC15" fillOpacity="0.8" stroke="none" />
+                    {/* Flared Lower Hem Sweep */}
+                    <path d="M 148 450 Q 210 465 272 450" stroke="#F59E0B" strokeWidth="1.8" />
+                    {/* Side Slits */}
+                    <line x1="148" y1="360" x2="148" y2="450" stroke="#F59E0B" strokeDasharray="3 3" strokeWidth="1.2" />
+                    <line x1="272" y1="360" x2="272" y2="450" stroke="#F59E0B" strokeDasharray="3 3" strokeWidth="1.2" />
+                  </g>
+                )}
 
-          const isFocused = focusedId === pom.id;
+                {/* 2. SUIT OVERLAY (Savile Row Peak Lapel, Pocket Welt & Trousers) */}
+                {selectedGarment === 'Suit' && (
+                  <g className="stroke-[#38BDF8] stroke-[1.8] fill-none">
+                    {/* Peak Lapel Roll Lines */}
+                    <path d="M 194 120 L 175 185 L 195 210 L 210 270" strokeWidth="1.8" />
+                    <path d="M 226 120 L 245 185 L 225 210 L 210 270" strokeWidth="1.8" />
+                    {/* Lapel Flower Buttonhole */}
+                    <line x1="180" y1="165" x2="186" y2="160" stroke="#38BDF8" strokeWidth="1.5" />
+                    {/* 2-Button Closure */}
+                    <circle cx="210" cy="275" r="3" fill="#0F172A" stroke="#38BDF8" strokeWidth="1.5" />
+                    <circle cx="210" cy="305" r="3" fill="#0F172A" stroke="#38BDF8" strokeWidth="1.5" />
+                    {/* Breast Pocket Welt */}
+                    <line x1="160" y1="190" x2="184" y2="190" stroke="#38BDF8" strokeWidth="1.5" />
+                    {/* Flap Pockets */}
+                    <line x1="145" y1="330" x2="175" y2="330" stroke="#38BDF8" strokeWidth="1.5" />
+                    <line x1="245" y1="330" x2="275" y2="330" stroke="#38BDF8" strokeWidth="1.5" />
+                    {/* Jacket Cutaway Hem */}
+                    <path d="M 152 400 Q 210 415 268 400" strokeWidth="1.8" />
+                    {/* Trouser Center Press Creases */}
+                    <line x1="172" y1="410" x2="148" y2="750" stroke="#38BDF8" strokeDasharray="6 3" strokeWidth="1.2" />
+                    <line x1="248" y1="410" x2="272" y2="750" stroke="#38BDF8" strokeDasharray="6 3" strokeWidth="1.2" />
+                  </g>
+                )}
+
+                {/* 3. BLOUSE OVERLAY (Couture Necklines & Princess Darts) */}
+                {selectedGarment === 'Blouse' && (
+                  <g className="stroke-[#EC4899] stroke-[1.8] fill-none">
+                    {/* Sweetheart Neckline Front */}
+                    {viewMode === 'front' ? (
+                      <path d="M 175 130 Q 192 170 210 155 Q 228 170 245 130" strokeWidth="2" fill="#EC4899" fillOpacity="0.1" />
+                    ) : (
+                      <path d="M 175 130 Q 210 200 245 130" strokeWidth="2" fill="#EC4899" fillOpacity="0.1" />
+                    )}
+                    {/* Bust Apex Points */}
+                    {viewMode === 'front' && (
+                      <>
+                        <circle cx="180" cy="200" r="2.5" fill="#EC4899" />
+                        <circle cx="240" cy="200" r="2.5" fill="#EC4899" />
+                        {/* Princess Cut Darts */}
+                        <path d="M 158 165 Q 180 200 178 330" strokeWidth="1.4" strokeDasharray="4 2" />
+                        <path d="M 262 165 Q 240 200 242 330" strokeWidth="1.4" strokeDasharray="4 2" />
+                      </>
+                    )}
+                    {/* Underbust Band */}
+                    <line x1="165" y1="240" x2="255" y2="240" stroke="#EC4899" strokeWidth="1.2" strokeDasharray="3 2" />
+                    {/* Blouse Bottom Hem Line */}
+                    <path d="M 158 330 Q 210 340 262 330" strokeWidth="2" />
+                  </g>
+                )}
+
+                {/* 4. LEHENGA OVERLAY (12-Kali Flared Yoke Panels & Cancan) */}
+                {selectedGarment === 'Lehenga' && (
+                  <g className="stroke-[#10B981] stroke-[1.8] fill-none">
+                    {/* High-Rise Embroidered Waistband */}
+                    <path d="M 165 280 Q 210 290 255 280 L 257 295 Q 210 305 163 295 Z" fill="#10B981" fillOpacity="0.2" strokeWidth="1.8" />
+                    {/* Radiating 12 Kalis Flare Panels */}
+                    {[
+                      { x1: 170, x2: 80 },
+                      { x1: 185, x2: 130 },
+                      { x1: 200, x2: 180 },
+                      { x1: 210, x2: 210 },
+                      { x1: 220, x2: 240 },
+                      { x1: 235, x2: 290 },
+                      { x1: 250, x2: 340 },
+                    ].map((k, i) => (
+                      <line key={`lh-kali-${i}`} x1={k.x1} y1="295" x2={k.x2} y2="700" stroke="#10B981" strokeWidth="1.2" strokeDasharray="5 3" />
+                    ))}
+                    {/* Broad Bottom Flare Sweep */}
+                    <path d="M 75 700 Q 210 740 345 700" strokeWidth="2.5" />
+                    {/* Cancan Ring Guide */}
+                    <path d="M 105 620 Q 210 650 315 620" stroke="#10B981" strokeDasharray="3 3" strokeWidth="1" />
+                  </g>
+                )}
+
+                {/* 5. ANARKALI OVERLAY (Empire Bodice & Umbrella Kalis) */}
+                {selectedGarment === 'Anarkali' && (
+                  <g className="stroke-[#A855F7] stroke-[1.8] fill-none">
+                    {/* Empire Bodice Yoke */}
+                    <line x1="165" y1="270" x2="255" y2="270" strokeWidth="2" stroke="#A855F7" />
+                    {/* Umbrella Kalidar Flare lines */}
+                    {[
+                      { x: 100 }, { x: 140 }, { x: 180 }, { x: 210 }, { x: 240 }, { x: 280 }, { x: 320 }
+                    ].map((k, i) => (
+                      <line key={`an-k-${i}`} x1="210" y1="270" x2={k.x} y2="600" stroke="#A855F7" strokeWidth="1.2" strokeDasharray="4 2" />
+                    ))}
+                    {/* Floor Sweep Hem */}
+                    <path d="M 95 600 Q 210 630 325 600" strokeWidth="2" />
+                  </g>
+                )}
+
+                {/* 6. CORSET OVERLAY (Sweetheart Busks & Boning Channels) */}
+                {selectedGarment === 'Corset' && (
+                  <g className="stroke-[#F59E0B] stroke-[1.8] fill-none">
+                    {/* Sweetheart Décolletage */}
+                    <path d="M 165 180 Q 185 215 210 195 Q 235 215 255 180" strokeWidth="2" fill="#F59E0B" fillOpacity="0.1" />
+                    {/* Steel Busk Center Front Clasp Hooks */}
+                    <line x1="210" y1="195" x2="210" y2="340" stroke="#FACC15" strokeWidth="2.5" />
+                    {[215, 245, 275, 305, 335].map((buskY) => (
+                      <rect key={`busk-hook-${buskY}`} x="208" y={buskY} width="4" height="4" fill="#FEF08A" stroke="#B45309" strokeWidth="0.8" />
+                    ))}
+                    {/* 8 Spiral Steel Boning Channels */}
+                    {[-35, -24, -12, 12, 24, 35].map((offset) => (
+                      <path
+                        key={`bone-${offset}`}
+                        d={`M ${210 + offset * 0.9} 200 Q ${210 + offset * 0.7} 280 ${210 + offset} 340`}
+                        stroke="#F59E0B"
+                        strokeWidth="1.2"
+                        strokeDasharray="4 2"
+                      />
+                    ))}
+                    {/* Bottom Cinch Sweep */}
+                    <path d="M 160 340 Q 210 365 260 340" strokeWidth="2" />
+                  </g>
+                )}
+              </g>
+            )}
+
+            {/* ============================================================ */}
+            {/* REAL-TIME DIMENSION CALIPER RIBBONS (HORIZONTAL & VERTICAL)  */}
+            {/* ============================================================ */}
+            {showDimensions && (
+              <g className="select-none pointer-events-none">
+                {/* Horizontal Caliper Across Active / Focused Landmark */}
+                {activePoms.map((pom) => {
+                  const isFocused = focusedId === pom.id;
+                  if (!isFocused && !['SH-01', 'SU-01', 'BL-01', 'SH-02', 'SU-02', 'BL-03'].includes(pom.code)) return null;
+
+                  const y = pom.landmarkY + (shoulderOffsetY !== 0 && (pom.code.includes('SH-03') || pom.code.includes('SU-03')) ? shoulderOffsetY : 0);
+                  const rawVal = measurements[pom.id] ?? pom.base;
+                  const displayStr = `${formatVal(rawVal)} ${unitLabel}`;
+
+                  return (
+                    <g key={`caliper-${pom.id}`} className="transition-all duration-300">
+                      {/* Left & Right Caliper Wings */}
+                      <line x1="80" y1={y} x2="135" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '1.8' : '1'} />
+                      <line x1="285" y1={y} x2="340" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '1.8' : '1'} />
+                      {/* End Ticks */}
+                      <line x1="80" y1={y - 5} x2="80" y2={y + 5} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.5" />
+                      <line x1="340" y1={y - 5} x2="340" y2={y + 5} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.5" />
+                    </g>
+                  );
+                })}
+              </g>
+            )}
+
+            {/* ============================================================ */}
+            {/* INTERACTIVE HOTSPOT NODES WITH RADAR PULSE & LASER TRACKING  */}
+            {/* ============================================================ */}
+            {activePoms.map((pom) => {
+              let x = pom.landmarkX ?? 210;
+              let y = pom.landmarkY;
+
+              if (shoulderOffsetY !== 0 && (pom.code.includes('SH-03') || pom.code.includes('SU-03') || pom.code.includes('BL-04') || pom.code.includes('AN-05'))) {
+                y += shoulderOffsetY;
+              }
+              if (heelOffsetY > 0 && (pom.code.includes('LH-03') || pom.code.includes('AN-04') || pom.code.includes('GO-04'))) {
+                y -= heelOffsetY;
+              }
+
+              const isFocused = focusedId === pom.id;
+              const hasError = !!validationErrors[pom.id];
+              const r = 8;
+              const rawVal = measurements[pom.id] ?? pom.base;
+
+              return (
+                <g
+                  key={pom.id}
+                  className="cursor-pointer group/hotspot transition-all duration-300"
+                  onClick={() => onSelectHotspot(pom.id)}
+                  onMouseEnter={() => onHoverHotspot(pom.id)}
+                  onMouseLeave={() => onHoverHotspot(null)}
+                >
+                  {/* Invisible Hitbox Expansion */}
+                  <circle cx={x} cy={y} r={r + 18} fill="transparent" />
+
+                  {isFocused && (
+                    <>
+                      {/* Radar Pulse 1 */}
+                      <circle cx={x} cy={y} r={r + 8} fill="none" stroke="#FACC15" strokeWidth="1.8" opacity="0.8">
+                        <animate attributeName="r" values={`${r + 4};${r + 26};${r + 4}`} dur="1.8s" repeatCount="indefinite" />
+                        <animate attributeName="opacity" values="0.85;0;0.85" dur="1.8s" repeatCount="indefinite" />
+                      </circle>
+
+                      {/* Radar Pulse 2 */}
+                      <circle cx={x} cy={y} r={r + 16} fill="none" stroke="#EAB308" strokeWidth="1.2" opacity="0.5">
+                        <animate attributeName="r" values={`${r + 8};${r + 36};${r + 8}`} dur="1.8s" begin="0.45s" repeatCount="indefinite" />
+                        <animate attributeName="opacity" values="0.5;0;0.5" dur="1.8s" begin="0.45s" repeatCount="indefinite" />
+                      </circle>
+
+                      {/* Laser Alignment Crosshairs */}
+                      <line
+                        x1="20" y1={y} x2="400" y2={y}
+                        stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="4 4"
+                        filter="url(#glow-cyan)" opacity="0.9"
+                      >
+                        <animate attributeName="stroke-dashoffset" values="8;0" dur="0.8s" repeatCount="indefinite" />
+                      </line>
+                      <line
+                        x1={x} y1="20" x2={x} y2="820"
+                        stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="4 4"
+                        filter="url(#glow-cyan)" opacity="0.9"
+                      >
+                        <animate attributeName="stroke-dashoffset" values="8;0" dur="0.8s" repeatCount="indefinite" />
+                      </line>
+                    </>
+                  )}
+
+                  {/* Core Hotspot Button Circle */}
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r={isFocused ? r + 3 : r}
+                    fill={hasError ? '#EF4444' : isFocused ? '#FACC15' : '#10B981'}
+                    stroke={isFocused ? '#FFFFFF' : '#0B0F19'}
+                    strokeWidth={isFocused ? '2.5' : '1.8'}
+                    filter={isFocused ? 'url(#glow-gold)' : hasError ? 'url(#glow-rose)' : 'url(#glow-emerald)'}
+                    className="transition-all duration-300 ease-out"
+                  />
+                  <circle cx={x} cy={y} r={isFocused ? 3.5 : 2} fill="#FFFFFF" />
+
+                  {/* POM Code & Value Badge Tag */}
+                  <g transform={`translate(${x + 14}, ${y - 8})`}>
+                    <rect
+                      x="0" y="0" width={isFocused ? 84 : 46} height="18" rx="5"
+                      fill={isFocused ? '#1E293B' : '#0F172A'}
+                      stroke={isFocused ? '#FACC15' : '#334155'}
+                      strokeWidth={isFocused ? '1.2' : '0.8'}
+                      className="shadow-md"
+                    />
+                    <text
+                      x="6"
+                      y="12"
+                      className={`text-[9px] font-mono font-extrabold tracking-wider ${
+                        isFocused ? 'fill-yellow-400' : 'fill-slate-300'
+                      }`}
+                    >
+                      {pom.code}
+                    </text>
+                    {isFocused && (
+                      <text x="44" y="12" className="text-[9px] font-mono font-bold fill-white">
+                        {formatVal(rawVal)}{unitLabel}
+                      </text>
+                    )}
+                  </g>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Floating Quick-Adjust HUD Overlay for Selected Hotspot */}
+        {focusedId && (() => {
+          const pom = activePoms.find(p => p.id === focusedId);
+          if (!pom) return null;
+          const rawVal = measurements[pom.id] ?? pom.base;
           const hasError = !!validationErrors[pom.id];
-          const r = 8;
 
           return (
-            <g
-              key={pom.id}
-              className="cursor-pointer group/hotspot transition-all duration-300"
-              onClick={() => onSelectHotspot(pom.id)}
-              onMouseEnter={() => onHoverHotspot(pom.id)}
-              onMouseLeave={() => onHoverHotspot(null)}
-            >
-              {/* Invisible Click Expansion Target Area */}
-              <circle cx={x} cy={y} r={r + 16} fill="transparent" />
-
-              {isFocused && (
-                <>
-                  {/* Radar Ripple Animation 1 */}
-                  <circle cx={x} cy={y} r={r + 8} fill="none" stroke="#FACC15" strokeWidth="1.5" opacity="0.8">
-                    <animate attributeName="r" values={`${r + 4};${r + 22};${r + 4}`} dur="1.8s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.8;0;0.8" dur="1.8s" repeatCount="indefinite" />
-                  </circle>
-
-                  {/* Radar Ripple Animation 2 (Staggered) */}
-                  <circle cx={x} cy={y} r={r + 14} fill="none" stroke="#EAB308" strokeWidth="1" opacity="0.5">
-                    <animate attributeName="r" values={`${r + 8};${r + 32};${r + 8}`} dur="1.8s" begin="0.45s" repeatCount="indefinite" />
-                    <animate attributeName="opacity" values="0.5;0;0.5" dur="1.8s" begin="0.45s" repeatCount="indefinite" />
-                  </circle>
-
-                  {/* X/Y Crosshair CAD Lasers with animated dash offset */}
-                  <line
-                    x1="0" y1={y} x2="400" y2={y}
-                    stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="4 4"
-                    filter="url(#glow-cyan)" opacity="0.85"
-                  >
-                    <animate attributeName="stroke-dashoffset" values="8;0" dur="0.8s" repeatCount="indefinite" />
-                  </line>
-                  <line
-                    x1={x} y1="0" x2={x} y2="800"
-                    stroke="#38BDF8" strokeWidth="1.5" strokeDasharray="4 4"
-                    filter="url(#glow-cyan)" opacity="0.85"
-                  >
-                    <animate attributeName="stroke-dashoffset" values="8;0" dur="0.8s" repeatCount="indefinite" />
-                  </line>
-                </>
-              )}
-
-              {/* Core Hotspot Circle */}
-              <circle
-                cx={x}
-                cy={y}
-                r={isFocused ? r + 3 : r}
-                fill={hasError ? '#EF4444' : isFocused ? '#FACC15' : '#10B981'}
-                stroke={isFocused ? '#FFFFFF' : '#0B0F19'}
-                strokeWidth={isFocused ? '2.5' : '1.5'}
-                filter={isFocused ? 'url(#glow-gold)' : ''}
-                className="transition-all duration-300 ease-out"
-              />
-              <circle cx={x} cy={y} r={isFocused ? 3 : 2} fill="#FFFFFF" />
-
-              {/* Landmark Label */}
-              <text
-                x={x + 14}
-                y={y + 4}
-                className={`text-[10px] font-mono font-extrabold tracking-wider ${
-                  isFocused ? 'fill-yellow-400' : 'fill-slate-400 group-hover/hotspot:fill-slate-200'
-                }`}
-                style={{ textShadow: '0px 2px 6px rgba(0,0,0,0.95)' }}
-              >
-                {pom.code}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-
-      {/* Floating Detail Overlay */}
-      {focusedId && (() => {
-        const pom = activePoms.find(p => p.id === focusedId);
-        if (!pom) return null;
-        const val = measurements[pom.id] ?? pom.base;
-        const hasError = !!validationErrors[pom.id];
-        return (
-          <div className="absolute bottom-4 right-4 glass-card-gold rounded-xl p-3 shadow-[0_8px_32px_rgba(245,158,11,0.25)] backdrop-blur-md flex flex-col min-w-[150px] z-20 animate-fade-in">
-            <div className="flex items-center justify-between space-x-2 mb-1.5">
-              <div className="flex items-center space-x-1.5">
-                <div className={`w-2 h-2 rounded-full ${hasError ? 'bg-rose-500' : 'bg-gold-400'} animate-pulse`} />
-                <span className="font-mono font-extrabold text-gold-400 text-[10px] uppercase tracking-wider">{pom.code}</span>
+            <div className="absolute bottom-4 right-4 glass-card-gold rounded-2xl p-4 shadow-[0_12px_40px_rgba(245,158,11,0.25)] backdrop-blur-xl flex flex-col min-w-[200px] z-30 animate-fade-in border border-amber-400/40">
+              <div className="flex items-center justify-between space-x-2 mb-2 pb-1.5 border-b border-slate-700/60">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2.5 h-2.5 rounded-full ${hasError ? 'bg-rose-500' : 'bg-amber-400'} animate-pulse`} />
+                  <span className="font-mono font-extrabold text-amber-400 text-xs uppercase tracking-wider">{pom.code}</span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 font-semibold">{pom.min}"–{pom.max}" range</span>
               </div>
-              <span className="text-[9px] font-mono text-slate-400 font-semibold">{pom.min}"–{pom.max}"</span>
+              
+              <span className="font-bold text-white text-xs mb-1">{pom.name}</span>
+              
+              <div className="flex items-baseline justify-between mt-2 pt-2 border-t border-slate-800">
+                <span className="text-[11px] text-slate-400">Target Value:</span>
+                <div className="flex items-baseline space-x-1">
+                  <span className="font-mono font-black text-2xl text-amber-300">{formatVal(rawVal)}</span>
+                  <span className="font-mono text-xs text-amber-400 font-bold">{unitLabel}</span>
+                </div>
+              </div>
+
+              {/* Quick Increment Steppers */}
+              {onUpdateMeasurement && (
+                <div className="grid grid-cols-4 gap-1.5 mt-3 pt-2 border-t border-slate-800">
+                  <button
+                    onClick={() => onUpdateMeasurement(pom.id, Math.max(pom.min, Number((rawVal - 0.5).toFixed(2))))}
+                    className="py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors"
+                  >
+                    -0.5"
+                  </button>
+                  <button
+                    onClick={() => onUpdateMeasurement(pom.id, Math.max(pom.min, Number((rawVal - 0.25).toFixed(2))))}
+                    className="py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors"
+                  >
+                    -0.25"
+                  </button>
+                  <button
+                    onClick={() => onUpdateMeasurement(pom.id, Math.min(pom.max, Number((rawVal + 0.25).toFixed(2))))}
+                    className="py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors"
+                  >
+                    +0.25"
+                  </button>
+                  <button
+                    onClick={() => onUpdateMeasurement(pom.id, Math.min(pom.max, Number((rawVal + 0.5).toFixed(2))))}
+                    className="py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors"
+                  >
+                    +0.5"
+                  </button>
+                </div>
+              )}
             </div>
-            <span className="font-semibold text-slate-200 text-xs mb-1">{pom.name}</span>
-            <div className="text-right mt-1 border-t border-slate-700/60 pt-1 flex items-baseline justify-end space-x-1">
-              <span className="font-mono font-extrabold text-xl text-white">{val}</span>
-              <span className="font-mono text-xs text-gold-400 font-bold">in</span>
-            </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
+      </div>
     </div>
   );
 }
@@ -761,6 +1180,7 @@ function MeasurementsContent() {
             <BodySilhouetteSvg
               gender={selectedGender}
               viewMode={viewMode}
+              selectedGarment={selectedGarment}
               activePoms={activePoms}
               focusedId={focusedId}
               measurements={measurements}
@@ -769,8 +1189,11 @@ function MeasurementsContent() {
               chestStance={chestStance}
               backPosture={backPosture}
               heelHeight={heelHeight}
+              unitSystem={unitSystem}
+              fitPref={fitPref}
               onSelectHotspot={setFocusedId}
               onHoverHotspot={setFocusedId}
+              onUpdateMeasurement={handleMeasurementChange}
             />
 
             {/* Legend */}
