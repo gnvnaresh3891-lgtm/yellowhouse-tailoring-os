@@ -673,6 +673,173 @@ export default function MarketingLandingPage() {
         </div>
       </section>
 
+      {/* BESPOKE ATELIER SERVICES & CRAFTSMANSHIP CATALOG (REDHOUSE OS INSPIRED LUXURY OBSIDIAN THEME) */}
+      <section id="services" className="py-24 bg-[#06080E] border-t border-amber-500/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Bespoke Atelier Portfolio & Turnaround Standards</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
+              Master Craftsmanship Services
+            </h2>
+            <p className="text-sm sm:text-base text-slate-300">
+              Standardized CAD templates, SAM labor allocation, and precision turnaround tracking across all haute couture categories.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* SERVICE CARD 1: BRIDAL BLOUSE */}
+            <div className="bg-[#0A0D16] rounded-3xl border border-slate-800/90 hover:border-amber-500/50 transition-all flex flex-col justify-between overflow-hidden group shadow-xl hover:shadow-amber-500/10">
+              <div className="relative h-56 w-full overflow-hidden bg-slate-950">
+                <img
+                  src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80"
+                  alt="Bespoke Maggam Blouse"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D16] via-[#0A0D16]/30 to-transparent" />
+                <div className="absolute top-3.5 left-3.5">
+                  <span className="text-[10px] font-extrabold px-3 py-1 rounded-full bg-amber-400/20 backdrop-blur-md text-amber-300 border border-amber-400/40">
+                    Bridal Couture
+                  </span>
+                </div>
+                <div className="absolute top-3.5 right-3.5">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-slate-200 border border-slate-700 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-amber-400" />
+                    7 Days Turnaround
+                  </span>
+                </div>
+                <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-1 text-amber-400 text-xs font-bold bg-black/80 backdrop-blur-sm px-2.5 py-1 rounded-md border border-amber-500/30">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>4.9</span>
+                    <span className="text-slate-400 font-normal">(1,420 orders)</span>
+                  </div>
+                  <span className="font-mono font-black text-amber-300 text-sm">From ₹3,500</span>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
+                    Bridal & Maggam Zari Blouses
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Princess cut, padded cups, deep back boning, hand-embroidered Zardozi, and micro-piping seam finishes.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800/80">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">1.0m Fabric</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">Padded Cups</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">Invisible Zip</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">SAM 180m</span>
+                </div>
+              </div>
+            </div>
+
+            {/* SERVICE CARD 2: BESPOKE SUITING */}
+            <div className="bg-[#0A0D16] rounded-3xl border border-slate-800/90 hover:border-amber-500/50 transition-all flex flex-col justify-between overflow-hidden group shadow-xl hover:shadow-amber-500/10">
+              <div className="relative h-56 w-full overflow-hidden bg-slate-950">
+                <img
+                  src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=800&q=80"
+                  alt="3-Piece Bespoke Suit"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D16] via-[#0A0D16]/30 to-transparent" />
+                <div className="absolute top-3.5 left-3.5">
+                  <span className="text-[10px] font-extrabold px-3 py-1 rounded-full bg-blue-500/20 backdrop-blur-md text-blue-300 border border-blue-500/40">
+                    Savile Row Suiting
+                  </span>
+                </div>
+                <div className="absolute top-3.5 right-3.5">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-slate-200 border border-slate-700 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-amber-400" />
+                    10 Days Turnaround
+                  </span>
+                </div>
+                <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-1 text-amber-400 text-xs font-bold bg-black/80 backdrop-blur-sm px-2.5 py-1 rounded-md border border-amber-500/30">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>5.0</span>
+                    <span className="text-slate-400 font-normal">(890 orders)</span>
+                  </div>
+                  <span className="font-mono font-black text-amber-300 text-sm">From ₹28,000</span>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
+                    2 & 3-Piece Bespoke Tuxedos & Suits
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Full floating horsehair canvas chest piece, surgeon cuffs, horn buttons, and pick-stitched peak/notch lapels.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800/80">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">4.0m Broadloom</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">Floating Canvas</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">Surgeon Cuffs</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">SAM 360m</span>
+                </div>
+              </div>
+            </div>
+
+            {/* SERVICE CARD 3: BRIDAL LEHENGA */}
+            <div className="bg-[#0A0D16] rounded-3xl border border-slate-800/90 hover:border-amber-500/50 transition-all flex flex-col justify-between overflow-hidden group shadow-xl hover:shadow-amber-500/10">
+              <div className="relative h-56 w-full overflow-hidden bg-slate-950">
+                <img
+                  src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=800&q=80"
+                  alt="Bridal Lehenga Choli"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D16] via-[#0A0D16]/30 to-transparent" />
+                <div className="absolute top-3.5 left-3.5">
+                  <span className="text-[10px] font-extrabold px-3 py-1 rounded-full bg-rose-500/20 backdrop-blur-md text-rose-300 border border-rose-500/40">
+                    Grand Heritage
+                  </span>
+                </div>
+                <div className="absolute top-3.5 right-3.5">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-black/70 backdrop-blur-md text-slate-200 border border-slate-700 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-amber-400" />
+                    14 Days Turnaround
+                  </span>
+                </div>
+                <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between text-white">
+                  <div className="flex items-center gap-1 text-amber-400 text-xs font-bold bg-black/80 backdrop-blur-sm px-2.5 py-1 rounded-md border border-amber-500/30">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>5.0</span>
+                    <span className="text-slate-400 font-normal">(620 orders)</span>
+                  </div>
+                  <span className="font-mono font-black text-amber-300 text-sm">From ₹65,000</span>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
+                    Bridal Lehenga Choli & Ghagra Sets
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    16 to 24-kali flared circumference, structured 4-layer cancan netting, double dupatta draping, and Latkan tassels.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800/80">
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">5.5m Silk</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">Cancan Flare</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">Heavy Zari</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">SAM 480m</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CORE FEATURES GRID (3 COLUMNS REQUIREMENT) */}
       <section id="features" className="py-20 md:py-28 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
