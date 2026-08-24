@@ -190,61 +190,63 @@ export default function MarketingLandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-100 selection:bg-yellow-500 selection:text-slate-950 font-sans antialiased overflow-x-hidden">
-      {/* BACKGROUND DECORATIVE GLOWS */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-to-b from-yellow-500/10 via-yellow-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
-      <div className="fixed bottom-0 right-0 w-[600px] h-[600px] bg-gradient-to-t from-blue-600/5 via-indigo-600/5 to-transparent blur-3xl pointer-events-none -z-10" />
+    <div className="min-h-screen bg-[#07090E] text-slate-100 selection:bg-amber-400 selection:text-slate-950 font-sans antialiased overflow-x-hidden">
+      {/* LUXURY BACKGROUND GRADIENT LIGHTING */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-gradient-to-b from-amber-500/15 via-yellow-600/5 to-transparent blur-[140px] pointer-events-none -z-10" />
+      <div className="fixed bottom-0 right-0 w-[700px] h-[700px] bg-gradient-to-t from-purple-900/10 via-amber-950/5 to-transparent blur-[140px] pointer-events-none -z-10" />
 
       {/* HEADER NAVIGATION */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-[#0B0F19]/80 border-b border-slate-800/80 transition-all duration-300">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#07090E]/90 border-b border-amber-500/15 transition-all duration-300 shadow-2xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            {/* BRAND LOGO WITH INTERACTIVE SCISSORS ICON */}
-            <Link href="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-slate-950 shadow-lg shadow-yellow-500/20 group-hover:scale-105 transition-all duration-300">
-                <Scissors className="w-5 h-5 transform group-hover:rotate-45 transition-transform duration-500" />
+            {/* BRAND LOGO WITH GOLD EMBLEM */}
+            <Link href="/" className="flex items-center space-x-3.5 group">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-300 via-amber-500 to-yellow-600 p-0.5 shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-all duration-300">
+                <div className="w-full h-full bg-[#0A0D16] rounded-[14px] flex items-center justify-center">
+                  <Scissors className="w-5 h-5 text-amber-400 transform group-hover:rotate-45 transition-transform duration-500" />
+                </div>
               </div>
               <div className="flex flex-col">
-                <span className="font-extrabold text-lg text-white tracking-tight group-hover:text-yellow-400 transition-colors">
+                <span className="font-extrabold text-xl text-white tracking-tight group-hover:text-amber-300 transition-colors">
                   YellowHouse
                 </span>
-                <span className="text-[10px] uppercase font-bold tracking-widest text-yellow-500/90 -mt-1">
-                  Tailoring OS
+                <span className="text-[10px] uppercase font-extrabold tracking-widest text-amber-400/90 -mt-1">
+                  Atelier OS
                 </span>
               </div>
             </Link>
 
             {/* NAVIGATION LINKS (DESKTOP) */}
-            <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
-              <a href="#features" className="hover:text-yellow-400 transition-colors">
-                Core Features
+            <nav className="hidden md:flex items-center space-x-8 text-sm font-semibold text-slate-300">
+              <a href="#features" className="hover:text-amber-400 transition-colors">
+                Features
               </a>
-              <a href="#cad-engine" className="hover:text-yellow-400 transition-colors flex items-center space-x-1">
+              <a href="#cad-engine" className="hover:text-amber-400 transition-colors flex items-center space-x-1.5">
                 <span>CAD Engine</span>
-                <span className="badge badge-gold">v4.2</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400/10 text-amber-300 border border-amber-400/30">v4.2</span>
               </a>
-              <Link href="/redhouse-os" className="hover:text-rose-400 transition-colors flex items-center space-x-1">
-                <span className="bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent font-bold">RedHouse OS</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Portal</span>
+              <Link href="/redhouse-os" className="hover:text-rose-400 transition-colors flex items-center space-x-1.5">
+                <span className="bg-gradient-to-r from-rose-400 via-amber-300 to-yellow-200 bg-clip-text text-transparent font-bold">Stitchly Portal</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">B2C</span>
               </Link>
-              <a href="#pricing" className="hover:text-yellow-400 transition-colors">
+              <a href="#pricing" className="hover:text-amber-400 transition-colors">
                 Pricing
               </a>
-              <a href="#testimonials" className="hover:text-yellow-400 transition-colors">
+              <a href="#testimonials" className="hover:text-amber-400 transition-colors">
                 Ateliers
               </a>
-              <a href="#faqs" className="hover:text-yellow-400 transition-colors">
+              <a href="#faqs" className="hover:text-amber-400 transition-colors">
                 FAQs
               </a>
             </nav>
 
             {/* ACTION BUTTONS (DESKTOP) */}
             <div className="hidden md:flex items-center space-x-4">
-              <Link href="/login" className="btn-ghost">
+              <Link href="/login" className="px-4 py-2.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 font-semibold text-xs transition-colors">
                 Log In
               </Link>
-              <Link href="/onboarding" className="btn-gold flex items-center space-x-2">
-                <span>Start Onboarding</span>
+              <Link href="/onboarding" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-600 hover:from-amber-300 hover:to-yellow-500 text-slate-950 font-extrabold text-xs shadow-lg shadow-amber-500/20 flex items-center space-x-2 transition-all hover:scale-105">
+                <span>Start Free Onboarding</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -369,55 +371,55 @@ export default function MarketingLandingPage() {
 
           {/* VISUAL ATELIER PREVIEW STRIP */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 max-w-5xl mx-auto mb-16">
-            <div className="relative rounded-2xl overflow-hidden h-36 border border-slate-800 shadow-xl group">
+            <div className="relative rounded-2xl overflow-hidden h-40 border border-amber-500/30 shadow-2xl group bg-[#0A0D16]">
               <img
-                src="https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=600&q=80"
-                alt="Bespoke Tailoring Cutting"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80"
+                alt="Bespoke Master Suiting"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-90"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#07090E] via-[#07090E]/40 to-transparent" />
               <div className="absolute bottom-3 left-3 text-left">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-400">Master Cutting</span>
-                <div className="text-xs font-bold text-white">Savile Row & Custom Suits</div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">Master Cutting</span>
+                <div className="text-xs font-bold text-white">Savile Row & Bespoke Suiting</div>
               </div>
             </div>
 
-            <div className="relative rounded-2xl overflow-hidden h-36 border border-slate-800 shadow-xl group">
+            <div className="relative rounded-2xl overflow-hidden h-40 border border-amber-500/30 shadow-2xl group bg-[#0A0D16]">
               <img
-                src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80"
-                alt="Indian Bridal Couture"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                src="https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=600&q=80"
+                alt="Haute Couture Drapes"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-90"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#07090E] via-[#07090E]/40 to-transparent" />
               <div className="absolute bottom-3 left-3 text-left">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Heritage Couture</span>
-                <div className="text-xs font-bold text-white">Bridal Maggam & Zardozi</div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-400">Haute Couture</span>
+                <div className="text-xs font-bold text-white">Bridal Maggam & Draped Silks</div>
               </div>
             </div>
 
-            <div className="relative rounded-2xl overflow-hidden h-36 border border-slate-800 shadow-xl group">
+            <div className="relative rounded-2xl overflow-hidden h-40 border border-amber-500/30 shadow-2xl group bg-[#0A0D16]">
               <img
-                src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=600&q=80"
-                alt="CAD Digital Tech Pack"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=600&q=80"
+                alt="Luxury Fabric Materials"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-90"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#07090E] via-[#07090E]/40 to-transparent" />
               <div className="absolute bottom-3 left-3 text-left">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Garment CAD</span>
-                <div className="text-xs font-bold text-white">Dynamic SVG Landmarks</div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400">Material Science</span>
+                <div className="text-xs font-bold text-white">Super 150s & Cashmere Wefts</div>
               </div>
             </div>
 
-            <div className="relative rounded-2xl overflow-hidden h-36 border border-slate-800 shadow-xl group">
+            <div className="relative rounded-2xl overflow-hidden h-40 border border-amber-500/30 shadow-2xl group bg-[#0A0D16]">
               <img
-                src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
-                alt="Karigar Production Board"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                src="https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=600&q=80"
+                alt="Artisan Craftsmanship"
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-90"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#07090E] via-[#07090E]/40 to-transparent" />
               <div className="absolute bottom-3 left-3 text-left">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Karigar Tracking</span>
-                <div className="text-xs font-bold text-white">Real-Time Piece Rates</div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Artisan Craft</span>
+                <div className="text-xs font-bold text-white">Hand-Stitched Canvas & Lapels</div>
               </div>
             </div>
           </div>
@@ -693,30 +695,30 @@ export default function MarketingLandingPage() {
             {/* Layer 1: Digital Asset Warehouse */}
             <Link
               href="/redhouse/marketplace"
-              className="group rounded-3xl overflow-hidden border border-yellow-500/30 hover:border-yellow-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-xl"
+              className="group rounded-3xl overflow-hidden border border-amber-500/25 hover:border-amber-400/60 bg-[#0A0D16] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-2xl"
             >
-              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+              <div className="relative h-48 w-full overflow-hidden bg-slate-900">
                 <img
                   src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=600&q=80"
                   alt="3D Tech Pack Warehouse"
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
-                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-yellow-400 border border-yellow-500/40">
-                  Layer 1 • Marketplace
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D16] via-[#0A0D16]/30 to-transparent" />
+                <span className="absolute top-3.5 left-3.5 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md text-amber-400 border border-amber-500/30">
+                  Layer 1 • Digital Warehouse
                 </span>
               </div>
               <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
                 <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-white group-hover:text-yellow-300 transition-colors">
+                  <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
                     Digital Asset Warehouse
                   </h3>
-                  <p className="text-xs font-semibold text-yellow-500">Design as a Product</p>
+                  <p className="text-xs font-semibold text-amber-400">Design as a Scalable Product</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Sell fashion blueprints, 3D silhouettes, and DXF pattern cuts to boutique creators with automated instant royalty licensing.
+                    License fashion silhouettes, 3D tech packs, and DXF garment cuts to emerging boutique creators with automated creator royalties.
                   </p>
                 </div>
-                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-yellow-400">
+                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-amber-400">
                   <span>Explore 3D Warehouse</span>
                   <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -726,31 +728,31 @@ export default function MarketingLandingPage() {
             {/* Layer 2: Workshop Equipment Sharing */}
             <Link
               href="/redhouse/equipment"
-              className="group rounded-3xl overflow-hidden border border-blue-500/30 hover:border-blue-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-xl"
+              className="group rounded-3xl overflow-hidden border border-amber-500/25 hover:border-amber-400/60 bg-[#0A0D16] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-2xl"
             >
-              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+              <div className="relative h-48 w-full overflow-hidden bg-slate-900">
                 <img
-                  src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
-                  alt="Machinery & Plotter Rentals"
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  src="https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=600&q=80"
+                  alt="Industrial Machinery Rentals"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
-                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-blue-300 border border-blue-500/40">
-                  Layer 2 • Hardware
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D16] via-[#0A0D16]/30 to-transparent" />
+                <span className="absolute top-3.5 left-3.5 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md text-cyan-300 border border-cyan-500/30">
+                  Layer 2 • Equipment Network
                 </span>
               </div>
               <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
                 <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
+                  <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">
                     Machinery & Equipment Sharing
                   </h3>
-                  <p className="text-xs font-semibold text-blue-400">Industrial Hardware On-Demand</p>
+                  <p className="text-xs font-semibold text-cyan-400">Hardware On-Demand</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Reserve hourly and daily workshop capacity: Mimaki digital textile sublimation, Lectra fabric laser cutters, and Tajima multi-head embroidery.
+                    Rent workshop slots for digital textile printers, precision fabric laser cutters, and multi-head Tajima embroidery hardware.
                   </p>
                 </div>
-                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-blue-400">
-                  <span>Book Workshop Hardware</span>
+                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-cyan-400">
+                  <span>Book Atelier Machinery</span>
                   <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
@@ -759,16 +761,16 @@ export default function MarketingLandingPage() {
             {/* Layer 3: Vendor Material Sourcing */}
             <Link
               href="/redhouse/supply"
-              className="group rounded-3xl overflow-hidden border border-emerald-500/30 hover:border-emerald-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-xl"
+              className="group rounded-3xl overflow-hidden border border-amber-500/25 hover:border-amber-400/60 bg-[#0A0D16] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-2xl"
             >
-              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+              <div className="relative h-48 w-full overflow-hidden bg-slate-900">
                 <img
-                  src="https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?auto=format&fit=crop&w=600&q=80"
+                  src="https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=600&q=80"
                   alt="Fabric Supply Sourcing"
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
-                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-emerald-300 border border-emerald-500/40">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D16] via-[#0A0D16]/30 to-transparent" />
+                <span className="absolute top-3.5 left-3.5 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md text-emerald-300 border border-emerald-500/30">
                   Layer 3 • Supply Sourcing
                 </span>
               </div>
@@ -779,7 +781,7 @@ export default function MarketingLandingPage() {
                   </h3>
                   <p className="text-xs font-semibold text-emerald-400">Smart Fabric Yield Recommendations</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Direct authenticated catalogs for pure silk, velvet, organza, and canvas lining with smart budget-matched swatches and volume tiers.
+                    Source verified pure silks, velvets, canvases, and trims with automated yield recommendations and volume tier savings.
                   </p>
                 </div>
                 <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
@@ -792,30 +794,30 @@ export default function MarketingLandingPage() {
             {/* Layer 4: Production Bidding */}
             <Link
               href="/redhouse/bidding"
-              className="group rounded-3xl overflow-hidden border border-indigo-500/30 hover:border-indigo-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-xl"
+              className="group rounded-3xl overflow-hidden border border-amber-500/25 hover:border-amber-400/60 bg-[#0A0D16] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-2xl"
             >
-              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+              <div className="relative h-48 w-full overflow-hidden bg-slate-900">
                 <img
-                  src="https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=600&q=80"
+                  src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=600&q=80"
                   alt="Artisan Production Bidding"
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
-                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-indigo-300 border border-indigo-500/40">
-                  Layer 4 • Bidding
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D16] via-[#0A0D16]/30 to-transparent" />
+                <span className="absolute top-3.5 left-3.5 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md text-amber-300 border border-amber-500/30">
+                  Layer 4 • Artisan Bidding
                 </span>
               </div>
               <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
                 <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">
+                  <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
                     Production Bidding & Tailors
                   </h3>
-                  <p className="text-xs font-semibold text-indigo-400">Artisan Specialization Network</p>
+                  <p className="text-xs font-semibold text-amber-400">Artisan Specialization Network</p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    Broadcast custom atelier briefs, receive verified master bids, negotiate in-app, and manage milestone payouts with fit insurance.
+                    Post custom atelier briefs, receive verified master cutter bids, negotiate in-app, and manage milestone escrow payouts.
                   </p>
                 </div>
-                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-indigo-400">
+                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-amber-400">
                   <span>Broadcast Design Brief</span>
                   <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -825,16 +827,16 @@ export default function MarketingLandingPage() {
             {/* Layer 5: Stylists & Free Trial */}
             <Link
               href="/redhouse/stylists"
-              className="group rounded-3xl overflow-hidden border border-purple-500/30 hover:border-purple-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between md:col-span-2 lg:col-span-2 shadow-xl"
+              className="group rounded-3xl overflow-hidden border border-amber-500/25 hover:border-amber-400/60 bg-[#0A0D16] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between md:col-span-2 lg:col-span-2 shadow-2xl"
             >
-              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+              <div className="relative h-48 w-full overflow-hidden bg-slate-900">
                 <img
                   src="https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1000&q=80"
                   alt="Stylists & Trial Tier"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
-                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-purple-300 border border-purple-500/40">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0D16] via-[#0A0D16]/30 to-transparent" />
+                <span className="absolute top-3.5 left-3.5 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/85 backdrop-blur-md text-purple-300 border border-purple-500/30">
                   Layer 5 • Stylists & 3-Month Trial
                 </span>
               </div>
