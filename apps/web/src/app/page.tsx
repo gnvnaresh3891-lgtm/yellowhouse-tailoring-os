@@ -225,10 +225,6 @@ export default function MarketingLandingPage() {
                 <span>CAD Engine</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400/10 text-amber-300 border border-amber-400/30">v4.2</span>
               </a>
-              <Link href="/redhouse-os" className="hover:text-rose-400 transition-colors flex items-center space-x-1.5">
-                <span className="bg-gradient-to-r from-rose-400 via-amber-300 to-yellow-200 bg-clip-text text-transparent font-bold">Stitchly Portal</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30">B2C</span>
-              </Link>
               <a href="#pricing" className="hover:text-amber-400 transition-colors">
                 Pricing
               </a>
@@ -353,13 +349,6 @@ export default function MarketingLandingPage() {
               <span>Get Started Free</span>
               <ArrowRight className="w-5 h-5" />
             </button>
-            <Link
-              href="/redhouse-os"
-              className="w-full sm:w-auto px-8 py-4 text-base font-bold flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-rose-600/20 via-purple-600/20 to-amber-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all shadow-lg"
-            >
-              <Sparkles className="w-5 h-5 text-rose-400" />
-              <span>Stitchly Consumer Portal</span>
-            </Link>
             <a
               href="#cad-engine"
               className="btn-ghost w-full sm:w-auto px-8 py-4 text-base font-semibold flex items-center justify-center space-x-2"
