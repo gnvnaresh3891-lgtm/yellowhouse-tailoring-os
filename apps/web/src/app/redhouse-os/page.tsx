@@ -271,7 +271,7 @@ export default function ProfessionalUrbanStitchPage() {
             <span>Flat ₹300 OFF on First Doorstep Order. Use code: <strong>STITCH300</strong></span>
           </div>
           <div className="flex items-center gap-4 text-[11px] text-slate-400">
-            <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-400" /> +91 87908 42828</span>
+            <span className="flex items-center gap-1"><Phone className="w-3 h-3 text-emerald-400" /> +91 81424 24646</span>
             <span className="hidden md:inline">|</span>
             <span className="hidden md:inline flex items-center gap-1"><MapPin className="w-3 h-3 text-rose-400" /> Hyderabad • Ameerpet • Banjara Hills</span>
           </div>
@@ -314,7 +314,7 @@ export default function ProfessionalUrbanStitchPage() {
             {/* HEADER ACTIONS */}
             <div className="hidden md:flex items-center space-x-3">
               <a
-                href="https://wa.me/918790842828"
+                href="https://wa.me/918142424646"
                 target="_blank"
                 rel="noreferrer"
                 className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-400 text-xs font-semibold border border-slate-800 flex items-center gap-1.5 transition-colors"
@@ -792,7 +792,7 @@ export default function ProfessionalUrbanStitchPage() {
             <p className="text-slate-400 leading-relaxed">
               Premium custom tailoring and doorstep measuring in Hyderabad. Powered by RedHouse OS & YellowHouse Tailoring Platform.
             </p>
-            <div className="text-slate-400 pt-1">📞 +91 87908 42828</div>
+            <div className="text-slate-400 pt-1">📞 +91 81424 24646</div>
             <div className="text-slate-400">📍 Ameerpet & Banjara Hills, Hyderabad</div>
           </div>
 
