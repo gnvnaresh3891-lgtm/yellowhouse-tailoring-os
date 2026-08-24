@@ -381,24 +381,12 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Logins Bar */}
-          <div className="pt-4 border-t border-slate-800/80 space-y-2.5">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-yellow-400" />
-              <span>Quick Demo Sign In</span>
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {DEMO_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.role}
-                  onClick={() => handleQuickLogin(acc)}
-                  className={`text-left p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-between ${acc.color} hover:brightness-110`}
-                >
-                  <span className="font-semibold text-slate-200">{acc.label}</span>
-                  <span className="text-[10px] text-slate-400 font-mono truncate">{acc.email}</span>
-                </button>
-              ))}
-            </div>
+          {/* New Atelier Registration CTA */}
+          <div className="pt-4 border-t border-slate-800/80 text-center text-xs text-slate-400">
+            Don't have an atelier workspace yet?{' '}
+            <Link href="/onboarding" className="text-yellow-400 font-semibold hover:underline">
+              Start Free Onboarding
+            </Link>
           </div>
 
           {/* Link to Register */}

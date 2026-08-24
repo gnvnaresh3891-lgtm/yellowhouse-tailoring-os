@@ -365,23 +365,25 @@ export default function MultiTenantOnboardingPage() {
 
             <div className="space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                Your atelier is ready!
+                Workspace Provisioned Successfully!
               </h2>
               <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-                Congratulations! Workspace{' '}
-                <span className="text-yellow-400 font-mono font-bold">{formState.slug}.yellowhouse.app</span>{' '}
-                has been provisioned with{' '}
-                <span className="text-emerald-400 font-semibold">{totalPomsSeeded} POM schemas</span>.
+                Atelier <span className="text-yellow-400 font-mono font-bold">{formState.boutiqueName}</span> has been activated under <span className="text-white font-mono font-bold">{formState.email}</span>. Please sign in with your password to enter your private workspace.
               </p>
             </div>
 
             <div className="pt-4 flex justify-center max-w-md mx-auto">
               <button
                 type="button"
-                onClick={() => router.push('/dashboard')}
+                onClick={() => {
+                  removeLocalStorage('yh_customers');
+                  removeLocalStorage('yh_orders');
+                  removeLocalStorage('yh_measurements_current');
+                  router.push('/login');
+                }}
                 className="btn-gold w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2"
               >
-                <span>Go to Dashboard</span>
+                <span>Sign In to Workspace</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
