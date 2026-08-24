@@ -2102,23 +2102,37 @@ export default function OrderManagementPage() {
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-2">
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="btn-ghost text-xs"
-              >
-                Close
-              </button>
+            <div className="flex justify-between items-center pt-2">
               <button
                 onClick={() => {
-                  showNotification(`WhatsApp quotation shared for ${selectedOrder.id}`);
+                  const o = selectedOrder;
                   setSelectedOrder(null);
+                  setPrintModalOrder(o);
                 }}
-                className="btn-gold text-xs flex items-center space-x-1.5"
+                className="px-4 py-2 rounded-xl bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 border border-amber-400/40 text-xs font-bold flex items-center space-x-2 transition-all"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Resend WhatsApp Link</span>
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Delivery Note & Job Tag</span>
               </button>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className="btn-ghost text-xs"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    showNotification(`WhatsApp quotation shared for ${selectedOrder.id}`);
+                    setSelectedOrder(null);
+                  }}
+                  className="btn-gold text-xs flex items-center space-x-1.5"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Resend WhatsApp Link</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
