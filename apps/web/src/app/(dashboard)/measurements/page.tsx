@@ -502,6 +502,9 @@ function MeasurementsContent() {
     ];
     const storedSnapshots = getLocalStorage<VersionSnapshot[]>('yh_measurement_snapshots', initial);
     setSnapshots(storedSnapshots);
+    if (storedSnapshots.length > 0) {
+      setSelectedVersionSnapshot(storedSnapshots[0]);
+    }
   }, []);
 
   // Save changes to localStorage
@@ -1113,12 +1116,39 @@ function MeasurementsContent() {
               {/* Recorded POM Measurements Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {selectedVersionSnapshot.pomData ? (
-                  Object.entries(selectedVersionSnapshot.pomData).map(([pomKey, pomValue]) => (
-                    <div key={pomKey} className="p-3 rounded-xl bg-slate-900 border border-slate-800">
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">{pomKey.toUpperCase()}</span>
-                      <span className="text-lg font-bold text-amber-300 font-mono mt-0.5 block">{pomValue} in</span>
-                    </div>
-                  ))
+                  Object.entries(selectedVersionSnapshot.pomData).map(([pomKey, pomValue]) => {
+                    // Match pomKey to activePoms or schemas
+                    const pomNameMap: Record<string, string> = {
+                      'sh-01': 'Chest Girth',
+                      'sh-02': 'Waist Girth',
+                      'sh-03': 'Shoulder Width',
+                      'sh-04': 'Sleeve Length',
+                      'sh-05': 'Sherwani Length',
+                      'sh-06': 'Neck Girth',
+                      'sh-07': 'Armhole Circumference',
+                      'sh-08': 'Bicep Girth',
+                      'su-01': 'Jacket Chest',
+                      'su-02': 'Jacket Waist',
+                      'su-03': 'Shoulder Width',
+                      'su-04': 'Sleeve Length',
+                      'su-05': 'Jacket Length',
+                      'su-06': 'Neck Girth',
+                      'su-07': 'Trouser Waist',
+                      'su-08': 'Trouser Outseam',
+                      'su-09': 'Trouser Inseam',
+                    };
+                    const title = pomNameMap[pomKey] || pomKey.toUpperCase();
+
+                    return (
+                      <div key={pomKey} className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                        <span className="text-[10px] text-slate-400 font-semibold uppercase block tracking-wider">{title}</span>
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-xl font-bold text-amber-300 font-mono">{pomValue}</span>
+                          <span className="text-xs text-slate-500 font-mono">in</span>
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="col-span-4 p-4 text-center text-xs text-slate-400 italic">
                     Historical baseline measurements recorded with standard anatomical ease allowances.
