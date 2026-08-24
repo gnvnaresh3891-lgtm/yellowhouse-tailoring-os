@@ -719,7 +719,7 @@ export default function StylistsPage() {
                 <p className="text-xs text-slate-400 mt-1">Multi-branch luxury fashion houses & international bridal couture brands.</p>
                 <div className="mt-4 pt-4 border-t border-slate-800 space-y-2 text-xs text-slate-300">
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> Unlimited Blueprints & DXF</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> 300+ DPI Clo3D / ZPRJ / DXF</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> 300+ DPI 3D CAD / ZPRJ / DXF</div>
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> Commercial Buyout Licensing</div>
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> 25% Stylist discount + VIP Concierge</div>
                   <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> Priority Machine Scheduler</div>

@@ -79,7 +79,7 @@ export default function MarketplacePage() {
   const [uploadBasePrice, setUploadBasePrice] = useState(4500);
   const [uploadPiecesCount, setUploadPiecesCount] = useState(16);
   const [uploadSamMinutes, setUploadSamMinutes] = useState(380);
-  const [uploadTags, setUploadTags] = useState('Bespoke, Heritage, 3D Clo3D');
+  const [uploadTags, setUploadTags] = useState('Bespoke, Heritage, 3D Garment CAD');
   const [uploadIs3D, setUploadIs3D] = useState(true);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
@@ -283,9 +283,9 @@ export default function MarketplacePage() {
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-100 tracking-tight">
               Digital Asset Warehouse & Blueprint Marketplace
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              License verified master pattern blueprints, 3D Clo3D simulations, and precision CAD tech packs. Instant cryptographic HMAC licensing with 88% revenue to creators.
-            </p>
+            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+            License verified master pattern blueprints, 3D Garment CAD simulations, and precision CAD tech packs. Instant cryptographic HMAC licensing with 88% revenue to creators.
+          </p>
           </div>
 
           {/* Quick Action Button */}
@@ -686,7 +686,7 @@ export default function MarketplacePage() {
               <Upload className="w-5 h-5 text-yellow-400" /> Publish Digital Blueprint Asset
             </h2>
             <p className="text-xs text-slate-400">
-              Upload your graded fashion blueprint, Clo3D 3D asset, and specifications to the marketplace warehouse.
+              Upload your graded fashion blueprint, 3D Garment CAD asset, and specifications to the marketplace warehouse.
             </p>
           </div>
 
@@ -823,7 +823,7 @@ export default function MarketplacePage() {
                   type="text"
                   value={uploadTags}
                   onChange={(e) => setUploadTags(e.target.value)}
-                  placeholder="e.g. Achkan, Royal, Zardozi, Clo3D"
+                  placeholder="e.g. Achkan, Royal, Zardozi, GarmentCAD"
                   className="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 focus:outline-none focus:border-yellow-400"
                 />
               </div>

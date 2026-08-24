@@ -42,7 +42,7 @@ export const SEED_FASHION_ASSETS: FashionBlueprintAsset[] = [
     garmentCategory: 'mens-sherwani',
     aestheticStyle: 'HERITAGE_ROYAL',
     difficultyLevel: 'MASTER_KARIGAR',
-    description: 'High-precision imperial Jodhpuri Achkan featuring structured canvas chest, high Mandarin collar, and articulated 2-piece armscye. Includes 3D Clo3D simulations, vector DXF pattern pieces, and zardozi panel layout guide.',
+    description: 'High-precision imperial Jodhpuri Achkan featuring structured canvas chest, high Mandarin collar, and articulated 2-piece armscye. Includes 3D Garment CAD simulations, vector DXF pattern pieces, and zardozi panel layout guide.',
     coverImageUrl: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800',
     previewImageUrls: [
       'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800',
