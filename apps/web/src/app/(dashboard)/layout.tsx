@@ -24,6 +24,8 @@ import {
   Package,
   Award,
   Sparkles,
+  Building2,
+  Store,
 } from 'lucide-react';
 
 import { filterNavItemsForRole, canUserAccessRoute, getFallbackRedirectRoute } from '@/lib/rbac-utils';
@@ -252,12 +254,16 @@ export default function DashboardLayout({
         <div className="p-4 border-t border-slate-800/80 space-y-2">
           {activeUser && (
             <div className="flex items-center space-x-3 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/60">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-500/30 to-amber-600/20 border border-yellow-500/40 text-yellow-400 font-bold flex items-center justify-center text-xs shadow-lg shadow-yellow-500/10 uppercase">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-500/30 to-amber-600/20 border border-yellow-500/40 text-yellow-400 font-bold flex items-center justify-center text-xs shadow-lg shadow-yellow-500/10 uppercase shrink-0">
                 {activeUser?.name ? activeUser.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() : 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-slate-200 truncate">{activeUser.name}</p>
-                <p className="text-[10px] text-slate-500 truncate">
+                <p className="text-xs font-bold text-slate-200 truncate">{activeUser.name}</p>
+                <p className="text-[10px] text-yellow-400 font-semibold truncate flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-yellow-400 shrink-0" />
+                  <span>{activeUser?.tenant?.name || 'Grand Atelier'}</span>
+                </p>
+                <p className="text-[9px] text-slate-500 truncate mt-0.5">
                   {typeof activeUser?.role === 'string' ? activeUser.role.replace(/_/g, ' ') : 'User'}
                 </p>
               </div>
@@ -411,15 +417,21 @@ export default function DashboardLayout({
               </div>
 
               {activeUser && (
-                <>
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-500/30 to-amber-600/20 border border-yellow-500/40 text-yellow-400 font-bold flex items-center justify-center text-xs shadow-lg shadow-yellow-500/10 uppercase">
+                <div className="flex items-center space-x-2.5 bg-slate-900/60 p-1.5 pr-3 rounded-2xl border border-slate-800/80">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-500/30 to-amber-600/20 border border-yellow-500/40 text-yellow-400 font-bold flex items-center justify-center text-xs shadow-lg shadow-yellow-500/10 uppercase shrink-0">
                     {activeUser?.name ? activeUser.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() : 'U'}
                   </div>
-                  <div className="hidden sm:block">
-                    <p className="text-xs font-semibold text-slate-200">{activeUser.name}</p>
-                    <p className="text-[10px] text-slate-500">{typeof activeUser?.role === 'string' ? activeUser.role.replace(/_/g, ' ') : 'User'}</p>
+                  <div className="hidden sm:block text-left">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-xs font-bold text-slate-100">{activeUser.name}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">({typeof activeUser?.role === 'string' ? activeUser.role.replace(/_/g, ' ') : 'User'})</span>
+                    </div>
+                    <p className="text-[11px] text-yellow-400 font-semibold flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-yellow-400 shrink-0" />
+                      <span>{activeUser?.tenant?.name || 'Grand Atelier'}</span>
+                    </p>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
