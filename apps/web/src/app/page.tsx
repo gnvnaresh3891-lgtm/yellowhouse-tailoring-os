@@ -693,140 +693,165 @@ export default function MarketingLandingPage() {
             {/* Layer 1: Digital Asset Warehouse */}
             <Link
               href="/redhouse/marketplace"
-              className="group glass-card rounded-2xl p-6 border border-yellow-500/30 hover:border-yellow-500/60 bg-gradient-to-b from-yellow-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between"
+              className="group rounded-3xl overflow-hidden border border-yellow-500/30 hover:border-yellow-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-xl"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-yellow-400 group-hover:scale-110 transition-transform">
-                    <ShoppingBag className="w-6 h-6" />
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">
-                    Layer 1
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-white group-hover:text-yellow-300 transition-colors">
-                  Digital Asset Warehouse
-                </h3>
-                <p className="text-xs font-semibold text-slate-400">Design as a Product</p>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Sell blueprints to hundreds of customers. Fixed pricing, instant licensing, 3D tech packs, and automated creator royalties.
-                </p>
+              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                <img
+                  src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=600&q=80"
+                  alt="3D Tech Pack Warehouse"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
+                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-yellow-400 border border-yellow-500/40">
+                  Layer 1 • Marketplace
+                </span>
               </div>
-              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-yellow-400">
-                <span>Explore Marketplace</span>
-                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-yellow-300 transition-colors">
+                    Digital Asset Warehouse
+                  </h3>
+                  <p className="text-xs font-semibold text-yellow-500">Design as a Product</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Sell fashion blueprints, 3D silhouettes, and DXF pattern cuts to boutique creators with automated instant royalty licensing.
+                  </p>
+                </div>
+                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-yellow-400">
+                  <span>Explore 3D Warehouse</span>
+                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
             </Link>
 
             {/* Layer 2: Workshop Equipment Sharing */}
             <Link
               href="/redhouse/equipment"
-              className="group glass-card rounded-2xl p-6 border border-blue-500/30 hover:border-blue-500/60 bg-gradient-to-b from-blue-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between"
+              className="group rounded-3xl overflow-hidden border border-blue-500/30 hover:border-blue-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-xl"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-blue-400 group-hover:scale-110 transition-transform">
-                    <Cpu className="w-6 h-6" />
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                    Layer 2
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
-                  Workshop Equipment Sharing
-                </h3>
-                <p className="text-xs font-semibold text-slate-400">High-Tech Machine Access</p>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Hourly and daily rentals for digital textile printers, laser fabric cutters, Tajima automated embroidery, and Tool Positioning Units.
-                </p>
+              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                <img
+                  src="https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
+                  alt="Machinery & Plotter Rentals"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
+                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-blue-300 border border-blue-500/40">
+                  Layer 2 • Hardware
+                </span>
               </div>
-              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-blue-400">
-                <span>Book Machinery</span>
-                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
+                    Machinery & Equipment Sharing
+                  </h3>
+                  <p className="text-xs font-semibold text-blue-400">Industrial Hardware On-Demand</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Reserve hourly and daily workshop capacity: Mimaki digital textile sublimation, Lectra fabric laser cutters, and Tajima multi-head embroidery.
+                  </p>
+                </div>
+                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-blue-400">
+                  <span>Book Workshop Hardware</span>
+                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
             </Link>
 
             {/* Layer 3: Vendor Material Sourcing */}
             <Link
               href="/redhouse/supply"
-              className="group glass-card rounded-2xl p-6 border border-emerald-500/30 hover:border-emerald-500/60 bg-gradient-to-b from-emerald-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between"
+              className="group rounded-3xl overflow-hidden border border-emerald-500/30 hover:border-emerald-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-xl"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-emerald-400 group-hover:scale-110 transition-transform">
-                    <Package className="w-6 h-6" />
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                    Layer 3
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">
-                  Vendor Material Sourcing
-                </h3>
-                <p className="text-xs font-semibold text-slate-400">Smart Fabric AI Recommendations</p>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Direct vendor stock for organic cotton, pure silk, and velvet with multi-factor AI matching and volume discount tiers.
-                </p>
+              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                <img
+                  src="https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?auto=format&fit=crop&w=600&q=80"
+                  alt="Fabric Supply Sourcing"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
+                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-emerald-300 border border-emerald-500/40">
+                  Layer 3 • Supply Sourcing
+                </span>
               </div>
-              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
-                <span>Source Materials</span>
-                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">
+                    Vendor Material Sourcing
+                  </h3>
+                  <p className="text-xs font-semibold text-emerald-400">Smart Fabric Yield Recommendations</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Direct authenticated catalogs for pure silk, velvet, organza, and canvas lining with smart budget-matched swatches and volume tiers.
+                  </p>
+                </div>
+                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
+                  <span>Source Fabric Swatches</span>
+                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
             </Link>
 
             {/* Layer 4: Production Bidding */}
             <Link
               href="/redhouse/bidding"
-              className="group glass-card rounded-2xl p-6 border border-indigo-500/30 hover:border-indigo-500/60 bg-gradient-to-b from-indigo-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between"
+              className="group rounded-3xl overflow-hidden border border-indigo-500/30 hover:border-indigo-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between shadow-xl"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-indigo-400 group-hover:scale-110 transition-transform">
-                    <Award className="w-6 h-6" />
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                    Layer 4
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">
-                  Production Bidding & Tailors
-                </h3>
-                <p className="text-xs font-semibold text-slate-400">Artisan Specialization Network</p>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Post custom design briefs, receive competitive tailor bids, negotiate in-app, and manage 4-stage milestone escrow contracts.
-                </p>
+              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                <img
+                  src="https://images.unsplash.com/photo-1594938298603-c8148c4dae35?auto=format&fit=crop&w=600&q=80"
+                  alt="Artisan Production Bidding"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
+                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-indigo-300 border border-indigo-500/40">
+                  Layer 4 • Bidding
+                </span>
               </div>
-              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-indigo-400">
-                <span>Post Design Brief</span>
-                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">
+                    Production Bidding & Tailors
+                  </h3>
+                  <p className="text-xs font-semibold text-indigo-400">Artisan Specialization Network</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Broadcast custom atelier briefs, receive verified master bids, negotiate in-app, and manage milestone payouts with fit insurance.
+                  </p>
+                </div>
+                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-indigo-400">
+                  <span>Broadcast Design Brief</span>
+                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
             </Link>
 
             {/* Layer 5: Stylists & Free Trial */}
             <Link
               href="/redhouse/stylists"
-              className="group glass-card rounded-2xl p-6 border border-purple-500/30 hover:border-purple-500/60 bg-gradient-to-b from-purple-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between md:col-span-2 lg:col-span-2"
+              className="group rounded-3xl overflow-hidden border border-purple-500/30 hover:border-purple-500/60 bg-[#0F1424] transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between md:col-span-2 lg:col-span-2 shadow-xl"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-purple-400 group-hover:scale-110 transition-transform">
-                    <Sparkles className="w-6 h-6" />
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                    Layer 5
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
-                  Stylists & 3-Month Free Onboarding
-                </h3>
-                <p className="text-xs font-semibold text-slate-400">Certified Regional Stylists & Trial Tier</p>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Connect with certified bridal consultants, personal drapers, and hair/makeup artists across 9 hubs. Includes 90-day free trial access with export resolution controls.
-                </p>
+              <div className="relative h-44 w-full overflow-hidden bg-slate-900">
+                <img
+                  src="https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=1000&q=80"
+                  alt="Stylists & Trial Tier"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0F1424] via-transparent to-transparent" />
+                <span className="absolute top-3 left-3 text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md text-purple-300 border border-purple-500/40">
+                  Layer 5 • Stylists & 3-Month Trial
+                </span>
               </div>
-              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-purple-400">
-                <span>Consult Stylists & Start Trial</span>
-                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
+                    Stylists Directory & 3-Month Free Onboarding
+                  </h3>
+                  <p className="text-xs font-semibold text-purple-400">Certified Regional Stylists & Emerging Atelier Tier</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Connect with certified bridal consultants and personal drapers across 9 major hubs. Includes 90-day free trial access with tech pack export controls.
+                  </p>
+                </div>
+                <div className="pt-4 mt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-purple-400">
+                  <span>Explore Stylists & Start Trial</span>
+                  <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                </div>
               </div>
             </Link>
           </div>
