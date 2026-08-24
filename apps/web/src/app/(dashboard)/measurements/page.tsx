@@ -580,6 +580,13 @@ function MeasurementsContent() {
 
   return (
     <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-6 animate-fade-in relative">
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          .measurement-card-print, .measurement-card-print * { visibility: visible !important; }
+          .measurement-card-print { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; display: block !important; }
+        }
+      `}</style>
       {/* Glassmorphic Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-slate-900/90 border border-yellow-500/40 backdrop-blur-xl px-5 py-3.5 rounded-2xl shadow-2xl shadow-yellow-500/10 text-yellow-400 text-sm font-semibold animate-fade-in">
@@ -1259,15 +1266,17 @@ function MeasurementsContent() {
       )}
 
       {/* Printable Measurement Card Chart (Hidden on screen, rendered on Print) */}
-      <MeasurementCard 
-        customerName={customerName || 'Bespoke Client'}
-        garmentType={selectedGarment}
-        fitPref={fitPref}
-        measurements={activePoms.reduce((acc, pom) => {
-          acc[pom.name] = measurements[pom.id] || pom.base;
-          return acc;
-        }, {} as Record<string, number>)}
-      />
+      <div className="measurement-card-print font-sans">
+        <MeasurementCard 
+          customerName={customerName || 'Bespoke Client'}
+          garmentType={selectedGarment}
+          fitPref={fitPref}
+          measurements={activePoms.reduce((acc, pom) => {
+            acc[pom.name] = measurements[pom.id] || pom.base;
+            return acc;
+          }, {} as Record<string, number>)}
+        />
+      </div>
     </div>
   );
 }
