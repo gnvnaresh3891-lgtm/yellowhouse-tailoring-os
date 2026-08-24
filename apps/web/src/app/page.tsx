@@ -23,6 +23,12 @@ import {
   Check,
   ChevronLeft,
   Eye,
+  ShoppingBag,
+  Cpu,
+  Package,
+  Award,
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 
 interface LandmarkData {
@@ -216,6 +222,10 @@ export default function MarketingLandingPage() {
               <a href="#cad-engine" className="hover:text-yellow-400 transition-colors flex items-center space-x-1">
                 <span>CAD Engine</span>
                 <span className="badge badge-gold">v4.2</span>
+              </a>
+              <a href="#redhouse-os" className="hover:text-rose-400 transition-colors flex items-center space-x-1">
+                <span className="bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent font-bold">RedHouse OS</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">New</span>
               </a>
               <a href="#pricing" className="hover:text-yellow-400 transition-colors">
                 Pricing
@@ -588,6 +598,175 @@ export default function MarketingLandingPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* REDHOUSE OS (5 ECOSYSTEM LAYERS) SECTION */}
+      <section id="redhouse-os" className="py-20 md:py-28 relative bg-gradient-to-b from-slate-950 via-rose-950/10 to-slate-950 border-t border-rose-500/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Decoupled Fashion Ecosystem</span>
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+              Powering the <span className="bg-gradient-to-r from-rose-400 via-purple-300 to-amber-300 bg-clip-text text-transparent">RedHouse OS</span> Ecosystem
+            </h2>
+            <p className="text-slate-300 text-base sm:text-lg">
+              Explore 5 dedicated standalone modules built to turn design into scalable digital products, share industrial hardware, source materials intelligently, and crowdsource artisan production.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/redhouse"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 via-purple-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white text-xs font-extrabold shadow-lg shadow-rose-600/20 transition-all hover:scale-105"
+              >
+                <span>Launch RedHouse OS Portal</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Layer 1: Digital Asset Warehouse */}
+            <Link
+              href="/redhouse/marketplace"
+              className="group glass-card rounded-2xl p-6 border border-yellow-500/30 hover:border-yellow-500/60 bg-gradient-to-b from-yellow-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-yellow-400 group-hover:scale-110 transition-transform">
+                    <ShoppingBag className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/40">
+                    Layer 1
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-white group-hover:text-yellow-300 transition-colors">
+                  Digital Asset Warehouse
+                </h3>
+                <p className="text-xs font-semibold text-slate-400">Design as a Product</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Sell blueprints to hundreds of customers. Fixed pricing, instant licensing, 3D tech packs, and automated creator royalties.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-yellow-400">
+                <span>Explore Marketplace</span>
+                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Layer 2: Workshop Equipment Sharing */}
+            <Link
+              href="/redhouse/equipment"
+              className="group glass-card rounded-2xl p-6 border border-blue-500/30 hover:border-blue-500/60 bg-gradient-to-b from-blue-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-blue-400 group-hover:scale-110 transition-transform">
+                    <Cpu className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                    Layer 2
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
+                  Workshop Equipment Sharing
+                </h3>
+                <p className="text-xs font-semibold text-slate-400">High-Tech Machine Access</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Hourly and daily rentals for digital textile printers, laser fabric cutters, Tajima automated embroidery, and Tool Positioning Units.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-blue-400">
+                <span>Book Machinery</span>
+                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Layer 3: Vendor Material Sourcing */}
+            <Link
+              href="/redhouse/supply"
+              className="group glass-card rounded-2xl p-6 border border-emerald-500/30 hover:border-emerald-500/60 bg-gradient-to-b from-emerald-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-emerald-400 group-hover:scale-110 transition-transform">
+                    <Package className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    Layer 3
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">
+                  Vendor Material Sourcing
+                </h3>
+                <p className="text-xs font-semibold text-slate-400">Smart Fabric AI Recommendations</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Direct vendor stock for organic cotton, pure silk, and velvet with multi-factor AI matching and volume discount tiers.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-emerald-400">
+                <span>Source Materials</span>
+                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Layer 4: Production Bidding */}
+            <Link
+              href="/redhouse/bidding"
+              className="group glass-card rounded-2xl p-6 border border-indigo-500/30 hover:border-indigo-500/60 bg-gradient-to-b from-indigo-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-indigo-400 group-hover:scale-110 transition-transform">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                    Layer 4
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">
+                  Production Bidding & Tailors
+                </h3>
+                <p className="text-xs font-semibold text-slate-400">Artisan Specialization Network</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Post custom design briefs, receive competitive tailor bids, negotiate in-app, and manage 4-stage milestone escrow contracts.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-indigo-400">
+                <span>Post Design Brief</span>
+                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Layer 5: Stylists & Free Trial */}
+            <Link
+              href="/redhouse/stylists"
+              className="group glass-card rounded-2xl p-6 border border-purple-500/30 hover:border-purple-500/60 bg-gradient-to-b from-purple-500/10 to-transparent transition-all duration-300 hover:scale-[1.02] flex flex-col justify-between md:col-span-2 lg:col-span-2"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-purple-400 group-hover:scale-110 transition-transform">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                    Layer 5
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">
+                  Stylists & 3-Month Free Onboarding
+                </h3>
+                <p className="text-xs font-semibold text-slate-400">Certified Regional Stylists & Trial Tier</p>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Connect with certified bridal consultants, personal drapers, and hair/makeup artists across 9 hubs. Includes 90-day free trial access with export resolution controls.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs font-bold text-purple-400">
+                <span>Consult Stylists & Start Trial</span>
+                <ChevronRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
           </div>
         </div>
       </section>

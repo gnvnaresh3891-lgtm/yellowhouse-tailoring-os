@@ -45,11 +45,12 @@ const coreNavItems = [
 ];
 
 const ecosystemNavItems = [
-  { href: '/marketplace', label: 'Design Marketplace', icon: ShoppingBag },
-  { href: '/equipment', label: 'Machine Rentals', icon: Cpu },
-  { href: '/supply', label: 'Material Sourcing', icon: Package },
-  { href: '/bidding', label: 'Production Bidding', icon: Award },
-  { href: '/stylists', label: 'Stylists & Trial', icon: Sparkles },
+  { href: '/redhouse', label: 'RedHouse OS Hub', icon: Sparkles },
+  { href: '/redhouse/marketplace', label: 'Design Marketplace', icon: ShoppingBag },
+  { href: '/redhouse/equipment', label: 'Machine Rentals', icon: Cpu },
+  { href: '/redhouse/supply', label: 'Material Sourcing', icon: Package },
+  { href: '/redhouse/bidding', label: 'Production Bidding', icon: Award },
+  { href: '/redhouse/stylists', label: 'Stylists & Trial', icon: Scissors },
 ];
 
 const navItems = [...coreNavItems, ...ecosystemNavItems];
@@ -256,8 +257,9 @@ export default function DashboardLayout({
 
           {filteredEcosystemNavItems.length > 0 && (
             <>
-              <p className="text-[10px] font-semibold text-purple-400/80 uppercase tracking-widest px-3 mt-5 mb-2">
-                Fashion Ecosystem
+              <p className="text-[10px] font-semibold text-rose-400/90 uppercase tracking-widest px-3 mt-5 mb-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                <span>RedHouse OS (Ecosystem)</span>
               </p>
               {filteredEcosystemNavItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');

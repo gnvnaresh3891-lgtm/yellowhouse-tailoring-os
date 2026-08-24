@@ -13,6 +13,12 @@ const pathLabels: Record<string, string> = {
   production: 'Production',
   staff: 'Staff Management',
   admin: 'Admin Panel',
+  redhouse: 'RedHouse OS',
+  marketplace: 'Design Marketplace',
+  equipment: 'Machine Rentals',
+  supply: 'Material Sourcing',
+  bidding: 'Production Bidding',
+  stylists: 'Stylists & Trial',
 };
 
 export interface BreadcrumbItem {
