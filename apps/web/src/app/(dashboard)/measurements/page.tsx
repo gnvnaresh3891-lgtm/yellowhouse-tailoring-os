@@ -47,6 +47,7 @@ interface VersionSnapshot {
   fitPref?: string;
   customerId?: string;
   customerName?: string;
+  pomData?: Record<string, number>;
 }
 
 interface FittingDelta {
@@ -413,6 +414,7 @@ function MeasurementsContent() {
   const [showHistory, setShowHistory] = useState(true);
   const [showTrials, setShowTrials] = useState(false);
   const [snapshots, setSnapshots] = useState<VersionSnapshot[]>([]);
+  const [selectedVersionSnapshot, setSelectedVersionSnapshot] = useState<VersionSnapshot | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   React.useEffect(() => {
@@ -466,10 +468,37 @@ function MeasurementsContent() {
     const storedHeel = getLocalStorage<string | null>('yh_measurements_heel', null);
     if (storedHeel) setHeelHeight(parseInt(storedHeel, 10));
 
-    const initial = [
-      { id: 'v3', version: 'v3.0', date: 'Aug 5, 2026', garment: 'Sherwani' as GarmentType, status: 'current' as const, pomCount: 8 },
-      { id: 'v2', version: 'v2.0', date: 'Jul 20, 2026', garment: 'Sherwani' as GarmentType, status: 'archived' as const, pomCount: 8 },
-      { id: 'v1', version: 'v1.0', date: 'Jun 12, 2026', garment: 'Suit' as GarmentType, status: 'archived' as const, pomCount: 9 },
+    const initial: VersionSnapshot[] = [
+      { 
+        id: 'v3', 
+        version: 'v3.0', 
+        date: 'Aug 5, 2026', 
+        garment: 'Sherwani' as GarmentType, 
+        status: 'current' as const, 
+        pomCount: 8,
+        fitPref: 'Slim Bespoke',
+        pomData: { 'sh-01': 42.5, 'sh-02': 35.0, 'sh-03': 18.5, 'sh-04': 25.0, 'sh-05': 42.0, 'sh-06': 15.75, 'sh-07': 18.0, 'sh-08': 16.5 }
+      },
+      { 
+        id: 'v2', 
+        version: 'v2.0', 
+        date: 'Jul 20, 2026', 
+        garment: 'Sherwani' as GarmentType, 
+        status: 'archived' as const, 
+        pomCount: 8,
+        fitPref: 'Regular',
+        pomData: { 'sh-01': 43.0, 'sh-02': 36.0, 'sh-03': 18.5, 'sh-04': 25.5, 'sh-05': 42.0, 'sh-06': 16.0, 'sh-07': 18.5, 'sh-08': 17.0 }
+      },
+      { 
+        id: 'v1', 
+        version: 'v1.0', 
+        date: 'Jun 12, 2026', 
+        garment: 'Suit' as GarmentType, 
+        status: 'archived' as const, 
+        pomCount: 9,
+        fitPref: 'Regular',
+        pomData: { 'su-01': 43.5, 'su-02': 36.5, 'su-03': 18.5, 'su-04': 25.5, 'su-05': 30.5, 'su-06': 16.0, 'su-07': 35.0, 'su-08': 42.5, 'su-09': 32.0 }
+      },
     ];
     const storedSnapshots = getLocalStorage<VersionSnapshot[]>('yh_measurement_snapshots', initial);
     setSnapshots(storedSnapshots);
@@ -1003,55 +1032,120 @@ function MeasurementsContent() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {snapshots
               .filter((v) => !customerId || v.customerId === customerId)
-              .map((v) => (
-              <div
-                key={v.id}
-                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
-                  v.status === 'current'
-                    ? 'bg-amber-400/10 border-amber-400/40 shadow-lg shadow-amber-500/5'
-                    : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
-                }`}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs font-mono font-extrabold px-3 py-1 rounded-full ${
-                      v.status === 'current' ? 'bg-amber-400 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700'
-                    }`}>
-                      {v.version}
-                    </span>
-                    <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" />
-                      {v.date}
-                    </span>
-                  </div>
+              .map((v) => {
+                const isSelected = selectedVersionSnapshot?.id === v.id;
+                return (
+                  <div
+                    key={v.id}
+                    onClick={() => setSelectedVersionSnapshot(v)}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer group ${
+                      isSelected
+                        ? 'bg-amber-400/20 border-amber-400 shadow-lg shadow-amber-500/10 ring-2 ring-amber-400/50'
+                        : v.status === 'current'
+                        ? 'bg-amber-400/10 border-amber-400/40 hover:border-amber-400'
+                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-mono font-extrabold px-3 py-1 rounded-full ${
+                          v.status === 'current' ? 'bg-amber-400 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700'
+                        }`}>
+                          {v.version}
+                        </span>
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
+                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                          {v.date}
+                        </span>
+                      </div>
 
-                  <div>
-                    <h4 className="text-sm font-bold text-white">{v.garment} Baseline</h4>
-                    <p className="text-xs text-slate-400 mt-0.5">Fit Profile: <strong className="text-slate-200">{v.fitPref || 'Regular'}</strong> &bull; {v.pomCount} POM Landmarks</p>
-                  </div>
-                </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">{v.garment} Baseline</h4>
+                        <p className="text-xs text-slate-400 mt-0.5">Fit Profile: <strong className="text-slate-200">{v.fitPref || 'Regular'}</strong> &bull; {v.pomCount} POM Landmarks</p>
+                      </div>
+                    </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between mt-3">
-                  {v.status === 'current' ? (
-                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Active Baseline
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setToastMessage(`Restored snapshot ${v.version} into active workbench`);
-                        setTimeout(() => setToastMessage(null), 3000);
-                      }}
-                      className="text-xs font-bold text-amber-300 hover:text-white underline cursor-pointer"
-                    >
-                      Restore Version
-                    </button>
-                  )}
-                  <span className="text-[11px] text-slate-500 font-mono">ID #{v.id}</span>
-                </div>
-              </div>
-            ))}
+                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between mt-3">
+                      <span className="text-xs font-semibold text-amber-400 flex items-center gap-1">
+                        <Eye className="w-3.5 h-3.5" /> Click to Inspect Breakdown
+                      </span>
+                      {v.status !== 'current' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (v.pomData) {
+                              setMeasurements(prev => ({ ...prev, ...v.pomData }));
+                            }
+                            setToastMessage(`Restored snapshot ${v.version} into active workbench!`);
+                            setTimeout(() => setToastMessage(null), 3000);
+                          }}
+                          className="text-xs font-bold text-slate-300 hover:text-amber-300 underline cursor-pointer"
+                        >
+                          Restore Baseline
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
+
+          {/* DISPLAY BELOW: Interactive Historical Snapshot Detail Table */}
+          {selectedVersionSnapshot && (
+            <div className="mt-6 p-5 rounded-2xl bg-slate-950/90 border border-amber-500/40 space-y-4 animate-fade-in">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-mono font-bold">
+                    {selectedVersionSnapshot.version} Snapshot Breakdown
+                  </span>
+                  <span className="text-xs text-slate-300 font-bold">
+                    {selectedVersionSnapshot.garment} &bull; Recorded on {selectedVersionSnapshot.date}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedVersionSnapshot(null)}
+                  className="text-xs text-slate-400 hover:text-white"
+                >
+                  Close Inspection
+                </button>
+              </div>
+
+              {/* Recorded POM Measurements Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {selectedVersionSnapshot.pomData ? (
+                  Object.entries(selectedVersionSnapshot.pomData).map(([pomKey, pomValue]) => (
+                    <div key={pomKey} className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">{pomKey.toUpperCase()}</span>
+                      <span className="text-lg font-bold text-amber-300 font-mono mt-0.5 block">{pomValue} in</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-4 p-4 text-center text-xs text-slate-400 italic">
+                    Historical baseline measurements recorded with standard anatomical ease allowances.
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-2 text-xs">
+                <span className="text-slate-400">
+                  Fit Profile: <strong className="text-white">{selectedVersionSnapshot.fitPref || 'Slim Bespoke'}</strong>
+                </span>
+                <button
+                  onClick={() => {
+                    if (selectedVersionSnapshot.pomData) {
+                      setMeasurements(prev => ({ ...prev, ...selectedVersionSnapshot.pomData }));
+                    }
+                    setToastMessage(`Loaded version ${selectedVersionSnapshot.version} values into active workbench!`);
+                    setTimeout(() => setToastMessage(null), 3000);
+                  }}
+                  className="btn-gold py-1.5 px-4 text-xs flex items-center space-x-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Load {selectedVersionSnapshot.version} into Cutting Workbench</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
