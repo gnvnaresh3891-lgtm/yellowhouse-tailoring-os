@@ -223,10 +223,10 @@ export default function MarketingLandingPage() {
                 <span>CAD Engine</span>
                 <span className="badge badge-gold">v4.2</span>
               </a>
-              <a href="#redhouse-os" className="hover:text-rose-400 transition-colors flex items-center space-x-1">
+              <Link href="/redhouse-os" className="hover:text-rose-400 transition-colors flex items-center space-x-1">
                 <span className="bg-gradient-to-r from-rose-400 to-amber-300 bg-clip-text text-transparent font-bold">RedHouse OS</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">New</span>
-              </a>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Portal</span>
+              </Link>
               <a href="#pricing" className="hover:text-yellow-400 transition-colors">
                 Pricing
               </a>
