@@ -35,6 +35,7 @@ import { syncOrderToJobsStorage, logActivity, calculatePaymentStatus, calculateB
 import { useToast } from '@/components/toast-context';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { OrderReceipt } from '@/components/print-layouts';
+import { QRCodeSVG, BarcodeSVG } from '@/components/id-codes';
 import { calculateBespokePricing } from '@/lib/pricing-calculator';
 import { calculateFabricYield } from '@/lib/fabric-yield';
 import { GarmentCategory } from '@/types/measurement';
@@ -1196,16 +1197,14 @@ export default function OrderManagementPage() {
                       {/* Actions */}
                       <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end space-x-1">
-                          {(order.status === 'READY_FOR_DELIVERY' || order.status === 'DELIVERED') && (
-                            <Tooltip content="Print Delivery Note">
-                              <button
-                                onClick={() => setPrintModalOrder(order)}
-                                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors"
-                              >
-                                <Printer className="w-4 h-4" />
-                              </button>
-                            </Tooltip>
-                          )}
+                          <Tooltip content="Print Delivery Note & Job Tag">
+                            <button
+                              onClick={() => setPrintModalOrder(order)}
+                              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors"
+                            >
+                              <Printer className="w-4 h-4 text-amber-400/90" />
+                            </button>
+                          </Tooltip>
                           <Tooltip content="Inspect item breakdown and status">
                             <button
                               onClick={() => setSelectedOrder(order)}
@@ -1327,14 +1326,13 @@ export default function OrderManagementPage() {
                     {formatCurrency(order.totalAmount)}
                   </div>
                   <div className="flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
-                    {(order.status === 'READY_FOR_DELIVERY' || order.status === 'DELIVERED') && (
-                      <button
-                        onClick={() => setPrintModalOrder(order)}
-                        className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-colors border border-slate-800"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setPrintModalOrder(order)}
+                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-amber-300 transition-colors border border-slate-800"
+                      title="Print Delivery Note & QR Tag"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       onClick={() => setSelectedOrder(order)}
                       className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-slate-800"
@@ -2177,9 +2175,15 @@ export default function OrderManagementPage() {
               <X className="w-5 h-5" />
             </button>
             
-            <div className="text-center border-b border-slate-800 print:border-black pb-6 mb-6">
-              <h1 className="text-3xl font-extrabold text-gold-400 print:text-black tracking-tight mb-1">YELLOWHOUSE</h1>
-              <p className="text-sm text-slate-400 print:text-gray-600 uppercase tracking-widest">Delivery Note</p>
+            <div className="flex justify-between items-start border-b border-slate-800 print:border-black pb-6 mb-6">
+              <div>
+                <h1 className="text-3xl font-extrabold text-gold-400 print:text-black tracking-tight mb-1">YELLOWHOUSE</h1>
+                <p className="text-sm text-slate-400 print:text-gray-600 uppercase tracking-widest">Delivery Note & Karigar Tag</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <QRCodeSVG value={`https://yellowhouse.atelier/track/${printModalOrder.id}`} size={56} />
+                <BarcodeSVG value={printModalOrder.id} width={130} height={36} />
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-8 mb-8">

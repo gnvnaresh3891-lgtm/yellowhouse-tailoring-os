@@ -9,6 +9,8 @@ import {
   MachineReservationRecord 
 } from '@/types/ecosystem';
 
+import { QRCodeSVG, BarcodeSVG } from './id-codes';
+
 interface Order {
   id: string;
   clientName: string;
@@ -78,10 +80,14 @@ export function OrderReceipt({ order, tenantName = 'YellowHouse Atelier' }: { or
           <h1 className="text-3xl font-bold uppercase tracking-wider">{tenantName}</h1>
           <p className="text-sm text-gray-600 mt-1">Bespoke Couture & Atelier Management</p>
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end gap-1.5">
           <h2 className="text-xl font-bold">INVOICE / RECEIPT</h2>
-          <p className="text-sm mt-1">Date: {order.createdAt || new Date().toLocaleDateString()}</p>
-          <p className="text-sm font-semibold">Order #: {order.id}</p>
+          <p className="text-xs">Date: {order.createdAt || new Date().toLocaleDateString()}</p>
+          <p className="text-xs font-semibold">Order #: {order.id}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <QRCodeSVG value={`https://yellowhouse.atelier/order/${order.id}`} size={44} />
+            <BarcodeSVG value={order.id} width={110} height={28} />
+          </div>
         </div>
       </div>
 
@@ -307,9 +313,15 @@ export function MeasurementCard({
         <p className="text-gray-600 italic">Posture balanced ease applied. Ready for pattern drafting.</p>
       </div>
 
-      <div className="mt-4 pt-2 border-t border-gray-300 flex justify-between text-[10px] text-gray-500">
-        <span>YellowHouse CAD Measurement Engine</span>
-        <span>Master Tailor Signature: ______________</span>
+      <div className="mt-4 pt-2 border-t border-gray-300 flex justify-between items-center text-[10px] text-gray-500">
+        <div>
+          <span>YellowHouse CAD Measurement Engine</span>
+          <p className="mt-1">Master Tailor Signature: ______________</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <QRCodeSVG value={`https://yellowhouse.atelier/measure/${customerName}`} size={38} />
+          <BarcodeSVG value={`MEAS-${customerName.replace(/\s+/g, '-').toUpperCase()}`} width={110} height={26} />
+        </div>
       </div>
     </div>
   );
@@ -364,12 +376,10 @@ export function JobCardPrint({ job }: { job: JobCardItem }) {
         </div>
       )}
 
-      {/* Barcode Placeholder Area */}
-      <div className="absolute bottom-3 left-3 right-3 text-center">
-        <div className="h-10 border border-black flex items-center justify-center bg-gray-50 mb-0.5">
-          <span className="text-black text-xs font-mono font-bold tracking-[0.25em]">*{job.id}*</span>
-        </div>
-        <span className="text-[9px] font-mono">{job.id} &bull; {job.stage}</span>
+      {/* Real QR Code & Barcode Area */}
+      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between border-t border-black pt-2">
+        <QRCodeSVG value={`https://yellowhouse.atelier/job/${job.id}`} size={42} />
+        <BarcodeSVG value={job.id} width={130} height={30} />
       </div>
     </div>
   );
@@ -473,11 +483,9 @@ export function TechPackSpecPrint({
           <span className="font-mono text-[10px] text-gray-800 break-all">{licenseSignature}</span>
           <span className="text-[10px] text-gray-500 block mt-1">Creator: {asset.creatorName} ({asset.creatorTier})</span>
         </div>
-        <div className="text-right flex-shrink-0 ml-4">
-          <div className="h-10 w-32 border border-black bg-white flex items-center justify-center font-mono font-bold text-xs tracking-widest">
-            |||||| ||| ||||
-          </div>
-          <span className="text-[9px] font-mono block mt-0.5">{licenseKey}</span>
+        <div className="text-right flex items-center gap-3 flex-shrink-0 ml-4">
+          <QRCodeSVG value={`https://yellowhouse.atelier/license/${licenseKey}`} size={44} />
+          <BarcodeSVG value={licenseKey} width={130} height={32} />
         </div>
       </div>
 
@@ -504,10 +512,14 @@ export function MaterialBOMPrint({
           <h1 className="text-2xl font-bold uppercase tracking-wider">{tenantName}</h1>
           <p className="text-sm text-gray-600">Material Bill of Materials (BOM) & Sourcing Invoice</p>
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end gap-1.5">
           <h2 className="text-lg font-bold">MATERIAL SOURCING ORDER</h2>
           <p className="text-xs text-gray-600">Order Ref: {order.orderNumber}</p>
           <p className="text-xs text-gray-600">Date: {new Date(order.createdAt).toLocaleDateString()}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <QRCodeSVG value={`https://yellowhouse.atelier/bom/${order.orderNumber}`} size={42} />
+            <BarcodeSVG value={order.orderNumber} width={120} height={28} />
+          </div>
         </div>
       </div>
 
@@ -661,11 +673,9 @@ export function MachineReservationTicketPrint({
           <p>Check-In Inspection: _____________________</p>
           <p className="mt-1">Check-Out Inspection: _____________________</p>
         </div>
-        <div className="text-center font-mono">
-          <div className="h-8 w-28 border border-black bg-gray-50 flex items-center justify-center font-bold">
-            ||| | ||||| | ||
-          </div>
-          <span>{reservation.reservationNumber}</span>
+        <div className="flex items-center gap-2">
+          <QRCodeSVG value={`https://yellowhouse.atelier/machine/${reservation.reservationNumber}`} size={42} />
+          <BarcodeSVG value={reservation.reservationNumber} width={120} height={30} />
         </div>
       </div>
     </div>
