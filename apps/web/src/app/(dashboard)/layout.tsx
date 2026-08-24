@@ -45,16 +45,7 @@ const coreNavItems = [
   { href: '/admin', label: 'Admin Panel', icon: Shield },
 ];
 
-const ecosystemNavItems = [
-  { href: '/redhouse', label: 'RedHouse OS Hub', icon: Sparkles },
-  { href: '/redhouse/marketplace', label: 'Design Marketplace', icon: ShoppingBag },
-  { href: '/redhouse/equipment', label: 'Machine Rentals', icon: Cpu },
-  { href: '/redhouse/supply', label: 'Material Sourcing', icon: Package },
-  { href: '/redhouse/bidding', label: 'Production Bidding', icon: Award },
-  { href: '/redhouse/stylists', label: 'Stylists & Trial', icon: Scissors },
-];
-
-const navItems = [...coreNavItems, ...ecosystemNavItems];
+const navItems = [...coreNavItems];
 
 const DEFAULT_DEMO_USER = {
   id: 'usr_owner_flagship',
@@ -168,35 +159,8 @@ export default function DashboardLayout({
 
   const activeUser = currentUser || DEFAULT_DEMO_USER;
   const userRole = activeUser.role || 'TENANT_OWNER';
-  
-  const [pluginSettings, setPluginSettings] = useState<Record<string, boolean>>({});
-
-  React.useEffect(() => {
-    setPluginSettings(getTenantPluginSettings());
-    const handlePluginUpdate = (e: any) => {
-      if (e.detail) setPluginSettings(e.detail);
-      else setPluginSettings(getTenantPluginSettings());
-    };
-    window.addEventListener('redhouse_plugins_updated', handlePluginUpdate);
-    return () => window.removeEventListener('redhouse_plugins_updated', handlePluginUpdate);
-  }, []);
-
-  const routeToPluginId: Record<string, string> = {
-    '/redhouse/marketplace': 'plugin-marketplace',
-    '/redhouse/equipment': 'plugin-equipment-sharing',
-    '/redhouse/supply': 'plugin-material-sourcing',
-    '/redhouse/bidding': 'plugin-tailor-bidding',
-    '/redhouse/stylists': 'plugin-stylist-directory',
-  };
-
-  const enabledEcosystemNavItems = ecosystemNavItems.filter((item) => {
-    if (item.href === '/redhouse') return true; // Hub is always accessible
-    const pId = routeToPluginId[item.href];
-    return !pId || pluginSettings[pId] !== false;
-  });
 
   const filteredCoreNavItems = filterNavItemsForRole(coreNavItems, userRole);
-  const filteredEcosystemNavItems = filterNavItemsForRole(enabledEcosystemNavItems, userRole);
 
   const unreadCount = activities.filter(a => {
     if (!a.timestamp) return false;
@@ -277,36 +241,6 @@ export default function DashboardLayout({
                     />
                     <span className="flex-1">{item.label}</span>
                     {isActive && <ChevronRight className="w-3.5 h-3.5 text-yellow-500/60 ml-auto" />}
-                  </Link>
-                );
-              })}
-            </>
-          )}
-
-          {filteredEcosystemNavItems.length > 0 && (
-            <>
-              <p className="text-[10px] font-semibold text-rose-400/90 uppercase tracking-widest px-3 mt-5 mb-2 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-                <span>RedHouse OS (Ecosystem)</span>
-              </p>
-              {filteredEcosystemNavItems.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-                const Icon = item.icon;
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`sidebar-link ${isActive ? 'active' : ''}`}
-                  >
-                    <Icon
-                      className={`w-4 h-4 transition-colors ${
-                        isActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-slate-300'
-                      }`}
-                    />
-                    <span className="flex-1">{item.label}</span>
-                    {isActive && <ChevronRight className="w-3.5 h-3.5 text-purple-400/80 ml-auto" />}
                   </Link>
                 );
               })}
