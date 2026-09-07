@@ -489,7 +489,8 @@ export function runChallengerFinalStressSuite(): { passed: number; failed: numbe
       'EMBROIDERY_ARTISAN',
       'SALES_FRONT_DESK',
       'QUALITY_INSPECTOR',
-      'CUSTOMER_VIEW'
+      'CUSTOMER_VIEW',
+      'ACCOUNTANT'
     ];
 
     const testRoutes = [
@@ -533,6 +534,10 @@ export function runChallengerFinalStressSuite(): { passed: number; failed: numbe
       ],
       CUSTOMER_VIEW: [
         '/orders', '/measurements', '/marketplace', '/stylists'
+      ],
+      ACCOUNTANT: [
+        '/dashboard', '/customers', '/measurements', '/orders',
+        '/production', '/marketplace', '/equipment', '/supply', '/bidding', '/stylists'
       ]
     };
 
@@ -557,6 +562,7 @@ export function runChallengerFinalStressSuite(): { passed: number; failed: numbe
     assert(normalizeRole('karigar') === 'EMBROIDERY_ARTISAN', 'Normalizes alias "karigar"');
     assert(normalizeRole('receptionist') === 'SALES_FRONT_DESK', 'Normalizes alias "receptionist"');
     assert(normalizeRole('customer') === 'CUSTOMER_VIEW', 'Normalizes alias "customer"');
+    assert(normalizeRole('accountant') === 'ACCOUNTANT', 'Normalizes alias "accountant"');
     assert(normalizeRole('unknown_role') === null, 'Rejects unknown role string');
     assert(normalizeRole('') === null, 'Rejects empty role string');
 

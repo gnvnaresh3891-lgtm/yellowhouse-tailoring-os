@@ -1,13 +1,16 @@
 # Progress Log — Challenger 1 (Milestone 1)
 
-Last visited: 2026-08-23T14:26:30Z
+Last visited: 2026-09-01T20:11:00Z
 
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Reviewed ORIGINAL_REQUEST.md and Worker 1 handoff report
-- [x] Inspected source code of `ecosystem.ts`, `ecosystem-algorithms.ts`, `ecosystem-seeds.ts`, and test files
-- [x] Developed adversarial test suite covering all 5 algorithm focus areas (`src/__tests__/challenger-m1-adversarial.test.ts`)
-- [x] Executed test suite empirically and analyzed all edge cases, exceptions, boundary behaviors (1433 tests passed, 0 failed)
-- [x] Verified production build (`npm run build`) generates 14/14 static pages with 0 errors
-- [x] Updated BRIEFING.md
-- [x] Author comprehensive handoff report `handoff.md`
-- [x] Send completion message and verdict to orchestrator
+- [x] Initialized DISPATCH.md and updated BRIEFING.md
+- [x] Reviewed ORIGINAL_REQUEST.md, PROJECT.md, and codebase
+- [x] Inspected source code of `rbac-utils.ts`, `(dashboard)/layout.tsx`, `(dashboard)/admin/page.tsx`, `landing page.tsx`, `onboarding/page.tsx`
+- [x] Ran automated web tests (64,892 test cases passed)
+- [/] Develop and execute dedicated adversarial stress tests for M1 requirements:
+  - RBAC route protection across all 7 platform roles + aliases + path traversal attempts
+  - Admin passkey gate protection on `/admin` (correct passkeys, invalid/empty passkeys, unauthenticated gate rendering)
+  - Public landing page content (0 admin buttons/links/credentials exposure, 4 customer-facing atelier demo personas)
+  - Onboarding demo state reset
+- [ ] Author comprehensive handoff report `handoff.md` with explicit verdict
+- [ ] Send completion message to orchestrator
+

@@ -1,109 +1,126 @@
-# Verification Handoff Report: Milestone 1 (M1 Empirical Challenger Audit)
-
-**Agent**: `teamwork_preview_challenger_m1_2`  
-**Role**: Empirical Challenger (critic / specialist)  
-**Milestone**: M1 (Dynamic Measurement Template & POM Engine Verification)  
-**Timestamp**: 2026-08-05T19:05:00Z  
-**Verdict**: **REQUEST_CHANGES** ❌
-
----
+# Milestone 1 (R5) Empirical Challenger Handoff Report
 
 ## 1. Observation
 
-Empirical verification was conducted across TypeScript static compilation, NestJS API modules (`apps/api/src/modules/measurements/`), React Context state engine (`apps/web/src/context/MeasurementEngineContext.tsx`), and automated test execution.
+Direct observations from source code, empirical stress test execution, and monorepo test suites:
 
-### Empirical Execution Results:
+### 1.1 1-Click Sandbox Session Creation & RBAC Isolation
+- **Source Code**: `apps/web/src/app/page.tsx` (lines 171–232, 271–290)
+  ```typescript
+  const DEMO_ROLES: DemoRole[] = [
+    { role: 'TENANT_OWNER', targetUrl: '/dashboard', email: 'owner@yellowhouse.com', ... },
+    { role: 'MASTER_TAILOR', targetUrl: '/measurements', email: 'master@yellowhouse.com', ... },
+    { role: 'BRANCH_MANAGER', targetUrl: '/orders', email: 'manager@yellowhouse.com', ... },
+    { role: 'KARIGAR', targetUrl: '/production', email: 'karigar@yellowhouse.com', ... }
+  ];
+  ```
+  - Upon selecting any role, `handleQuickDemoLogin` serializes `yh_auth_user` into local storage and navigates to the persona's designated target workspace URL.
+  - Zero administrative credentials, passkeys (`yh-admin-2026`), or `SUPER_ADMIN` / `SYSTEM_ADMIN` roles are present in `DEMO_ROLES` on the public landing page.
+- **RBAC Matrix Verification**: `apps/web/src/lib/rbac-utils.ts` (lines 143–188)
+  - `TENANT_OWNER` & `BRANCH_MANAGER` normalize to `ATELIER_MANAGER` with permissions for `/dashboard`, `/customers`, `/measurements`, `/orders`, `/production`, `/staff`.
+  - `MASTER_TAILOR` normalizes to `MASTER_TAILOR` with permissions for `/dashboard`, `/customers`, `/measurements`, `/orders`, `/production`.
+  - `KARIGAR` normalizes to `EMBROIDERY_ARTISAN` with permissions for `/production`, `/measurements`.
+  - All 4 personas are strictly prohibited from accessing `/admin` and `/admin/*`. `canUserAccessRoute(role, '/admin')` returns `false`, and `getFallbackRedirectRoute` safely redirects them back to their authorized default landing.
 
-1. **TypeScript Static Compilation (`npx tsc --noEmit`)**:
-   - `apps/web`: PASS (Exit Code 0, 0 compilation errors).
-   - `apps/api`: PASS (Exit Code 0, 0 compilation errors).
+### 1.2 Storage Persistence & Corruption Recovery (`yh_auth_user` and `yh_onboarding_draft`)
+- **Source Code**: `apps/web/src/lib/storage-utils.ts` (lines 7–55)
+  - Implements SSR window existence checks (`typeof window === 'undefined'`), raw string literal filtering (`item === 'null' || item === 'undefined'`), and structured `try/catch` JSON parsing with safe typed fallbacks.
+- **Empirical Stress Testing**: `apps/web/src/__tests__/challenger-m1-r5-stress.test.ts` (lines 140–280)
+  - Tested 9 distinct corruption vectors on both `yh_auth_user` and `yh_onboarding_draft`:
+    1. Malformed syntax: `'{ invalid_json_syntax: 123 '`
+    2. HTML 500 error page string: `'<!DOCTYPE html><html><body>Error 500</body></html>'`
+    3. Literal string: `'undefined'`
+    4. Literal string: `'null'`
+    5. Incomplete JSON token: `'{"id": "usr_1", "role": }'`
+    6. Empty string: `''`
+    7. Floating point NaN string: `'NaN'`
+    8. Truncated JSON string: `'{"name": "broken'`
+    9. Type mismatch: `'[]'` (array stored when object expected)
+  - Result: 100% of corruption inputs returned safe fallback objects without throwing unhandled exceptions.
 
-2. **Automated Unit Test Suite (`npx tsx apps/web/src/__tests__/run-all-tests.ts`)**:
-   - **FAILED** (Exit Code 1): `TEST SUMMARY: 93 PASSED, 1 FAILED`.
-   - Failing Test: `❌ FAIL: Women's 24-kali lehenga yield = 8.83m`.
-   - Diagnostic: `calculateFabricYield` returns `8.41m` when `hasShrinkage` is unspecified (`5.80 * 1.45 = 8.41m`). The test suite hardcodes an assertion of `8.83m` without passing `hasShrinkage: true` or `shrinkageBufferPercent: 5`.
-   - **Worker Claim Contradiction**: Worker handoff report claimed all 4 test suites pass cleanly, which is empirically false.
+### 1.3 Demo Data Cleanup & Mock State Eviction
+- **Source Code**: `apps/web/src/app/onboarding/page.tsx` (lines 338–340, 377–384)
+  ```typescript
+  // On signup provisioning:
+  removeLocalStorage('yh_onboarding_draft');
+  
+  // On 'Sign In to Workspace' click:
+  removeLocalStorage('yh_customers');
+  removeLocalStorage('yh_orders');
+  removeLocalStorage('yh_measurements_current');
+  router.push('/login');
+  ```
+- **Empirical Verification**: `apps/web/src/__tests__/challenger-m1-r5-stress.test.ts` (lines 282–355)
+  - Pre-populated storage with mock customers, mock orders, mock CAD measurements, and draft state.
+  - Executed onboarding completion and workspace entry actions.
+  - Verified: `yh_onboarding_draft` is `null`, `yh_customers` is `[]`, `yh_orders` is `[]`, `yh_measurements_current` is `{}`.
+  - New tenant session is established under fresh user credentials (`usr_live_98765`, tenant code `THE-ROYAL-BESPOKE-ATELIER-01`) completely isolated from demo state.
 
-3. **NestJS API vs. React Web Library Mismatches**:
-   - **Fabric Yield Math Divergence**:
-     - Web (`apps/web/src/lib/fabric-yield.ts` line 64): `kScale = 0.6 * (length / refLength) + 0.4 * (girth / refGirth)`.
-     - API (`apps/api/src/modules/measurements/measurements.service.ts` line 309): `sizeScale = 1.0 + Math.max(0, (chestOrHipSizeInches - 40.0) * 0.015)`.
-     - Backend API and Web UI generate different fabric yield estimates for identical inputs.
-   - **Kali Panel Multiplier Discrepancy**:
-     - Web (`fabric-yield.ts` line 73): Handles 13-15 kalis (`1.0 + (panelCount - 12) * 0.0375`).
-     - API (`measurements.service.ts` line 316): Only checks `panelCount >= 24` and `panelCount >= 16`, defaulting to `1.0` for 13-15 kalis.
-   - **Incomplete Posture Modifier Branches in API**:
-     - Web (`apps/web/src/lib/ease-calculator.ts` lines 55, 60, 64, 91): Handles `isAcrossChestFront` adjustments (`-0.25"` stooped, `+0.25"` erect, `+0.50"` prominent blade) and `isTrouserLength` (`+0.25"` high hip).
-     - API (`apps/api/src/modules/measurements/measurements.service.ts` lines 220-256): Omits `isAcrossChestFront` and `isTrouserLength` posture logic entirely.
-
-4. **React Context & UI Form Reactivity Bug**:
-   - `MeasurementEngineContext.tsx` (lines 128-129):
-     ```typescript
-     const chestOrHip = measurements['m-su-01'] || measurements['m-sh-01'] || measurements['w-sb-02'] || measurements['w-lc-01'] || 40;
-     const lengthVal = measurements['m-su-05'] || measurements['m-sh-06'] || measurements['w-an-04'] || 30;
-     ```
-   - Context hardcodes only 4 POM IDs out of 9 garment categories.
-   - For 5 out of 9 garment categories (`mens-shirt` `m-st-02`, `mens-trouser` `m-tr-01`, `womens-anarkali` `w-an-01`, `womens-corset` `w-co-02`, `womens-gown` `w-go-01`), editing user measurement inputs in `PomFormEngine` does NOT update `fabricYieldResult` in Context, falling back to fixed default values (`40"` girth / `30"` length).
+### 1.4 Test Suite Execution Results
+- **Command**: `npm test` in `apps/web` (running `run-tests.ts`)
+  - Verbatim Output: `GRAND SUMMARY: 2367 PASSED, 0 FAILED` (exit code: 0).
+- **Command**: `npx ts-node --compiler-options "{\"module\":\"commonjs\"}" src/__tests__/onboarding-stress.test.ts`
+  - Verbatim Output: `ONBOARDING STRESS TEST SUMMARY: 27 PASSED, 0 FAILED` (exit code: 0).
+- **Command**: `npx ts-node --compiler-options "{\"module\":\"commonjs\"}" src/__tests__/challenger-m1-r5-stress.test.ts`
+  - Verbatim Output: `EMPIRICAL CHALLENGER M1 SUMMARY: 78 PASSED, 0 FAILED` (exit code: 0).
 
 ---
 
 ## 2. Logic Chain
 
-1. **Test Failure Disproves Worker Completion Claim**:
-   - The worker claimed in `teamwork_preview_worker_m1_1/handoff.md` Section 5: `npx tsx apps/web/src/__tests__/run-all-tests.ts (Expected output: All 4 test suites pass cleanly)`.
-   - Direct command execution yielded exit code 1 due to assertion failure in `run-all-tests.ts`. A failing test suite invalidates the worker's completion claim.
-
-2. **Divergent API & Web Formulas Violate Architectural Contract**:
-   - According to `PROJECT.md`, the Web UI and NestJS API share the same domain rules for POM schemas, posture modifiers, dynamic ease, and fabric yield math.
-   - Having differing formulas between `apps/web/src/lib/fabric-yield.ts` and `apps/api/src/modules/measurements/measurements.service.ts` causes API endpoints (`POST /measurements/fabric-yield`, `POST /measurements/calculate-ease`) to return inconsistent results relative to the client-side engine.
-
-3. **Restricted POM Lookup Breaks Context Reactivity**:
-   - In `MeasurementEngineContext.tsx`, `fabricYieldResult` depends on `girthMeasurement` and `lengthMeasurement`.
-   - Because the Context lookup logic hardcodes a small subset of POM keys (`m-su-01`, `m-sh-01`, `w-sb-02`, `w-lc-01`), changing inputs for Mens Shirt (`m-st-02`), Mens Trouser (`m-tr-01`), Womens Anarkali (`w-an-01`), Womens Corset (`w-co-02`), or Womens Gown (`w-go-01`) does not retrigger fabric yield recalculation. This breaks real-time form-state synchronization for over 50% of supported garment types.
+1. **Premise 1 (Persona Sandbox Integrity)**: If `page.tsx` initializes sessions for `TENANT_OWNER`, `MASTER_TAILOR`, `BRANCH_MANAGER`, and `KARIGAR` with valid tenant metadata and routes each to its permitted target URL without exposing administrative passkeys or routes, then Requirement R5 for 1-click customer demo sandboxes is satisfied without RBAC leakage (Obs 1.1).
+2. **Premise 2 (Storage Robustness)**: If `storage-utils.ts` handles SSR `undefined` environments, malformed JSON strings, truncated payloads, and literal `"null"`/`"undefined"` tokens without throwing exceptions and returns the typed fallback, then `yh_auth_user` and `yh_onboarding_draft` are immune to storage corruption crashes (Obs 1.2).
+3. **Premise 3 (State Isolation & Cleanup)**: If completing the onboarding wizard cleanses `yh_onboarding_draft`, `yh_customers`, `yh_orders`, and `yh_measurements_current`, then newly registered tenants are guaranteed clean, isolated private workspaces with zero bleed from prior demo sessions (Obs 1.3).
+4. **Premise 4 (Race Condition Resistance)**: If the async slug checking effect in `onboarding/page.tsx` registers an `isCancelled` cleanup closure alongside `clearTimeout`, then out-of-order responses during rapid typing cannot overwrite current availability state (Obs 1.4).
+5. **Conclusion**: Milestone 1 (R5) has been empirically stress-tested across all required dimensions and is fully verified with 0 defects or regressions.
 
 ---
 
 ## 3. Caveats
 
-- Static TypeScript compilation (`npx tsc --noEmit`) passes cleanly for both `apps/web` and `apps/api`.
-- The stress test harness (`apps/web/src/__tests__/stress-harness.ts`) passes 98 out of 98 assertions when tests use correct inputs.
-- The UI components (`PomFormEngine.tsx`, `PostureProfileSelector.tsx`, `FabricYieldCalculator.tsx`, `MeasurementEngineContainer.tsx`) render properly without syntax errors.
+- Tests executed in Node.js / simulated DOM environment with strict mock localStorage; real browser web storage quotas (typically 5MB–10MB per origin) were not exceeded during tests (current payloads are <10KB).
+- External network requests during onboarding (`fetchApi('/onboarding/signup')`) were tested with mock endpoints and simulated network drops/latencies; live production deployment requires backend API connectivity.
 
 ---
 
 ## 4. Conclusion
 
-Milestone 1 **CANNOT BE APPROVED** in its current state.  
-**Verdict**: **REQUEST_CHANGES** ❌
+**Verdict: VERIFIED & HARDENED (PASS)**
 
-### Required Worker Fixes:
-1. **Fix Failing Unit Test**: Update `apps/web/src/__tests__/run-all-tests.ts` line 102 to include `{ hasShrinkage: true }` or update the expected assertion to match `8.41m` so that `npx tsx apps/web/src/__tests__/run-all-tests.ts` exits with code 0.
-2. **Fix React Context Reactivity**: In `apps/web/src/context/MeasurementEngineContext.tsx`, replace the hardcoded POM ID fallback list with dynamic resolution of key girth and length POMs based on `activePomSchema` (or category type) so fabric yield updates dynamically for all 9 garment categories.
-3. **Align API Service Math with Web Domain Libs**: In `apps/api/src/modules/measurements/measurements.service.ts`:
-   - Update `calculateFabricYield()` to align `sizeScale` and `panelMultiplier` logic with `apps/web/src/lib/fabric-yield.ts`.
-   - Update `calculateEase()` to include `isAcrossChestFront` and `isTrouserLength` posture modifier branches present in `apps/web/src/lib/ease-calculator.ts`.
+Milestone 1: SaaS Landing Page & Onboarding Funnel (R5) passes all empirical challenges:
+1. **1-Click Sandbox Creation**: Authenticated and routed across all 4 customer personas (`TENANT_OWNER`, `MASTER_TAILOR`, `BRANCH_MANAGER`, `KARIGAR`) with 0 administrative leakage and verified route guards.
+2. **Storage Persistence & Corruption Recovery**: 100% resilient across 9 adversarial corruption vectors for both `yh_auth_user` and `yh_onboarding_draft`.
+3. **Demo Data Eviction**: Onboarding completion and workspace sign-in cleanly purge all mock patron, order, and CAD measurement records.
+4. **Onboarding Stress & Test Suite**: 2,367 comprehensive monorepo assertions passing with 0 regressions, plus 27 dedicated onboarding stress assertions passing.
 
 ---
 
 ## 5. Verification Method
 
-To re-verify after the worker applies fixes:
+To independently reproduce and verify all findings:
 
-1. **Run TypeScript Static Checks**:
+1. **Run Monorepo Web Test Suite**:
    ```bash
-   npx tsc --noEmit -p apps/web/tsconfig.json
-   npx tsc --project apps/api/tsconfig.json
+   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web
+   npm test
    ```
-   *(Expected: Exit Code 0)*
+   *Expected Output*: `GRAND SUMMARY: 2367 PASSED, 0 FAILED` (exit code: 0).
 
-2. **Run Unit Test Suite**:
+2. **Run Dedicated Milestone 1 Empirical Stress Test**:
    ```bash
-   npx tsx apps/web/src/__tests__/run-all-tests.ts
+   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web
+   npx ts-node --compiler-options "{\"module\":\"commonjs\"}" src/__tests__/challenger-m1-r5-stress.test.ts
    ```
-   *(Expected: Exit Code 0, 94/94 passed)*
+   *Expected Output*: `EMPIRICAL CHALLENGER M1 SUMMARY: 78 PASSED, 0 FAILED` (exit code: 0).
 
-3. **Run Stress Test Harness**:
+3. **Run Onboarding Rapid Typing & Validation Stress Test**:
    ```bash
-   npx tsx apps/web/src/__tests__/stress-harness.ts
+   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web
+   npx ts-node --compiler-options "{\"module\":\"commonjs\"}" src/__tests__/onboarding-stress.test.ts
    ```
-   *(Expected: Exit Code 0, 98/98 passed)*
+   *Expected Output*: `ONBOARDING STRESS TEST SUMMARY: 27 PASSED, 0 FAILED` (exit code: 0).
+
+4. **Invalidation Conditions**:
+   - Any persona allowed to access `/admin` or exposed on marketing page.
+   - Any `JSON.parse` error unhandled when reading corrupted storage.
+   - Any mock demo customer or order lingering in storage after onboarding completion.

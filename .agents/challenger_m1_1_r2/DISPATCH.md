@@ -1,16 +1,16 @@
-## 2026-08-06T08:29:02Z
-<USER_REQUEST>
-You are challenger_m1_1_r2 for YellowHouse Tailoring OS Milestone 1.
-Working Directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\challenger_m1_1_r2
-Workspace Root: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
-Original Request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
-Remediation Handoff: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1_1_r2\handoff.md
+## 2026-09-02T08:58:24Z
+You are Challenger 1 for Milestone 1: Multi-Tenant RBAC & Admin Security Hardening.
 
-Task:
-Perform adversarial stress testing on Milestone 1 R2 changes:
-1. Run `npx tsx apps/web/src/__tests__/run-all-tests.ts` to confirm 0 failures.
-2. Test `SignupDto` with uppercase slugs/emails, invalid regex characters, short slugs (< 3 chars), missing required fields.
-3. Verify Prisma `P2002` duplicate registration handling throws `409 ConflictException`.
-4. Run `cd apps/api && npx tsc --noEmit && npm run build` and `cd apps/web && npx tsc --noEmit && npx next build`.
-5. Deliver handoff report at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\challenger_m1_1_r2\handoff.md with explicit verdict: APPROVE or REJECT. Send a summary message back.
-</USER_REQUEST>
+Your working directory is: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\challenger_m1_1_r2
+Project root: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
+Original Request file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
+PROJECT.md file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
+
+Your task:
+1. Empirically verify correctness and security by writing stress tests or running adversarial checks against:
+   - RBAC route protection across all 7 platform roles (Tenant Owner, Master Tailor, Branch Manager, Receptionist, Karigar, Accountant, Super Admin) and route traversal attempts.
+   - Admin passkey gate protection on `/admin` (correct passkey 'yh-admin-2026' unlocks; incorrect/empty passkeys reject; unauthenticated direct access presents gate).
+   - Public landing page content (0 admin buttons/links/exposure).
+2. Run the test commands and check for any regressions or security loopholes.
+3. Write your findings and handoff to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\challenger_m1_1_r2\handoff.md` with an explicit verdict: APPROVE or REQUEST_CHANGES.
+Notify the orchestrator with send_message when done.

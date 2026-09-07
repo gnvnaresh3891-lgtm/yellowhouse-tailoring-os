@@ -1,78 +1,95 @@
-# Handoff Report: UI/UX Specification Mining — YellowHouse Tailoring OS
+# Handoff Report: Routes, Build & Test Infrastructure Survey
 
-**Agent:** `teamwork_preview_spec_miner_survey_3`  
-**Working Directory:** `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_spec_miner_survey_3`  
-**Target Project:** `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse`  
-**Date:** 2026-08-07  
-**Handoff Type:** Hard (Task Complete)  
+**Agent**: `teamwork_preview_spec_miner_survey_3`  
+**Working Directory**: `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_spec_miner_survey_3`  
+**Date**: 2026-08-24T15:35:00Z  
+**Type**: Hard Handoff (Task Complete)  
 
 ---
 
 ## 1. Observation
 
-1. **Route Inventory**: Explored and verified all 11 application routes:
-   - `/` (Marketing Landing Page) — `apps/web/src/app/page.tsx`
-   - `/onboarding` (Multi-Tenant Onboarding) — `apps/web/src/app/onboarding/page.tsx`
-   - `/(auth)/login` (Authentication Login) — `apps/web/src/app/(auth)/login/page.tsx`
-   - `/(auth)/register` (Atelier Registration) — `apps/web/src/app/(auth)/register/page.tsx`
-   - `/(dashboard)/layout` (Sidebar Shell Layout) — `apps/web/src/app/(dashboard)/layout.tsx`
-   - `/(dashboard)/dashboard` (Workspace Dashboard) — `apps/web/src/app/(dashboard)/dashboard/page.tsx`
-   - `/(dashboard)/customers` (Customer Directory) — `apps/web/src/app/(dashboard)/customers/page.tsx`
-   - `/(dashboard)/measurements` (CAD Measurement Engine) — `apps/web/src/app/(dashboard)/measurements/page.tsx`
-   - `/(dashboard)/orders` (Order Management) — `apps/web/src/app/(dashboard)/orders/page.tsx`
-   - `/(dashboard)/production` (Karigar Production Board) — `apps/web/src/app/(dashboard)/production/page.tsx`
-   - `/(dashboard)/staff` (Staff Management) — `apps/web/src/app/(dashboard)/staff/page.tsx`
-   - `/(dashboard)/admin` (System Administration) — `apps/web/src/app/(dashboard)/admin/page.tsx`
+Direct observations from the investigation:
 
-2. **RBAC Visibility Rules**:
-   - `SYSTEM_ADMIN`: Exclusive access to `/admin`. Operational routes are filtered out in `apps/web/src/app/(dashboard)/layout.tsx` lines 65-67.
-   - `TENANT_OWNER` & `BRANCH_MANAGER`: Access to all operational routes (`/dashboard`, `/customers`, `/measurements`, `/orders`, `/production`, `/staff`). `/admin` and `/onboarding` are hidden in lines 70-72.
-   - `MASTER_TAILOR`, `RECEPTIONIST`, `KARIGAR`, `ACCOUNTANT`: Access to operational workspace (`/dashboard`, `/customers`, `/measurements`, `/orders`, `/production`). Restricted from `/staff` (lines 75-77).
+1. **Route Structure**:
+   - `apps/web/src/app` contains 23 `page.tsx` files plus internal layout and error handlers, generating 26 static routes during `next build`:
+     - `/`, `/onboarding`, `/login`, `/register`, `/dashboard`, `/customers`, `/measurements`, `/orders`, `/production`, `/staff`, `/admin`, `/redhouse`, `/redhouse/marketplace`, `/redhouse/equipment`, `/redhouse/supply`, `/redhouse/bidding`, `/redhouse/stylists`, `/marketplace`, `/equipment`, `/supply`, `/bidding`, `/stylists`, `/redhouse-os`, `/_not-found`, Root Layout, Dashboard Layout.
+   - Exact route map documented in `survey_routes_tests.md` § 1.
 
-3. **UI Aesthetics & Color Schemes**:
-   - Base background: `#0B0F19` (`bg-slate-950`).
-   - Gold primary palette: `--gold-400` (`#facc15`), `--gold-500` (`#eab308`), `--gold-600` (`#ca8a04`).
-   - Glassmorphism cards: `.glass-card` (`rgba(15, 23, 42, 0.75)` with `backdrop-filter: blur(16px)` and border `rgba(255, 255, 255, 0.08)`) and `.glass-card-gold` (`rgba(20, 30, 51, 0.85)` with border `rgba(234, 179, 8, 0.25)`).
-   - Micro-interactions: `animate-fade-in` (`0.4s ease-out`), `pulse-gold` glowing pulse, radar concentric pulse rings on SVG hotspots (`<animate attributeName="r">`), and visual validation color codes (Emerald Green valid, Amber Gold focus/posture, Rose Red error).
+2. **Build Execution**:
+   - Running `npm run build` from workspace root executes:
+     - `nest build` in `@yellowhouse/api` -> 0 errors.
+     - `next build` in `@yellowhouse/web` -> Compiled successfully, type check & lint pass, static pages generated:
+       ```
+       Generating static pages (26/26)
+       Route (app)                              Size     First Load JS
+       ┌ ○ /                                    17.6 kB         114 kB
+       ├ ○ /_not-found                          876 B          88.2 kB
+       ├ ○ /admin                               10.7 kB          98 kB
+       ├ ○ /bidding                             254 B           121 kB
+       ...
+       └ ○ /supply                              257 B           121 kB
+       + First Load JS shared by all            87.3 kB
+       ```
 
-4. **Local Storage Keys**:
-   - Auth: `yh_auth_user`
-   - Customers: `yh_customers`
-   - Measurements: `yh_measurements_current`, `yh_measurements_gender`, `yh_measurements_garment`, `yh_measurements_slope`, `yh_measurements_stance`, `yh_measurements_posture`, `yh_measurements_heel`, `yh_measurement_snapshots`
-   - Orders: `yh_orders`
-   - Production: `yh_production_jobs`, `yh_deleted_jobs_log`
+3. **Test Execution**:
+   - Running `npm test` from workspace root executes:
+     - `@yellowhouse/api`: `npx ts-node src/__tests__/signup-dto-adversarial.test.ts` -> 15+ assertions passed.
+     - `@yellowhouse/web`: `npx ts-node -O "{\"module\":\"commonjs\"}" src/__tests__/run-tests.ts` -> `GRAND SUMMARY: 2016 PASSED, 0 FAILED`.
+     - Total passing test assertions: 2,031+ with zero failures and zero regressions.
+
+4. **Print CSS Isolation & SVG Code Generation**:
+   - `apps/web/src/app/globals.css` lines 280-292 enforce `@media print` rules hiding `aside`, `header`, `.no-print`, while displaying `.print-only` with pure white background and crisp black text.
+   - `apps/web/src/components/id-codes.tsx` provides zero-dependency pure SVG generators: `QRCodeSVG` (15x15 vector matrix with finder patterns) and `BarcodeSVG` (Code-128/EAN linear barcode).
+   - `apps/web/src/components/print-layouts.tsx` implements 8 dedicated printable layouts: `OrderReceipt`, `MeasurementCard`, `JobCardPrint`, `CustomerListPrint`, `ScheduleListPrint`, `TechPackSpecPrint`, `MaterialBOMPrint`, and `MachineReservationTicketPrint`.
+
+5. **RBAC & Security**:
+   - `apps/web/src/app/(dashboard)/admin/page.tsx` is secured behind a master passkey prompt (`yh-admin-2026`).
+   - `apps/web/src/lib/rbac-utils.ts` enforces role permissions across 7 normalized roles (`SUPER_ADMIN`, `ATELIER_MANAGER`, `MASTER_TAILOR`, `EMBROIDERY_ARTISAN`, `SALES_FRONT_DESK`, `QUALITY_INSPECTOR`, `CUSTOMER_VIEW`), guarding dashboard routes and filtering sidebar navigation items.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Source Discovery**: By reading `ORIGINAL_REQUEST.md`, `PROJECT.md`, earlier survey reports, and analyzing every component across `apps/web/src/app`, we mapped all UI components, routes, and client-side states.
-2. **Feature Mapping**: Each route was probed for its specific business rules, inputs, outputs, validation boundaries, and local storage hooks.
-3. **RBAC Safety Verification**: By inspecting `apps/web/src/app/(dashboard)/layout.tsx` lines 44-80, we confirmed the role filtering logic for `SYSTEM_ADMIN`, `TENANT_OWNER`, `BRANCH_MANAGER`, `MASTER_TAILOR`, `RECEPTIONIST`, `KARIGAR`, and `ACCOUNTANT`.
-4. **Data Sync Trace**: Traced the E2E flow from Onboarding -> Customer Creation -> CAD Measurements Snapshot -> Order Creation (with 50% advance calc & swatch attachment) -> Automatic Job Card seeding -> 5-stage Kanban board stage movement -> Bidirectional status update back to active orders.
+1. **Step 1 (Route Mapping)**: Analysis of `apps/web/src/app` confirmed 26 static page/layout targets generated during production builds. Every route was matched to its component, RBAC permissions, and local storage state keys.
+2. **Step 2 (Build Pipeline)**: Verified `package.json`, `next.config.js`, and `tsconfig.json`. The Next.js 14 compiler emits zero TypeScript/ESLint warnings during static page generation.
+3. **Step 3 (Test Suite Infrastructure)**: Ran the monorepo test suite. Verified 2,016 passing assertions across 17+ sub-suites in `web` and 15+ assertions in `api`. Analyzed requirement coverage for R1–R5 and identified minor edge-case testing recommendations.
+4. **Step 4 (Print & Vector Utilities)**: Inspected CSS print media queries and SVG QR/barcode renderers, confirming complete visual isolation from screen UI chrome.
+5. **Step 5 (Report Generation)**: Synthesized findings into `survey_routes_tests.md`.
 
 ---
 
 ## 3. Caveats
 
-- **API Integration Fallbacks**: The frontend components currently use `localStorage` as their primary state persistence layer with API fallbacks to ensure client-side resilience and zero runtime errors even if backend services are offline.
-- **Pre-populated Seeds**: Initial mock data (e.g. 8 customers, 8 orders, 14 job cards) is pre-seeded into `localStorage` on first mount to provide immediate visual feedback.
+- **No live physical printer hardware testing**: Print layouts were inspected via code analysis, CSS isolation rules, SVG vector structure, and data contract unit tests rather than physical paper printing.
+- **Node runtime**: Local test executions were performed using Node.js / `ts-node` under Windows PowerShell.
+- No other caveats.
 
 ---
 
 ## 4. Conclusion
 
-All UI/UX specifications, micro-interaction requirements, RBAC visibility rules, aesthetic design tokens, local storage state persistence rules, and E2E user flows across YellowHouse Tailoring OS (R2 & R3) have been fully mined, probed, verified, and documented into `spec_inventory.md`.
+The YellowHouse Tailoring OS route architecture, build system, test suite, and print subsystems are fully functional, robustly tested (2,031+ passing assertions), and compile with 0 warnings or errors across 26 App Router routes.
 
 ---
 
 ## 5. Verification Method
 
-1. **Inspect Inventory File**:
-   View `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_spec_miner_survey_3\spec_inventory.md` to review the complete feature inventory, RBAC matrix, edge cases table, and UI aesthetic specifications.
+To independently verify these findings:
 
-2. **TypeScript Compilation Verification**:
-   Run `npx tsc --noEmit` inside `apps/web` to confirm zero compilation warnings or type errors across all route pages.
+1. **Run Production Build**:
+   ```powershell
+   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
+   npm run build
+   ```
+   *Expected output*: `Generating static pages (26/26)` with exit code 0.
 
-3. **Local Storage State Verification**:
-   Inspect `localStorage` entries (`yh_auth_user`, `yh_orders`, `yh_production_jobs`, `yh_customers`, `yh_measurement_snapshots`) in browser devtools or test harnesses.
+2. **Run Test Suites**:
+   ```powershell
+   cd C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
+   npm test
+   ```
+   *Expected output*: All tests pass with `GRAND SUMMARY: 2016 PASSED, 0 FAILED` in `@yellowhouse/web` and clean exit in `@yellowhouse/api`.
+
+3. **Inspect Survey Report**:
+   Inspect `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_spec_miner_survey_3\survey_routes_tests.md`.

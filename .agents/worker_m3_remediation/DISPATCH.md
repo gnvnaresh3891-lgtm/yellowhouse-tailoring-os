@@ -1,43 +1,9 @@
-## 2026-08-07T22:01:57Z
+## 2026-08-24T16:28:10Z
+Mission:
+1. Fix the import in `apps/web/src/__tests__/m3-cad-production-deep.test.ts:4`. Replace the invalid/unused import `LANDMARK_MAPPINGS` with `LANDMARK_DEFINITIONS` or remove it if unused.
+2. Run `npm test` in `apps/web` to verify all test suites compile and execute with 0 errors and 0 failures.
+3. Run `npx tsc --noEmit` in `apps/web` to ensure 0 TypeScript errors.
+4. Report back in `handoff.md`.
 
-<USER_REQUEST>
-You are the M3 Remediation Worker for YellowHouse Tailoring OS (`yellowhouse`).
-Project Root Directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
-Your Working Directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m3_remediation
-
-Reference Files:
-- Challenger 1 Report: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\challenger_m3_1\handoff.md
-- Adversarial Test Suite: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\apps\web\src\__tests__\adversarial-m3-challenge.test.ts
-
-MANDATORY INTEGRITY WARNING:
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. Integrity violations WILL be detected and your work WILL be rejected.
-
-Remediation Tasks:
-1. Update `apps/web/src/lib/storage-utils.ts`:
-   In `getLocalStorage<T>(key: string, fallbackValue: T): T`:
-   - If `Array.isArray(fallbackValue)` is true, check `if (!Array.isArray(parsed)) return fallbackValue;` before returning `parsed`.
-
-2. Update `apps/web/src/lib/state-sync-utils.ts`:
-   In `syncJobToOrdersStorage` and `syncOrderToJobsStorage`:
-   - Add explicit defensive checks: `const safeOrders = Array.isArray(orders) ? orders : [];` and `const safeJobs = Array.isArray(jobs) ? jobs : [];` before calling `.map()`, `.find()`, or `.forEach()`.
-
-3. Verification:
-   - Run `npx ts-node src/__tests__/adversarial-m3-challenge.test.ts` in `apps/web` to confirm all 97 assertions pass.
-   - Wire `runAdversarialM3Tests()` into `apps/web/src/__tests__/run-tests.ts`.
-   - Run `npm test` and `npx tsc --noEmit` in both `apps/web` and `apps/api`.
-   - Verify 0 TypeScript compilation errors and 100% tests pass.
-
-Deliver your report in `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m3_remediation\handoff.md` and send a message when done.
-</USER_REQUEST>
-
-## 2026-08-07T22:03:00Z
-
-Additional remediation requirement from Challenger 2:
-Please ensure `getProgressForStage` in `apps/web/src/lib/state-sync-utils.ts` is 100% aligned with `production/page.tsx`:
-- `Fabric Inspection` -> 20%
-- `Master Cutting` -> 40%
-- `Zardozi/Aari Embroidery` -> 60%
-- `Stitching Assembly` -> 80%
-- `QC & Ready for Delivery` -> 100%
-
-Verify both LocalStorage array type safety and Kanban stage progress alignment. Run all test suites when done.
+Write your handoff report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m3_remediation\handoff.md`.
+Send a message when finished.

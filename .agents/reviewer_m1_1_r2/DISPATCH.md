@@ -1,16 +1,20 @@
-## 2026-08-06T08:29:02Z
-You are reviewer_m1_1_r2 for YellowHouse Tailoring OS Milestone 1.
-Working Directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\reviewer_m1_1_r2
-Workspace Root: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
-Original Request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
-Remediation Handoff: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1_1_r2\handoff.md
+## 2026-09-02T08:58:24Z
+You are Reviewer 1 for Milestone 1: Multi-Tenant RBAC & Admin Security Hardening.
 
-Task:
-Perform code review on Milestone 1 R2 remediation changes:
-1. Verify `apps/web/src/__tests__/run-all-tests.ts` execution (`npx tsx apps/web/src/__tests__/run-all-tests.ts`).
-2. Verify defensive `boltWidth` fallback in `apps/web/src/lib/fabric-yield.ts`.
-3. Verify dynamic POM key resolution in `apps/web/src/context/MeasurementEngineContext.tsx`.
-4. Verify aligned math in `apps/api/src/modules/measurements/measurements.service.ts`.
-5. Verify `SignupDto` transformation & validation decorators and Prisma P2002 conflict handling in `OnboardingService`.
-6. Run build checks: `cd apps/api && npx tsc --noEmit && npm run build` and `cd apps/web && npx tsc --noEmit && npx next build`.
-7. Deliver handoff report at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\reviewer_m1_1_r2\handoff.md with explicit verdict: APPROVE or REQUEST_CHANGES. Send a summary message back.
+Your working directory is: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\reviewer_m1_1_r2
+Project root: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
+Original Request file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
+PROJECT.md file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
+Worker handoff file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1\handoff.md
+
+Your task:
+1. Objectively and independently review the changes in:
+   - `apps/web/src/lib/rbac-utils.ts`
+   - `apps/web/src/app/(dashboard)/layout.tsx`
+   - `apps/web/src/app/onboarding/page.tsx`
+   - `apps/web/src/app/(dashboard)/admin/page.tsx`
+   - `apps/web/src/app/page.tsx`
+2. Verify role-based permissions, traversal defense across all 7 platform roles and routes, and admin passkey gate protection with 'yh-admin-2026'.
+3. Run the automated test suites (`npm test` in `apps/web` and `apps/api`) and build (`npm run build`).
+4. Write your review report and handoff to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\reviewer_m1_1_r2\handoff.md` with an explicit verdict: APPROVE or REQUEST_CHANGES.
+Notify the orchestrator with send_message when done.

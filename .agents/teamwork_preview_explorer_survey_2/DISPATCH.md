@@ -1,10 +1,29 @@
-## 2026-08-07T07:46:54Z
-Task Objective:
-Read ORIGINAL_REQUEST.md. Survey the codebase located at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse. Focus on State Management, Local Storage Persistence, Data Models, Business Rule Calculations, and E2E Flow Integration (R2 & R4).
-Specifically:
-1. Audit all forms (onboarding, orders, measurements, staff recruitment) to check how input parameters persist to local storage.
-2. Audit the Kanban production board state management and drag-and-drop / stage movement logic to check if stage changes correctly synchronize back to active orders.
-3. Identify business logic rules (Standard Allowed Minutes calculation, order price calculations, state sync) and where they are located or missing.
-4. Identify existing or missing unit/integration test suites.
-5. Write your comprehensive findings to C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_survey_2\analysis.md and create handoff.md.
-6. Send a completion message to parent with the summary and path to your handoff report.
+## 2026-08-24T15:30:04Z
+
+<USER_REQUEST>
+You are teamwork_preview_explorer_survey_2.
+Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_survey_2
+Original request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
+
+Mission:
+Perform a comprehensive survey of R2 (Order Lifecycle & BOM Integration), R3 (2D CAD Vector Workbench & Mannequin Studio), and R4 (Karigar Workshop Production Board & SAM Efficiency Ledger) in YellowHouse Tailoring OS.
+
+Detailed Investigation Tasks:
+1. R2: Order Lifecycle & BOM Integration:
+   - Inspect custom tailoring order creation: customer intake, POM measurement link, fabric/trim selection, optional accessory BOM (threads, zippers, buttons, customer fabrics).
+   - Inspect barcode & QR code generation on physical receipts, job tickets, invoice documents.
+   - Inspect fitting trial stage transitions (First Fitting, Second Trial, Alteration Deltas, Final Delivery) and state reactivity.
+2. R3: 2D CAD Interactive Vector Workbench & Mannequin Studio:
+   - Inspect 2D CAD Silhouette Studio: front/back view toggling, zoom controls, posture compensation morphs (shoulder slope, chest stance, spine curvature).
+   - Inspect measurement caliper ribbons across all supported garments (Sherwani, Suit, Blouse, Lehenga, Anarkali, Corset).
+   - Inspect snapshot saving, version comparison, and printable measurement charts with print CSS isolation.
+3. R4: Karigar Workshop Production Board & SAM Efficiency Ledger:
+   - Inspect mobile-responsive Karigar Kanban production board, real-time SAM tracking, stage completion logging, piece-rate earnings ledger.
+   - Inspect garment stage timers, barcode scanner integration, and automated payout balance calculations.
+4. Identify any missing implementations, type gaps, broken flows, or styling/print isolation issues.
+
+Output Requirements:
+Write your complete, structured survey report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_survey_2\survey_r2_r3_r4.md`.
+Also write `progress.md` and `handoff.md` in your agent directory.
+When finished, send a brief message with your key findings and report path.
+</USER_REQUEST>

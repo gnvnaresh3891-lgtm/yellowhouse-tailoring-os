@@ -5,7 +5,8 @@ export type UserRole =
   | 'EMBROIDERY_ARTISAN'
   | 'SALES_FRONT_DESK'
   | 'QUALITY_INSPECTOR'
-  | 'CUSTOMER_VIEW';
+  | 'CUSTOMER_VIEW'
+  | 'ACCOUNTANT';
 
 export interface RolePermissions {
   allowedRoutes: string[];
@@ -138,6 +139,27 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     ],
     defaultLanding: '/orders',
   },
+  ACCOUNTANT: {
+    allowedRoutes: [
+      '/dashboard',
+      '/customers',
+      '/measurements',
+      '/orders',
+      '/production',
+      '/redhouse',
+      '/redhouse/marketplace',
+      '/redhouse/equipment',
+      '/redhouse/supply',
+      '/redhouse/bidding',
+      '/redhouse/stylists',
+      '/marketplace',
+      '/equipment',
+      '/supply',
+      '/bidding',
+      '/stylists',
+    ],
+    defaultLanding: '/dashboard',
+  },
 };
 
 export function normalizeRole(role: string): UserRole | null {
@@ -150,17 +172,33 @@ export function normalizeRole(role: string): UserRole | null {
   if (r === 'SALES_FRONT_DESK' || r === 'RECEPTIONIST') return 'SALES_FRONT_DESK';
   if (r === 'QUALITY_INSPECTOR') return 'QUALITY_INSPECTOR';
   if (r === 'CUSTOMER_VIEW' || r === 'CUSTOMER') return 'CUSTOMER_VIEW';
+  if (r === 'ACCOUNTANT') return 'ACCOUNTANT';
   return null;
 }
 
 export function canUserAccessRoute(role: UserRole | string, routePath: string): boolean {
-  if (!role || !routePath) return false;
+  if (!role || !routePath || typeof routePath !== 'string') return false;
   const userRole = normalizeRole(role);
   if (!userRole) return false;
-  let normalizedPath = routePath.split('?')[0].split('#')[0];
-  while (normalizedPath.includes('/../') || normalizedPath.includes('/./')) {
-    normalizedPath = normalizedPath.replace(/\/[^\/]+\/\.\.\//g, '/').replace(/\/\.\//g, '/');
+  let raw = routePath.trim().split('?')[0].split('#')[0];
+  if (!raw) return false;
+  if (!raw.startsWith('/')) {
+    raw = '/' + raw;
   }
+  raw = raw.replace(/\/+/g, '/');
+  
+  // Resolve . and .. segments robustly
+  const segments = raw.split('/');
+  const resolved: string[] = [];
+  for (const seg of segments) {
+    if (seg === '' || seg === '.') continue;
+    if (seg === '..') {
+      resolved.pop();
+    } else {
+      resolved.push(seg);
+    }
+  }
+  const normalizedPath = '/' + resolved.join('/');
   const permissions = ROLE_PERMISSIONS[userRole];
   if (!permissions) return false;
   
@@ -170,10 +208,10 @@ export function canUserAccessRoute(role: UserRole | string, routePath: string): 
 }
 
 export function filterNavItemsForRole<T extends { href: string }>(items: T[], role: UserRole | string): T[] {
-  if (!role) return [];
+  if (!role || !Array.isArray(items)) return [];
   const normalized = normalizeRole(role);
   if (!normalized) return [];
-  return items.filter((item) => canUserAccessRoute(normalized, item.href));
+  return items.filter((item) => item && typeof item.href === 'string' && canUserAccessRoute(normalized, item.href));
 }
 
 export function getFallbackRedirectRoute(role: UserRole | string, attemptedRoute: string): string {
@@ -181,7 +219,7 @@ export function getFallbackRedirectRoute(role: UserRole | string, attemptedRoute
   const normalized = normalizeRole(role);
   if (!normalized) return '/login';
   
-  if (canUserAccessRoute(normalized, attemptedRoute)) {
+  if (typeof attemptedRoute === 'string' && canUserAccessRoute(normalized, attemptedRoute)) {
     return attemptedRoute;
   }
   return ROLE_PERMISSIONS[normalized]?.defaultLanding || '/login';

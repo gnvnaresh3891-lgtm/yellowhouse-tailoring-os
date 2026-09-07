@@ -1,52 +1,54 @@
-# BRIEFING — 2026-08-06T13:49:10+05:30
+# BRIEFING — 2026-09-02T01:39:30+05:30
 
 ## Mission
-Perform a Forensic Audit of Milestone 1 code changes in YellowHouse Tailoring OS.
+Forensic integrity audit of Milestone 1: Multi-Tenant RBAC & Admin Security Hardening.
 
 ## 🔒 My Identity
 - Archetype: forensic_auditor
 - Roles: critic, specialist, auditor
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1
-- Original parent: 99667aed-4d08-4173-b390-f6abafc8760e
-- Target: Milestone 1 (Multi-Tenant Onboarding & Seeding Flow)
+- Original parent: 43397082-2e0b-4b0f-b311-f3a69b3ffe59
+- Target: Milestone 1 (Multi-Tenant RBAC & Admin Security Hardening)
 
 ## 🔒 Key Constraints
 - Audit-only — do NOT modify implementation code
 - Trust NOTHING — verify everything independently
-- Check for integrity violations: hardcoded test results, facade mocks, dummy implementations, fake static responses
-- Audit `OnboardingService`: verify genuine `prisma.$transaction`, real `bcrypt.hash`, real JWT generation via `JwtService`, real slug validation logic
-- Audit `apps/web/src/app/onboarding/page.tsx`: verify genuine React state, real debounced `fetchApi` calls, real cookie setting
-- Deliver handoff report with explicit verdict: CLEAN or INTEGRITY VIOLATION
+- Check for hardcoded test outcomes, dummy implementations, facade classes, or mock bypasses
+- Verify passkey checking, RBAC authorization, role normalization, local storage eviction
+- Check that tests execute genuine assertions against real components and utilities
+- Block on failure: If ANY check fails, the verdict is INTEGRITY VIOLATION
 
 ## Current Parent
-- Conversation ID: 99667aed-4d08-4173-b390-f6abafc8760e
-- Updated: 2026-08-06T13:49:10+05:30
+- Conversation ID: 43397082-2e0b-4b0f-b311-f3a69b3ffe59
+- Updated: not yet
 
 ## Audit Scope
-- **Work product**: Milestone 1 files (`apps/api/src/modules/onboarding/*`, `apps/api/prisma/seed.ts`, `apps/web/src/app/onboarding/page.tsx`, tests)
-- **Profile loaded**: General Project (Development Mode per ORIGINAL_REQUEST.md)
+- **Work product**: Milestone 1 implementation files and test suites (AuthContext, AdminProtectedRoute, role normalization, local storage eviction, passkey verification, tests)
+- **Profile loaded**: General Project
 - **Audit type**: forensic integrity check
 
 ## Audit Progress
-- **Phase**: reporting
-- **Checks completed**: [Source Code Analysis, Behavioral Verification, Verification of OnboardingService & Onboarding UI, Monorepo Builds]
-- **Checks remaining**: None
-- **Findings so far**: CLEAN — No integrity violations found. Real `$transaction`, `bcrypt.hash`, `jwtService.sign`, debounced `fetchApi`, and cookie setting confirmed.
-
-## Key Decisions Made
-- Executed empirical build checks (`nest build` and `tsc --noEmit`), both passed with code 0.
-- Verified OnboardingService & Onboarding UI line-by-line for authentic logic.
-- Delivered handoff report at `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1\handoff.md`.
-
-## Artifact Index
-- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1\DISPATCH.md — Dispatch log
-- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1\BRIEFING.md — Briefing status
-- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1\handoff.md — Forensic Handoff Report (Verdict: CLEAN)
+- **Phase**: investigating
+- **Checks completed**: none
+- **Checks remaining**:
+  - Phase 1: Mode-Agnostic Source Code Analysis (Hardcoded outputs, Facades, Pre-populated artifacts, Mock bypasses)
+  - Phase 2: Mode-Specific Flagging & Constraints Check against ORIGINAL_REQUEST.md
+  - Behavioral Verification: Build and run test suite independently
+  - Adversarial Challenge: Edge case mining, passkey security, RBAC boundary bypasses
+- **Findings so far**: Investigating
 
 ## Attack Surface
-- **Hypotheses tested**: Checked for facade implementations, dummy return values, hardcoded test results, fake static responses in OnboardingService and UI page.
-- **Vulnerabilities found**: None.
-- **Untested angles**: None.
+- **Hypotheses tested**: [TBD]
+- **Vulnerabilities found**: [TBD]
+- **Untested angles**: [TBD]
 
 ## Loaded Skills
-- None explicitly loaded
+None.
+
+## Key Decisions Made
+- Initiated forensic investigation of Milestone 1.
+
+## Artifact Index
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1\DISPATCH.md — Dispatch instructions
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1\BRIEFING.md — Situational awareness
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1\progress.md — Progress log

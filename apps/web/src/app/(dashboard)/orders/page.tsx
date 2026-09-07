@@ -414,63 +414,7 @@ export default function OrderManagementPage() {
       }
     ];
 
-    if (g.includes('trouser') || g.includes('suit') || g.includes('churidar')) {
-      items.push({
-        id: `bom-${Date.now()}-2`,
-        name: 'YKK Concealed Metal Trouser Zipper (7 inch)',
-        category: 'zipper',
-        quantity: 1,
-        unit: 'pcs',
-        unitCost: 45,
-        isOptional: false
-      });
-      items.push({
-        id: `bom-${Date.now()}-3`,
-        name: 'Waistband Canvas Stiffener (Interlining)',
-        category: 'canvas',
-        quantity: 1.2,
-        unit: 'meters',
-        unitCost: 120,
-        isOptional: true
-      });
-      items.push({
-        id: `bom-${Date.now()}-4`,
-        name: 'Horn / Resin Jacket Buttons (Set of 6)',
-        category: 'button',
-        quantity: 1,
-        unit: 'set',
-        unitCost: 250,
-        isOptional: true
-      });
-    } else if (g.includes('blouse') || g.includes('corset') || g.includes('choli')) {
-      items.push({
-        id: `bom-${Date.now()}-2`,
-        name: 'Heavy Duty Side Invisible Zipper (12 inch)',
-        category: 'zipper',
-        quantity: 1,
-        unit: 'pcs',
-        unitCost: 55,
-        isOptional: false
-      });
-      items.push({
-        id: `bom-${Date.now()}-3`,
-        name: 'Back Eyelet / Braided Dori Hooks & Loops',
-        category: 'hook',
-        quantity: 8,
-        unit: 'pairs',
-        unitCost: 15,
-        isOptional: true
-      });
-      items.push({
-        id: `bom-${Date.now()}-4`,
-        name: 'Padded Cup Inserts & Boning Strips',
-        category: 'canvas',
-        quantity: 1,
-        unit: 'pair',
-        unitCost: 180,
-        isOptional: true
-      });
-    } else if (g.includes('sherwani') || g.includes('bandhgala') || g.includes('kurta')) {
+    if (g.includes('sherwani') || g.includes('bandhgala') || g.includes('kurta')) {
       items.push({
         id: `bom-${Date.now()}-2`,
         name: 'Gold Plated / Antique Metal Kurta Buttons',
@@ -525,6 +469,62 @@ export default function OrderManagementPage() {
         unit: 'pcs',
         unitCost: 65,
         isOptional: false
+      });
+    } else if (g.includes('blouse') || g.includes('corset') || g.includes('choli')) {
+      items.push({
+        id: `bom-${Date.now()}-2`,
+        name: 'Heavy Duty Side Invisible Zipper (12 inch)',
+        category: 'zipper',
+        quantity: 1,
+        unit: 'pcs',
+        unitCost: 55,
+        isOptional: false
+      });
+      items.push({
+        id: `bom-${Date.now()}-3`,
+        name: 'Back Eyelet / Braided Dori Hooks & Loops',
+        category: 'hook',
+        quantity: 8,
+        unit: 'pairs',
+        unitCost: 15,
+        isOptional: true
+      });
+      items.push({
+        id: `bom-${Date.now()}-4`,
+        name: 'Padded Cup Inserts & Boning Strips',
+        category: 'canvas',
+        quantity: 1,
+        unit: 'pair',
+        unitCost: 180,
+        isOptional: true
+      });
+    } else if (g.includes('trouser') || g.includes('suit') || g.includes('churidar')) {
+      items.push({
+        id: `bom-${Date.now()}-2`,
+        name: 'YKK Concealed Metal Trouser Zipper (7 inch)',
+        category: 'zipper',
+        quantity: 1,
+        unit: 'pcs',
+        unitCost: 45,
+        isOptional: false
+      });
+      items.push({
+        id: `bom-${Date.now()}-3`,
+        name: 'Waistband Canvas Stiffener (Interlining)',
+        category: 'canvas',
+        quantity: 1.2,
+        unit: 'meters',
+        unitCost: 120,
+        isOptional: true
+      });
+      items.push({
+        id: `bom-${Date.now()}-4`,
+        name: 'Horn / Resin Jacket Buttons (Set of 6)',
+        category: 'button',
+        quantity: 1,
+        unit: 'set',
+        unitCost: 250,
+        isOptional: true
       });
     }
 

@@ -1,15 +1,18 @@
-## 2026-08-07T07:53:54Z
+## 2026-08-24T15:39:46Z
 <USER_REQUEST>
-You are teamwork_preview_reviewer_m1_2, a Reviewer subagent for YellowHouse Tailoring OS.
+You are teamwork_preview_reviewer_m1_2.
 Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_reviewer_m1_2
-Original User Request file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
-Project File: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
-Worker Handoff: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_worker_m1_1\handoff.md
+Project scope: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md
+Original request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
+Worker report: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_worker_m1\handoff.md
 
-Task Objective:
-Independently review the work product for Milestone 1 (M1: Core Audit, LocalStorage Safety, Build & Test Infrastructure, POM schemas & Ease/Posture Math).
-1. Evaluate architectural structure, monorepo test integration, and local storage safety.
-2. Check for missing edge cases, unsafe null checks, or unhandled errors.
-3. Write your review report to C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_reviewer_m1_2\review.md and create handoff.md containing your explicit verdict (`APPROVE` or `REQUEST_CHANGES`).
-4. Send a completion message to parent with your verdict and report path.
+Mission:
+Perform an independent, adversarial code review of Milestone 1 (R1 & R5).
+1. Scrutinize all edge cases in RBAC enforcement, session persistence, and local storage fallback safety (`storage-utils.ts`).
+2. Review onboarding registration funnel (`onboarding/page.tsx`), slug validation, and authentication transition.
+3. Run tests to confirm zero regressions.
+4. Provide a clear verdict (APPROVE or REQUEST_CHANGES) in `handoff.md`.
+
+Write your handoff report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_reviewer_m1_2\handoff.md`.
+Send a message with your verdict when finished.
 </USER_REQUEST>

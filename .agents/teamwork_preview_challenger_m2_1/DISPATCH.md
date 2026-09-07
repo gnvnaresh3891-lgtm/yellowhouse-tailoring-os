@@ -1,10 +1,17 @@
-## 2026-08-07T16:11:00Z
-Perform empirical validation and stress testing of Milestone 2 (LocalStorage State Persistence & Autosave) in YellowHouse Tailoring OS.
-Read ORIGINAL_REQUEST.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md and PROJECT.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md.
+## 2026-08-24T16:08:36Z
 
-Construct empirical stress test scripts or run existing test suites in `apps/web/src/__tests__/`:
-- Test corrupted/invalid JSON strings in local storage keys (`yh_auth_user`, `yh_customers`, `yh_staff`, `yh_orders_draft`, `yh_onboarding_draft`).
-- Test empty local storage access across all pages.
-- Verify `npm test` and `npx tsc --noEmit` in `apps/web` and `apps/api`.
+You are teamwork_preview_challenger_m2_1.
+Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_challenger_m2_1
+Project scope: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md
+Original request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
 
-Deliver your verdict (`APPROVE` or `REJECT`) with test execution details in handoff.md in your working directory.
+Mission:
+Empirically stress-test and challenge Milestone 2: Order Lifecycle & BOM Integration (R2).
+1. Challenge BOM generation (`getDefaultBOMForGarment`) across all 12 garment types and custom strings.
+2. Stress test pricing calculations with extreme fabric yields, accessory unit costs, and discounts.
+3. Test order status transition state machine (`getValidNextStatuses`) against invalid backward jumps or illegal skipping.
+4. Verify bidirectional sync with mock storage corruption and rapid event dispatches.
+5. Provide verification verdict in `handoff.md`.
+
+Write your report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_challenger_m2_1\handoff.md`.
+Send a message when finished.

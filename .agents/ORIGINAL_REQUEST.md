@@ -1,86 +1,50 @@
 # Original User Request
 
-## 2026-08-07T07:46:23Z
+## Initial Request — 2026-09-02T01:23:50+05:30
 
-Perform a comprehensive end-to-end audit and refinement of YellowHouse Tailoring OS. Identify and resolve any remaining bugs, improve validation rules, polish UI aesthetics, verify all routing flows, and establish unit/integration test suites.
-
-Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
-Integrity mode: benchmark
-
-## Requirements
-
-### R1. Deep Source Code Audit & Warning Resolution
-Scan all pages, layouts, and components for dead code, unused imports, or typescript errors. Ensure safety on local storage accesses and nested property checks.
-
-### R2. Complete E2E Flow Auditing & Verification
-Verify the integration flow from Onboarding → Customer Management → CAD Measurements → Order Creation → Kanban Production board, correcting any desynced states or hardcoded mock fallbacks.
-
-### R3. Premium UI & Micro-Interactions Polish
-Refine design details (vibrant HSL colors, smooth transitions, correct button shapes, tooltips, responsive grid limits) to ensure a premium user experience across all form factors.
-
-### R4. Automated Unit & Integration Testing
-Add verification scripts or unit/integration tests to programmatically check onboarding flows, RBAC role-based page visibility, and local storage state persistence.
-
-## Acceptance Criteria
-
-### Audit Integrity
-- [ ] No compilation warnings or typescript errors during production build.
-- [ ] Zero runtime exceptions when navigating between routes or loading pages with empty local storage.
-
-### Flow Correctness & State Sync
-- [ ] All forms (onboarding, orders, measurements, staff recruitment) persist input parameters dynamically to local storage.
-- [ ] Drag-and-drop or stage movement on the Kanban board synchronizes status back to active orders correctly.
-
-### Automated Test Suite
-- [ ] Implement a runnable unit/integration test suite covering the core business rules (e.g. standard allowed minutes calculation, order price calculations, state sync).
-- [ ] All tests pass cleanly during the build pipeline.
-
-## 2026-08-23T14:09:58Z
-
-Expand and integrate the YellowHouse Tailoring OS into a next-generation Bespoke Tailoring & Digital Fashion Ecosystem spanning 5 key layers: (1) Digital Asset Warehouse & Design Marketplace, (2) Machine & Equipment Rental Layer (DDPT/Plotter/Embroidery sharing), (3) Vendor & Fabric Supply Sourcing Engine with smart budget recommendations, (4) Tailor & Manufacturer Marketplace with bidding and scheduling, and (5) 3-Month Free Trial / Onboarding Journey with CAD tech pack and export downloads.
+Execute an end-to-end comprehensive refinement, luxury UI/UX polish, CAD vector ergonomics audit, and full regression test matrix verification across the entire YellowHouse Tailoring OS B2B SaaS ecosystem.
 
 Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
 Integrity mode: development
 
 ## Requirements
 
-### R1. Digital Asset Warehouse & Design Marketplace ("Design as a Product")
-- Build an asset repository where creators/designers upload, manage, license, and sell fashion blueprints, digital silhouettes, and 3D tech packs.
-- Provide fixed pricing tiers, instant download licensing, category/style filtering, and earnings/sales tracking dashboards.
+### R1. Multi-Tenant RBAC & Admin Security Hardening
+- Enforce strict password/passkey protection on /admin (yh-admin-2026) with zero administrative leak on public marketing pages.
+- Verify role-based permissions and traversal defense across all 7 platform roles (Tenant Owner, Master Tailor, Branch Manager, Receptionist, Karigar, Accountant, Super Admin) across all 26 application routes.
+- Validate clean cross-tenant data isolation and persistent session management in storage.
 
-### R2. Machine Access & Workshop Equipment Sharing Marketplace
-- Provide high-tech machine listings (digital textile printers, laser fabric cutters, automated embroidery/stitching machines, tool positioning units).
-- Support hourly/daily booking schedules, operator availability toggles, and panel production reservation workflows.
+### R2. End-to-End Order Lifecycle & Dynamic BOM Refinement
+- Refine custom tailoring order intake with client profiling, POM measurement linking, fabric SKU generation (CUST-FAB-), and delivery scheduling.
+- Verify dynamic Bill of Materials (BOM) for 12 garment types with optional accessories (threads, zippers, buttons, canvas, latkans, cancan, client-supplied materials).
+- Validate pure SVG vector QR and Barcode generation on all physical order receipts, job tickets, and printable invoice documents with isolated @media print styling.
+- Test fitting trial stage transitions (First Fitting, Second Trial, Alteration Deltas, Final Delivery) and status reactivity.
 
-### R3. Supply Layer — Vendor Material Sourcing & Smart Recommendations
-- Vendor material catalogs (cotton, silk, velvet, organza, linings, trims) with real-time stock levels, volume discounts, and tier comparisons.
-- Smart fabric recommendation engine suggesting alternative swatches based on budget, garment type, and yield requirements.
+### R3. 2D CAD Interactive Vector Silhouette & Caliper Workbench Polish
+- Refine 2D CAD dress form mannequin visual fidelity with 420x840 pure SVG viewport, 80%–135% zoom scaling, and HUD layer controls.
+- Polish garment drape overlays for Sherwani, Suit, Blouse, Lehenga, Anarkali, and Corset with tailored seamlines.
+- Validate 4-axis posture morphs (shoulder slope, chest stance, spine curvature, heel height), dynamic caliper ribbons (↔ 42.5 in), and snapshot version history.
+- Ensure isolated @media print CSS for clean Measurement Card Chart printing.
 
-### R4. Production Bidding & Tailor / Manufacturer Ecosystem
-- Tailor & Manufacturer public portfolios showcasing artisan specialization (Zardozi, Master Cutting, Tuxedos, Lehengas), capacity, and rates.
-- Design brief submission workflow where ateliers and designers publish custom briefs and verified tailors submit competitive bids with in-app acceptance.
+### R4. Karigar Workshop Production Board & SAM Efficiency Ledger Polish
+- Refine mobile-responsive 5-stage Kanban floor (Cutting, Canvas, Assembly, Finishing, QC) with stage validation and garment timers.
+- Verify dynamic Standard Allowed Minutes (SAM) calculation factoring base matrix, fabric multipliers, and posture/embroidery surcharges.
+- Validate piece-rate earnings ledger (₹42/min rate), calendar/table timesheets, storage rack logistics, and barcode scanner integration.
 
-### R5. 3-Month Free Trial Onboarding & Professional Stylist Directory ("Purple Cogs")
-- 3-month trial tier for emerging designers with download resolution controls and certified area-wise stylist directory (stylists, embroidery artisans, fashion consultants).
+### R5. Public Landing Page & Frictionless Customer Demo Experience
+- Refine public marketing landing page to strictly display 4 customer-facing atelier demo personas (Owner, Master Tailor, Branch Manager, Karigar) with zero administrative exposure.
+- Verify 1-click sandbox session initialization, multi-branch revenue telemetry, interactive posture calculator, and onboarding registration funnel with automatic demo state cleanup.
 
 ## Acceptance Criteria
 
-### Functionality & Integration
-- [ ] New modules are seamlessly integrated into the existing Next.js App Router navigation (`(dashboard)/...`) with responsive glassmorphic UI.
-- [ ] All interactive state (asset sales, machine bookings, vendor listings, tailor bids) is persisted safely in storage with cross-tab reactivity.
-- [ ] Fast search, filtering, and role-based access control (RBAC) are respected across all views.
-- [ ] Print and PDF export support is available for tech packs, material bills, and equipment reservation receipts.
+### Security & Access Control
+- [ ] Direct navigation to /admin renders the Master Admin Passkey Gate when unauthenticated.
+- [ ] Public landing page strictly displays 4 customer-facing atelier roles with 0 administrative exposure.
+- [ ] Onboarding completion requires private credential login with cleared demo state.
 
-### Quality & Verification
-- [ ] `npm run build` passes with 0 TypeScript/ESLint errors.
-- [ ] `npm test` passes all unit and integration tests (943+ tests passing) with zero regressions.
-
-## 2026-08-23T14:12:11Z
-
-USER DIRECTIVE UPDATE:
-The user explicitly requests: "proceed but these has to be implemented separately as optional will be added in future not disturbing now".
-
-Guidelines for implementation:
-1. Ensure all core existing tailoring workflows (Dashboard, Orders, Production Kanban, Measurements, Customers, Staff, RBAC, Currency, Print layouts) remain 100% stable, fully operational, and undisturbed.
-2. The new ecosystem layers (Digital Asset Marketplace, Machine Rentals, Vendor Supply Layer, Tailor Bidding Marketplace, Stylist Directory / Purple Cogs) should be implemented as modular, cleanly separated extension pages/modules (e.g., under distinct sub-routes or optional feature tabs/hub) without breaking, cluttering, or regressing existing core operations.
-3. Keep all existing 943+ unit tests passing with zero regressions. All builds must succeed cleanly.
+### Functional Integrity & Usability
+- [ ] All 26 static pages compile with 0 TypeScript, ESLint, or Next.js build errors (
+pm run build exits 0).
+- [ ] Interactive state (measurements, orders, BOM accessories, karigar stages, tenant settings) persists across page reloads.
+- [ ] All print layouts (Measurement Cards, Order Receipts, Job Tickets) render with SVG QR codes and isolated @media print styling.
+- [ ] Automated and manual test verification passes with 0 regressions across the entire monorepo.

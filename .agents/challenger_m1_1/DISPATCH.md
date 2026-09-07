@@ -17,3 +17,20 @@ Perform adversarial verification and stress testing of the core ecosystem algori
 5. Test `evaluateTrialEntitlements` with past dates, leap years, exact 90-day threshold, and missing profile fields.
 
 Deliver your findings and verdict (APPROVE or REQUEST_CHANGES) in your handoff report at `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\challenger_m1_1\handoff.md` and send a message.
+
+## 2026-09-01T20:09:12Z
+You are Challenger 1 for Milestone 1: Multi-Tenant RBAC & Admin Security Hardening.
+
+Your working directory is: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\challenger_m1_1
+Project root: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
+Original Request file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
+PROJECT.md file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
+
+Your task:
+1. Empirically verify correctness and security by writing stress tests or running adversarial checks against:
+   - RBAC route protection across all 7 platform roles (Tenant Owner, Master Tailor, Branch Manager, Receptionist, Karigar, Accountant, Super Admin) and route traversal attempts.
+   - Admin passkey gate protection on `/admin` (correct passkey 'yh-admin-2026' unlocks; incorrect/empty passkeys reject; unauthenticated direct access presents gate).
+   - Public landing page content (0 admin buttons/links/exposure).
+2. Run the test commands and check for any regressions or security loopholes.
+3. Write your findings and handoff to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\challenger_m1_1\handoff.md` with an explicit verdict: APPROVE or REQUEST_CHANGES.
+Notify the orchestrator with send_message when done.

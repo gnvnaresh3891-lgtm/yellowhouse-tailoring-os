@@ -24,7 +24,7 @@ export function QRCodeSVG({
     const addFinderPattern = (startR: number, startC: number) => {
       for (let r = 0; r < 5; r++) {
         for (let c = 0; c < 5; c++) {
-          if (r === 0 || r === 4 || c === 0 || c === 4 || (r >= 1 && r <= 3 && c >= 1 && c <= 3 && (r === 2 || c === 2))) {
+          if (r === 0 || r === 4 || c === 0 || c === 4 || (r === 2 && c === 2)) {
             grid[startR + r][startC + c] = true;
           }
         }

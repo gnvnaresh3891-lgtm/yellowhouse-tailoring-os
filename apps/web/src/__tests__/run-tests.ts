@@ -1,5 +1,6 @@
 import { runStorageUtilsTests } from './storage-utils.test';
 import { runM2StressTests } from './m2-stress.test';
+import { runM2OrderBomLifecycleTests } from './m2-order-bom-lifecycle.test';
 import { runLandmarkValidationTests } from './landmark-validation.test';
 import { runSamCalculatorTests } from './sam-calculator.test';
 import { runPricingCalculatorTests } from './pricing-calculator.test';
@@ -16,6 +17,14 @@ import { runMilestone3EcosystemTests } from './milestone3-ecosystem.test';
 import { runTrialStylistDirectoryTests } from './trial-stylist-directory.test';
 import { runPrintAndRbacExpansionTests } from './print-and-rbac-expansion.test';
 import { runChallengerFinalStressSuite } from './challenger-final-stress.test';
+import { runM1PreviewChallengerRbacSuite } from './m1-preview-challenger-rbac.test';
+import { runM1EmpiricalStressSuite } from './challenger-m1-r5-stress.test';
+import { runM2PreviewChallengerDeepStressSuite } from './preview-challenger-m2-deep-stress.test';
+import { runM2PreviewChallengerPrintSvgSuite } from './m2-preview-challenger-print-svg.test';
+import { runM3CadProductionDeepSuite } from './m3-cad-production-deep.test';
+import { runM3PreviewChallengerDeepStressSuite } from './preview-challenger-m3-deep-stress.test';
+import { runM3PreviewChallengerCadStudioStressSuite } from './preview-challenger-m3-cad-stress.test';
+import { runM1AdversarialVerificationSuite } from './challenger-m1-r2-adversarial-verification.test';
 import { getAllGarmentTemplates, getGarmentTemplate, getGarmentTemplatesByGender, POM_SCHEMAS } from '../lib/pom-schemas';
 import { calculateDynamicEase, calculatePostureOffset } from '../lib/ease-calculator';
 import { calculateFabricYield } from '../lib/fabric-yield';
@@ -49,6 +58,11 @@ async function runAllSuites() {
   const m2Result = runM2StressTests();
   passed += m2Result.passed;
   failed += m2Result.failed;
+
+  // 1b-2. Run Milestone 2 Order Lifecycle, BOM & Barcode/QR Verification Suite
+  const m2LifecycleResult = runM2OrderBomLifecycleTests();
+  passed += m2LifecycleResult.passed;
+  failed += m2LifecycleResult.failed;
 
   // 1c. Run Milestone 3 SAM Calculator Test Suite
   const samResult = runSamCalculatorTests();
@@ -125,6 +139,46 @@ async function runAllSuites() {
   passed += challengerFinalResult.passed;
   failed += challengerFinalResult.failed;
 
+  // 1r. Run M1 Preview Challenger RBAC & Admin Gate Security Suite
+  const m1ChallengerResult = runM1PreviewChallengerRbacSuite();
+  passed += m1ChallengerResult.passed;
+  failed += m1ChallengerResult.failed;
+
+  // 1s. Run M1 Empirical Challenger R5 Onboarding & Sandbox Suite
+  const m1R5Result = runM1EmpiricalStressSuite();
+  passed += m1R5Result.totalPassed;
+  failed += m1R5Result.totalFailed;
+
+  // 1t. Run M2 Preview Challenger Deep Stress Suite (BOM, Pricing, Status Transitions, Bidirectional Sync, Barcode/QR)
+  const m2DeepStressResult = runM2PreviewChallengerDeepStressSuite();
+  passed += m2DeepStressResult.passed;
+  failed += m2DeepStressResult.failed;
+
+  // 1u. Run M2 Preview Challenger Pure SVG QR/Barcode & Print Layout Stress Suite
+  const m2PrintSvgResult = runM2PreviewChallengerPrintSvgSuite();
+  passed += m2PrintSvgResult.passed;
+  failed += m2PrintSvgResult.failed;
+
+  // 1v. Run M3 CAD Vector Silhouette & Karigar Production Deep Suite
+  const m3DeepResult = runM3CadProductionDeepSuite();
+  passed += m3DeepResult.passed;
+  failed += m3DeepResult.failed;
+
+  // 1w. Run M3 Empirical Challenger Karigar Production & SAM Deep Stress Suite
+  const m3StressResult = runM3PreviewChallengerDeepStressSuite();
+  passed += m3StressResult.passed;
+  failed += m3StressResult.failed;
+
+  // 1x. Run M3 Empirical Challenger CAD Studio, Mannequin Silhouette & Deltas Stress Suite
+  const m3CadStudioResult = runM3PreviewChallengerCadStudioStressSuite();
+  passed += m3CadStudioResult.passed;
+  failed += m3CadStudioResult.failed;
+
+  // 1y. Run Challenger 1 (Round 2) M1 Adversarial Verification Suite
+  const challengerM1R2Result = runM1AdversarialVerificationSuite();
+  passed += challengerM1R2Result.totalPassed;
+  failed += challengerM1R2Result.totalFailed;
+
   // 2. POM Schemas & Measurement Engine Tests
   console.log('[Suite 2: POM Schemas & Garment Templates]');
   const allCategories: GarmentCategory[] = [
@@ -184,7 +238,54 @@ async function runAllSuites() {
   failed += landmarkResult.failed;
 
   console.log(`\n========================================`);
+  console.log(`SUITE BREAKDOWN:`);
+  console.log(`- storage: ${storageResult.failed} failed`);
+  console.log(`- m2: ${m2Result.failed} failed`);
+  console.log(`- m2Lifecycle: ${m2LifecycleResult.failed} failed`);
+  console.log(`- sam: ${samResult.failed} failed`);
+  console.log(`- pricing: ${pricingResult.failed} failed`);
+  console.log(`- stateSync: ${stateSyncResult.failed} failed`);
+  console.log(`- adversarial: ${adversarialResult.failed} failed`);
+  console.log(`- rbac: ${rbacResult.failed} failed`);
+  console.log(`- m4Adversarial: ${m4AdversarialResult.failed} failed`);
+  console.log(`- ecosystem: ${ecosystemResult.failed} failed`);
+  console.log(`- challenger2: ${challenger2Result.failed} failed`);
+  console.log(`- challenger1: ${challenger1Result.failed} failed`);
+  console.log(`- digitalAssets: ${digitalAssetsResult.failed} failed`);
+  console.log(`- equipmentSharing: ${equipmentSharingResult.failed} failed`);
+  console.log(`- m3Ecosystem: ${m3EcosystemResult.failed} failed`);
+  console.log(`- trialStylist: ${trialStylistResult.failed} failed`);
+  console.log(`- printRbac: ${printRbacResult.failed} failed`);
+  console.log(`- challengerFinal: ${challengerFinalResult.failed} failed`);
+  console.log(`- m1Challenger: ${m1ChallengerResult.failed} failed`);
+  console.log(`- m1R5: ${m1R5Result.totalFailed} failed`);
+  console.log(`- m2DeepStress: ${m2DeepStressResult.failed} failed`);
+  console.log(`- m2PrintSvg: ${m2PrintSvgResult.failed} failed`);
+  console.log(`- m3Deep: ${m3DeepResult.failed} failed`);
+  console.log(`- m3Stress: ${m3StressResult.failed} failed`);
+  console.log(`- m3CadStudio: ${m3CadStudioResult.failed} failed`);
+  console.log(`- challengerM1R2: ${challengerM1R2Result.totalFailed} failed`);
+  console.log(`- landmark: ${landmarkResult.failed} failed`);
+  console.log(`\n========================================`);
   console.log(`GRAND SUMMARY: ${passed} PASSED, ${failed} FAILED`);
+  console.log(`========================================`);
+  console.log(`FAILED SUITE SUMMARY:`);
+  if (m2PrintSvgResult.failed > 0) {
+    console.log(`❌ m2PrintSvg: ${m2PrintSvgResult.failed} failed:`);
+    if ((m2PrintSvgResult as any).findings) (m2PrintSvgResult as any).findings.forEach((m: string) => console.log(`   - ${m}`));
+  }
+  if (m3DeepResult.failed > 0) {
+    console.log(`❌ m3Deep: ${m3DeepResult.failed} failed:`);
+    if ((m3DeepResult as any).failedMsgs) (m3DeepResult as any).failedMsgs.forEach((m: string) => console.log(`   - ${m}`));
+  }
+  if (m3StressResult.failed > 0) {
+    console.log(`❌ m3Stress: ${m3StressResult.failed} failed:`);
+    if ((m3StressResult as any).failedMsgs) (m3StressResult as any).failedMsgs.forEach((m: string) => console.log(`   - ${m}`));
+  }
+  if (m3CadStudioResult.failed > 0) {
+    console.log(`❌ m3CadStudio: ${m3CadStudioResult.failed} failed:`);
+    m3CadStudioResult.failedMsgs.forEach(m => console.log(`   - ${m}`));
+  }
   console.log(`========================================\n`);
 
   if (failed > 0) {

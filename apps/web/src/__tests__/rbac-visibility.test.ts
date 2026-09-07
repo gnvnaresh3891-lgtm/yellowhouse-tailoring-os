@@ -142,6 +142,29 @@ export function runRbacVisibilityTests(): { passed: number; failed: number } {
     'CUSTOMER_VIEW sidebar renders exactly 2 client routes'
   );
 
+  // 7b. ACCOUNTANT Permissions Test
+  assert(
+    canUserAccessRoute('ACCOUNTANT', '/dashboard') &&
+    canUserAccessRoute('ACCOUNTANT', '/orders') &&
+    canUserAccessRoute('ACCOUNTANT', '/customers') &&
+    canUserAccessRoute('ACCOUNTANT', '/production') &&
+    canUserAccessRoute('ACCOUNTANT', '/measurements'),
+    'ACCOUNTANT has access to /dashboard, /orders, /customers, /production, and /measurements'
+  );
+  assert(
+    !canUserAccessRoute('ACCOUNTANT', '/admin') &&
+    !canUserAccessRoute('ACCOUNTANT', '/staff'),
+    'ACCOUNTANT is restricted from /admin and /staff'
+  );
+  assert(
+    filterNavItemsForRole(ALL_NAV_ITEMS, 'ACCOUNTANT').length === 5,
+    'ACCOUNTANT sidebar renders exactly 5 operational/financial routes'
+  );
+  assert(
+    getFallbackRedirectRoute('ACCOUNTANT', '/admin') === '/dashboard',
+    'Forbidden /admin route for ACCOUNTANT redirects to /dashboard'
+  );
+
   // 8. Route Guard Redirect & Invalid Input Handling Test
   assert(
     getFallbackRedirectRoute('EMBROIDERY_ARTISAN', '/admin') === '/production',

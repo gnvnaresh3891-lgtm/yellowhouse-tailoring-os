@@ -1,14 +1,20 @@
-## 2026-08-23T14:34:10Z
-Assigned to Milestone 4:
-Scope and Exclusively Owned Files for Milestone 4:
-1. `apps/web/src/components/ecosystem/stylist-card.tsx`
-2. `apps/web/src/components/ecosystem/trial-status-banner.tsx`
-3. `apps/web/src/app/(dashboard)/stylists/page.tsx`
-4. `apps/web/src/app/(dashboard)/layout.tsx` & `apps/web/src/lib/rbac-utils.ts` & `apps/web/src/components/command-palette.tsx` (Dashboard nav integration & RBAC route permissions)
-5. `apps/web/src/components/print-layouts.tsx` (Add TechPackSpecPrint, MaterialBOMPrint, MachineReservationTicketPrint)
-6. `apps/web/src/__tests__/trial-stylist-directory.test.ts` & `apps/web/src/__tests__/print-and-rbac-expansion.test.ts` (Unit tests integrated into test runner)
+## 2026-08-26T11:44:38Z
+You are teamwork_preview_worker_m4.
+Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m4
+Project scope: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md
+Original request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
 
-Requirements:
-- 0 TypeScript/ESLint errors on `npx tsc --noEmit`.
-- Run `npm test` in `apps/web` and ensure all test suites pass with zero regressions.
-- Write handoff report and message parent.
+MANDATORY INTEGRITY WARNING:
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
+
+Mission — Milestone 4: Final Monorepo Compilation & Test Suite Verification:
+1. Run `npm run build` across `@yellowhouse/api` and `@yellowhouse/web`.
+   - Verify that all 26 static routes in `apps/web` compile cleanly with 0 TypeScript errors, 0 ESLint errors, and 0 warnings.
+   - Verify that `@yellowhouse/api` compiles cleanly.
+2. Run `npm test` in `apps/web` and in `apps/api`.
+   - Verify that all test suites execute and pass 100% cleanly with 0 failures and 0 regressions.
+3. Verify that all 5 key requirements (R1, R2, R3, R4, R5) and acceptance criteria are completely satisfied.
+4. Report detailed output in `handoff.md`.
+
+Write your report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m4\handoff.md`.
+Send a message when finished.

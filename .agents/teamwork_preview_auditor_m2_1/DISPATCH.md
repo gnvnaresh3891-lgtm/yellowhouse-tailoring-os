@@ -1,20 +1,18 @@
-## 2026-08-07T16:10:59Z
-You are M2 Forensic Auditor. Your working directory is C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_auditor_m2_1.
-Task: Perform a forensic integrity audit on Milestone 2 work products in YellowHouse Tailoring OS.
-Read ORIGINAL_REQUEST.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md and PROJECT.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md.
+## 2026-08-24T16:08:36Z
 
-Audit modified source files:
-- `apps/web/src/lib/storage-utils.ts`
-- `apps/web/src/app/onboarding/page.tsx`
-- `apps/web/src/app/(dashboard)/customers/page.tsx`
-- `apps/web/src/app/(dashboard)/staff/page.tsx`
-- `apps/web/src/app/(dashboard)/orders/page.tsx`
-- `apps/web/src/__tests__/storage-utils.test.ts`
+You are teamwork_preview_auditor_m2_1.
+Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_auditor_m2_1
+Project scope: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md
+Original request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
 
-Verify:
-1. NO hardcoded mock test results or facade implementations.
-2. Genuine local storage reading/writing, autosave debouncing, and state hydration.
-3. Genuine test assertions and zero fabricated test reports.
-4. Clean TypeScript build (`npx tsc --noEmit`) and passing test suite (`npm test`).
+Mission:
+Perform a Forensic Integrity Audit on Milestone 2 (Order Lifecycle, BOM Integration & Barcode/QR Print Systems - R2).
+Check for:
+1. Hardcoded test results, fake barcodes/QRs, or dummy calculation mocks.
+2. Authenticity of BOM generation, pricing logic, and bidirectional order-production synchronization.
+3. Authenticity of pure SVG vector matrix rendering.
+4. Independent execution of build and test suite.
+5. Provide a strict binary audit verdict: CLEAN or INTEGRITY VIOLATION.
 
-Deliver your verdict (`CLEAN` or `INTEGRITY VIOLATION`) in handoff.md in your working directory.
+Write your report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_auditor_m2_1\handoff.md`.
+Send a message with your audit verdict when finished.

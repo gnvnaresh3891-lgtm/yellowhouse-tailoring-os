@@ -376,6 +376,7 @@ export default function MultiTenantOnboardingPage() {
               <button
                 type="button"
                 onClick={() => {
+                  removeLocalStorage('yh_auth_user');
                   removeLocalStorage('yh_customers');
                   removeLocalStorage('yh_orders');
                   removeLocalStorage('yh_measurements_current');

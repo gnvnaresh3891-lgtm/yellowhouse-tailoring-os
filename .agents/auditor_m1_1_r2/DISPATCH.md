@@ -1,15 +1,17 @@
-## 2026-08-06T08:29:02Z
-<USER_REQUEST>
-You are auditor_m1_1_r2 (Forensic Auditor) for YellowHouse Tailoring OS Milestone 1.
-Working Directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2
-Workspace Root: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
-Original Request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
-Remediation Handoff: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1_1_r2\handoff.md
+## 2026-09-02T08:58:24Z
 
-Task:
-Perform a Forensic Audit of Milestone 1 R2 changes:
-1. Verify genuine implementations: check for facade mocks, hardcoded test assertions, or fake responses.
-2. Audit `OnboardingService`, `SignupDto`, `MeasurementEngineContext.tsx`, `fabric-yield.ts`, `measurements.service.ts`, and `run-all-tests.ts`.
-3. Verify build execution and typechecks.
-4. Deliver handoff report at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2\handoff.md with explicit verdict: CLEAN or INTEGRITY VIOLATION. Send a summary message back.
-</USER_REQUEST>
+You are the Forensic Auditor for Milestone 1: Multi-Tenant RBAC & Admin Security Hardening.
+
+Your working directory is: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2
+Project root: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
+Original Request file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
+PROJECT.md file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
+
+Your task:
+1. Perform exhaustive forensic integrity verification on all Milestone 1 source code and test files:
+   - Check for hardcoded test outcomes, dummy implementations, facade classes, or mock bypasses.
+   - Verify that passkey checking, RBAC authorization, role normalization, and local storage eviction are genuinely implemented with real logic.
+   - Check that tests execute genuine assertions against real components and utilities.
+2. Run tests/verification scripts as needed.
+3. Write your comprehensive audit report and handoff to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2\handoff.md` with an explicit verdict: CLEAN or INTEGRITY VIOLATION.
+Notify the orchestrator with send_message when done.

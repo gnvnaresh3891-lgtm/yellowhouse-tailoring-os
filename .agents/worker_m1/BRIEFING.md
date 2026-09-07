@@ -1,64 +1,60 @@
-# BRIEFING — 2026-08-23T14:20:00Z
+# BRIEFING — 2026-09-02T01:38:30Z
 
 ## Mission
-Implement Milestone 1: Core Ecosystem Types, Business Logic & Algorithms, and Realistic Seed Data across all 5 layers of the YellowHouse Tailoring OS Bespoke Fashion Ecosystem.
+Implement Milestone 1: Multi-Tenant RBAC & Admin Security Hardening for YellowHouse Tailoring OS.
 
 ## 🔒 My Identity
-- Archetype: worker
+- Archetype: worker_m1
 - Roles: implementer, qa, specialist
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1
-- Original parent: f9a591e8-c80b-4dd3-86fb-962284c08b8c
-- Milestone: M1 — Core Ecosystem Types, Business Logic & Algorithms
+- Original parent: 43397082-2e0b-4b0f-b311-f3a69b3ffe59
+- Milestone: Milestone 1 - Multi-Tenant RBAC & Admin Security Hardening
 
 ## 🔒 Key Constraints
-- Zero Core Disruption: All 7 existing tailoring workflows remain 100% untouched and fully operational.
-- Strict typing with zero `any` across all models.
-- All 943+ existing tests must pass with 0 regressions.
-- Implement genuine math and business logic without shortcuts or dummy facades.
+- Genuine implementations only, no hardcoded hacks or facades
+- All 26 static pages must compile with 0 TypeScript/ESLint/Next.js errors
+- Tests in apps/web and apps/api must pass
+- Follow file workspace convention (.agents/worker_m1 only)
 
 ## Current Parent
-- Conversation ID: f9a591e8-c80b-4dd3-86fb-962284c08b8c
-- Updated: 2026-08-23T14:20:00Z
+- Conversation ID: 43397082-2e0b-4b0f-b311-f3a69b3ffe59
+- Updated: not yet
 
 ## Task Summary
 - **What to build**:
-  1. `apps/web/src/types/ecosystem.ts` (Complete 5-layer types, enums, interfaces, union types, and aliases)
-  2. `apps/web/src/lib/ecosystem-algorithms.ts` (Pure business logic and calculation algorithms for licensing, HMAC signature, machine collision & pricing, smart fabric recommendation, volume discounts, milestone transition, and trial entitlement evaluation)
-  3. `apps/web/src/lib/ecosystem-seeds.ts` (Comprehensive, high-fidelity mock datasets for all 5 layers with realistic INR pricing and multi-currency)
-  4. Unit test suite for new ecosystem algorithms and types to guarantee robust coverage.
-- **Success criteria**:
-  - TypeScript types compile cleanly with zero errors.
-  - All algorithms implement verified business logic.
-  - Test runner executes all existing 943+ tests + 92 new unit tests (1035 total tests) with 100% pass rate.
-  - Production build (`npm run build`) generates all static pages with 0 warnings/errors.
-- **Interface contracts**: `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md`
-- **Code layout**: `PROJECT.md § Code Layout`
+  1. Fix `normalizeRole` in `apps/web/src/lib/rbac-utils.ts` to recognize 'ACCOUNTANT'.
+  2. In `apps/web/src/app/(dashboard)/layout.tsx`, ensure navigating directly to `/admin` lets passkey gate on `admin/page.tsx` render instead of premature redirect to `/dashboard`.
+  3. In `apps/web/src/app/onboarding/page.tsx`, ensure `handleFinish` removes `yh_auth_user` alongside other keys so `/login` starts clean.
+  4. Run tests in `apps/web` and `apps/api` and `npm run build`.
+- **Success criteria**: All tests pass, build passes with 0 errors, RBAC and Admin auth requirements met.
+- **Interface contracts**: PROJECT.md
+- **Code layout**: apps/web, apps/api, packages/shared
 
 ## Key Decisions Made
-- Implemented canonical and aliased TypeScript types across all 5 layers to ensure backward and forward compatibility.
-- Implemented a zero-dependency, pure JS standard SHA-256 / HMAC cryptographic module within `ecosystem-algorithms.ts` to ensure runtime-agnostic execution across Node.js, Jest, Next.js App Router, and browser Web Workers.
-- Implemented genuine multivariable scoring math for fabric recommendation (drape compatibility 45%, budget alignment 40%, vendor rating 15%, color match bonus).
-- Built comprehensive test suite covering all algorithm edge cases, collision buffer boundary conditions, multi-tier pricing, and contract state machines.
+- Added `ACCOUNTANT` role to `UserRole` and `ROLE_PERMISSIONS` in `rbac-utils.ts` with default landing `/dashboard` and allowed operational routes (`/dashboard`, `/customers`, `/measurements`, `/orders`, `/production`, `/marketplace`, `/equipment`, `/supply`, `/bidding`, `/stylists`).
+- In `(dashboard)/layout.tsx`, exempted `/admin` routes from dashboard layout premature redirects so `admin/page.tsx` can independently present and process the master passkey challenge.
+- In `onboarding/page.tsx`, added `removeLocalStorage('yh_auth_user')` in the finish callback to clear pre-existing/demo auth tokens and force fresh credential authentication on `/login`.
+- Updated test suites across `apps/web` to include `ACCOUNTANT` role verification.
 
 ## Artifact Index
-- `apps/web/src/types/ecosystem.ts` — TypeScript models and enums for 5 layers
-- `apps/web/src/lib/ecosystem-algorithms.ts` — Pure business logic algorithms
-- `apps/web/src/lib/ecosystem-seeds.ts` — Realistic seed data catalog
-- `apps/web/src/__tests__/ecosystem-algorithms.test.ts` — Milestone 1 algorithm test suite
-- `apps/web/src/__tests__/run-tests.ts` — Integrated test runner
-- `handoff.md` — Final handoff report
+- handoff.md — Final handoff report
 
 ## Change Tracker
 - **Files modified**:
-  - `apps/web/src/types/ecosystem.ts` (Created, 450 lines)
-  - `apps/web/src/lib/ecosystem-algorithms.ts` (Created, 490 lines)
-  - `apps/web/src/lib/ecosystem-seeds.ts` (Created, 585 lines)
-  - `apps/web/src/__tests__/ecosystem-algorithms.test.ts` (Created, 280 lines)
-  - `apps/web/src/__tests__/run-tests.ts` (Updated to run ecosystem algorithm suite)
-- **Build status**: PASS (1035 tests passing, `npm run build` 14/14 static pages generated with 0 errors)
+  - `apps/web/src/lib/rbac-utils.ts`: added `ACCOUNTANT` to `UserRole`, `ROLE_PERMISSIONS`, and `normalizeRole`.
+  - `apps/web/src/app/(dashboard)/layout.tsx`: exempted `/admin` routes from layout redirect to enable passkey gate rendering.
+  - `apps/web/src/app/onboarding/page.tsx`: added `yh_auth_user` eviction in workspace launch handler.
+  - `apps/web/src/__tests__/rbac-visibility.test.ts`: added test coverage for `ACCOUNTANT` route access and nav filtering.
+  - `apps/web/src/__tests__/m1-preview-challenger-rbac.test.ts`: included `ACCOUNTANT` in standard/non-admin role tests.
+  - `apps/web/src/__tests__/print-and-rbac-expansion.test.ts`: added `ACCOUNTANT` normalization and matrix tests.
+  - `apps/web/src/__tests__/challenger-final-stress.test.ts`: updated expected role access matrix for `ACCOUNTANT`.
+- **Build status**: Pass (Next.js 26/26 static pages, NestJS build 0 errors)
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: 1035 passed, 0 failed
-- **Lint status**: 0 violations
-- **Tests added/modified**: +92 new tests covering Layers 1-5 algorithms and seed catalog integrity
+- **Build/test result**: 64,892 tests passed in `apps/web` (0 failures); 23 tests passed in `apps/api` (0 failures).
+- **Lint status**: 0 violations.
+- **Tests added/modified**: `ACCOUNTANT` role verification across 4 test suites.
+
+## Loaded Skills
+- None

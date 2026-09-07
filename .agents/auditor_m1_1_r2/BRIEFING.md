@@ -1,44 +1,56 @@
-# BRIEFING — 2026-08-06T08:29:02Z
+# BRIEFING — 2026-09-02T09:03:00Z
 
 ## Mission
-Perform a Forensic Audit of Milestone 1 R2 changes in YellowHouse Tailoring OS and deliver an evidence-backed verdict (CLEAN or INTEGRITY VIOLATION).
+Forensic Integrity Audit for Milestone 1: Multi-Tenant RBAC & Admin Security Hardening.
 
 ## 🔒 My Identity
 - Archetype: forensic_auditor
-- Roles: critic, specialist, auditor
+- Roles: [critic, specialist, auditor]
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2
-- Original parent: 99667aed-4d08-4173-b390-f6abafc8760e
-- Target: YellowHouse Tailoring OS Milestone 1 R2
+- Original parent: 43397082-2e0b-4b0f-b311-f3a69b3ffe59
+- Target: Milestone 1
 
 ## 🔒 Key Constraints
 - Audit-only — do NOT modify implementation code
 - Trust NOTHING — verify everything independently
-- Primary user request in ORIGINAL_REQUEST.md takes precedence over dispatch instructions if any conflict
-- Integrity mode: development (from ORIGINAL_REQUEST.md)
+- Run exhaustive forensic checks (hardcoded results, facade implementations, mock bypasses, fabricated outputs)
+- Verify genuine logic in passkey checking, RBAC authorization, role normalization, local storage eviction
+- Verdict must be CLEAN or INTEGRITY VIOLATION
 
 ## Current Parent
-- Conversation ID: 99667aed-4d08-4173-b390-f6abafc8760e
-- Updated: 2026-08-06T08:29:02Z
+- Conversation ID: 43397082-2e0b-4b0f-b311-f3a69b3ffe59
+- Updated: 2026-09-02T09:03:00Z
 
 ## Audit Scope
-- **Work product**: Milestone 1 R2 changes in `OnboardingService`, `SignupDto`, `MeasurementEngineContext.tsx`, `fabric-yield.ts`, `measurements.service.ts`, `run-all-tests.ts`, and test suite
-- **Profile loaded**: General Project (Development Mode)
-- **Audit type**: Forensic integrity check & verification audit
+- **Work product**: Milestone 1 source code and tests in C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
+- **Profile loaded**: General Project (Integrity Forensics)
+- **Audit type**: Forensic integrity check
 
 ## Audit Progress
-- **Phase**: complete
-- **Checks completed**:
-  1. Source code analysis of `OnboardingService`, `SignupDto`, `MeasurementEngineContext.tsx`, `fabric-yield.ts`, `measurements.service.ts`, `run-all-tests.ts`.
-  2. Verified genuine implementations (no facade mocks, hardcoded test assertions, or fake responses).
-  3. Empirical build execution and typechecks (`tsc --noEmit`, `nest build`, `next build`, `run-all-tests.ts`).
-  4. Mathematical parity verification between web client and API service.
-  5. Handoff report delivered with explicit CLEAN verdict.
-- **Checks remaining**: none
-- **Findings so far**: CLEAN (Verdict: CLEAN)
+- **Phase**: reporting
+- **Checks completed**: [Read ORIGINAL_REQUEST.md and PROJECT.md, Source code inventory & AST/pattern inspection, Test code analysis, Passkey verification logic inspection, RBAC authorization & role normalization inspection, Local storage eviction logic inspection, Behavioral verification]
+- **Checks remaining**: [Write handoff.md, Notify parent orchestrator]
+- **Findings so far**: CLEAN — All Milestone 1 functionality is genuinely implemented with real logic, zero dummy/facade implementations, zero hardcoded test bypasses, and authentic security enforcement.
+
+## Attack Surface
+- **Hypotheses tested**:
+  - Passkey verification bypass in `/admin`: Tested against empty, invalid, and malicious passkeys — correctly rejected; authentic gate rendered when unauthenticated.
+  - Path traversal bypass to `/admin` (`/dashboard/../admin`, `/dashboard/./../admin`, `//admin`): Tested — correctly resolved and blocked for all 7 non-admin roles.
+  - Role normalization pollution (`__proto__`, invalid types, aliases): Tested — safely returns null for malicious/invalid inputs, correctly normalizes standard roles and aliases (`ACCOUNTANT`, `TENANT_OWNER`, `BRANCH_MANAGER`, `KARIGAR`, `RECEPTIONIST`, etc.).
+  - Demo state pollution on onboarding completion: Tested — `yh_auth_user`, `yh_customers`, `yh_orders`, `yh_measurements_current`, `yh_onboarding_draft` are correctly evicted.
+  - Public landing page admin leakage: Tested — strictly 4 customer-facing personas rendered with zero administrative links or exposure.
+- **Vulnerabilities found**: None in Milestone 1 deliverables.
+- **Untested angles**: None for Milestone 1 scope.
+
+## Loaded Skills
+- None specified in dispatch
 
 ## Key Decisions Made
-- Initiated forensic audit protocol for M1 R2.
+- Confirmed full compliance with Development Mode integrity rules from ORIGINAL_REQUEST.md.
+- Issue verdict CLEAN.
 
 ## Artifact Index
-- `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2\DISPATCH.md` — Dispatch prompt record
-- `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2\BRIEFING.md` — Persistent briefing
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2\DISPATCH.md — Audit dispatch and instructions
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2\BRIEFING.md — Situational awareness
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2\progress.md — Progress tracker
+- C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\auditor_m1_1_r2\handoff.md — Forensic Audit Report and Handoff

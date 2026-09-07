@@ -1,39 +1,50 @@
-# BRIEFING — 2026-08-07T07:49:00Z
+# BRIEFING — 2026-08-24T15:33:25Z
 
 ## Mission
-Survey the YellowHouse Tailoring OS codebase focusing on State Management, Local Storage Persistence, Data Models, Business Rules (SAM, pricing, state sync), E2E flow integration (R2/R4), form persistence, Kanban sync, and test coverage.
+Survey YellowHouse Tailoring OS implementation of R2 (Order Lifecycle & BOM Integration), R3 (2D CAD Vector Workbench & Mannequin Studio), and R4 (Karigar Workshop Production Board & SAM Efficiency Ledger) for completeness, type safety, UI/UX reactivity, print isolation, and edge cases.
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: read-only investigator
+- Roles: read-only investigation, code & architecture survey, gap analysis, handoff synthesis
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_survey_2
-- Original parent: 4fe6d1e8-d78d-4a6a-bb74-a30ccf01b1cf
-- Milestone: codebase-survey-state-persistence-business-rules
+- Original parent: bd5e2c6a-8ab6-4fbe-9c79-b37aea15c4c0
+- Milestone: Survey & Audit of R2, R3, R4
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement code changes in project source code.
-- Write analysis report to analysis.md and handoff report to handoff.md in working directory.
-- Communicate with parent via send_message.
+- Read-only investigation — do NOT implement / modify source code directly
+- Focus strictly on R2, R3, R4 components and their integration
+- Provide precise line numbers, file paths, and evidence chains
+- Check print CSS isolation, type gaps, broken flows, and UI/UX state reactivity
 
 ## Current Parent
-- Conversation ID: 4fe6d1e8-d78d-4a6a-bb74-a30ccf01b1cf
-- Updated: 2026-08-07T07:49:00Z
+- Conversation ID: bd5e2c6a-8ab6-4fbe-9c79-b37aea15c4c0
+- Updated: 2026-08-24T21:03:25+05:30
 
 ## Investigation State
-- **Explored paths**: `apps/web/src/app/`, `apps/web/src/lib/`, `apps/web/src/__tests__/`, `apps/api/src/`, `apps/api/src/__tests__/`, `package.json`, `PROJECT.md`, `TEST_INFRA.md`, `ORIGINAL_REQUEST.md`
+- **Explored paths**:
+  - `apps/web/src/app/(dashboard)/orders/page.tsx`
+  - `apps/web/src/app/(dashboard)/measurements/page.tsx`
+  - `apps/web/src/app/(dashboard)/production/page.tsx`
+  - `apps/web/src/components/id-codes.tsx`
+  - `apps/web/src/components/print-layouts.tsx`
+  - `apps/web/src/context/MeasurementEngineContext.tsx`
+  - `apps/web/src/lib/pom-schemas.ts`
+  - `apps/web/src/lib/landmark-mappings.ts`
+  - `apps/web/src/lib/ease-calculator.ts`
+  - `apps/web/src/lib/sam-calculator.ts`
+  - `apps/web/src/lib/pricing-calculator.ts`
+  - `apps/web/src/lib/state-sync-utils.ts`
 - **Key findings**:
-  - Measurements form persists dynamically to `localStorage`; Onboarding, Orders, Customers, and Staff forms do not save input drafts to `localStorage`.
-  - Staff and Customer directory forms have zero persistence (reloading resets to default arrays).
-  - Kanban board stage movement (`moveStage`) correctly syncs stage changes back to active orders in `localStorage.getItem('yh_orders')`. Drag-and-drop HTML5 event handlers are missing.
-  - Business rules: Static SAM (120 min/item) and static unit prices need dynamic engines. Ease math and posture adjustments are fully implemented.
-  - Test suites: Root `package.json` calls workspace test scripts, but `apps/web/package.json` and `apps/api/package.json` lack `"test"` npm scripts.
-- **Unexplored areas**: None in survey scope.
+  - R2: Fully integrated custom order intake, BOM customization with client-given toggles, SVG barcodes/QRs, and bidirectional status sync.
+  - R3: 420x840 2D CAD SVG studio with 6 garment overlays, posture morphing, caliper ribbons, snapshots, fitting trial delta matrix, and isolated print chart.
+  - R4: 5-stage mobile-responsive Kanban board with drag-and-drop, SAM calculations, artisan timesheet ledger (calendar/table views at ₹42/min), and delivery notes.
+  - Test Suite: 2016 tests passing cleanly (0 failures).
+- **Unexplored areas**: None within R2, R3, R4 scope.
 
 ## Key Decisions Made
-- Conducted full audit across all 5 key areas and generated comprehensive `analysis.md` and `handoff.md`.
+- Structured complete audit findings in `survey_r2_r3_r4.md` and synthesized handoff report in `handoff.md`.
 
 ## Artifact Index
-- `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_survey_2\DISPATCH.md` — Dispatch log
-- `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_survey_2\BRIEFING.md` — Context briefing
-- `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_survey_2\analysis.md` — Detailed survey analysis report
-- `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_explorer_survey_2\handoff.md` — 5-component handoff report
+- `survey_r2_r3_r4.md` — Complete survey report for R2, R3, and R4
+- `handoff.md` — 5-component handoff report
+- `progress.md` — Liveness & progress tracker

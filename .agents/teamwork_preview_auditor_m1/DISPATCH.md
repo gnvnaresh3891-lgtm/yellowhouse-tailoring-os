@@ -1,14 +1,18 @@
-## 2026-08-06T00:27:35Z
+## 2026-08-24T15:39:46Z
 
-Task:
-Perform a full forensic integrity audit on Milestone 1 work products at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse.
-Read:
-- ORIGINAL_REQUEST.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
-- PROJECT.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
-- Worker Handoff Report at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_worker_m1_1\handoff.md
+You are teamwork_preview_auditor_m1.
+Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_auditor_m1
+Project scope: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md
+Original request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
 
-Integrity Forensics Checks:
-1. Static analysis: Check for hardcoded test results, expected output strings, dummy returns, or mock stubs in apps/web/src/ and apps/api/src/.
-2. Runtime tracing & implementation authenticity: Verify that ease calculation formulas, posture offset matrices, fabric yield equations, and form state logic perform genuine computations.
-3. Verification: Run TypeScript compiler (`npx tsc --noEmit`) and test suites (`npx tsx apps/web/src/__tests__/run-all-tests.ts`).
-4. Record your audit verdict (CLEAN or INTEGRITY_VIOLATION) with step-by-step audit evidence in handoff.md in your working directory C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_auditor_m1\handoff.md.
+Mission:
+Perform a Forensic Integrity Audit on Milestone 1 (Multi-Tenant RBAC, Admin Passkey Gate & SaaS Landing / Demo Experience).
+Check for:
+1. Hardcoded fake test results or bypasses in source code.
+2. Dummy or facade implementations.
+3. Authenticity of RBAC route guards and passkey gate checks.
+4. Zero leakage of admin credentials/links to public landing pages.
+5. Provide a strict binary audit verdict: CLEAN or INTEGRITY VIOLATION.
+
+Write your complete audit report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_auditor_m1\handoff.md`.
+Send a message with your audit verdict when finished.

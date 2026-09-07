@@ -1,19 +1,16 @@
-## 2026-08-05T18:57:35Z
-Empirically verify the API & UI form integration for Milestone 1 at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse.
-Read:
-- ORIGINAL_REQUEST.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
-- PROJECT.md at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
-- Worker Handoff Report at C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_worker_m1_1\handoff.md
+## 2026-08-24T15:39:46Z
+You are teamwork_preview_challenger_m1_2.
+Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_challenger_m1_2
+Project scope: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\orchestrator\PROJECT.md
+Original request: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
 
-Testing:
-1. Verify TypeScript compilation (`npx tsc --noEmit`) across both web and api.
-2. Verify NestJS controllers, DTOs, and services in apps/api/src/modules/measurements/.
-3. Verify React Context state updates and PomFormEngine state consistency.
-4. Record your verdict (APPROVE or REQUEST_CHANGES) with detailed execution evidence in handoff.md in your working directory C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_challenger_m1_2\handoff.md.
+Mission:
+Empirically stress-test and challenge Milestone 1: SaaS Landing Page & Onboarding Funnel (R5).
+1. Test 1-click sandbox session creation across all 4 personas (`TENANT_OWNER`, `MASTER_TAILOR`, `BRANCH_MANAGER`, `KARIGAR`).
+2. Test storage persistence and corruption recovery on `yh_auth_user` and `yh_onboarding_draft`.
+3. Verify that demo data cleanup properly evicts mock keys on onboarding completion.
+4. Run onboarding stress tests in `apps/web/src/__tests__/`.
+5. Provide your verification verdict in `handoff.md`.
 
-## 2026-08-07T13:24:00Z
-Adversarially stress-test M1 TypeScript compilation, type definitions, and test infrastructure.
-1. Test workspace builds and typescript checks.
-2. Stress test boundary conditions in `storage-utils.ts` and POM ease calculation logic.
-3. Write your challenge report to C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_challenger_m1_2\challenge.md and create handoff.md containing your explicit verdict (`APPROVE` or `REQUEST_CHANGES`).
-4. Send a completion message to parent with your verdict and report path.
+Write your report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_challenger_m1_2\handoff.md`.
+Send a message when finished.

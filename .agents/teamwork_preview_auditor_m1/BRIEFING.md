@@ -1,43 +1,65 @@
-# BRIEFING — 2026-08-06T00:31:00Z
+# BRIEFING — 2026-08-24T15:46:00Z
 
 ## Mission
-Perform a full forensic integrity audit on Milestone 1 work products at yellowhouse.
+Perform a Forensic Integrity Audit on Milestone 1 (Multi-Tenant RBAC, Admin Passkey Gate & SaaS Landing / Demo Experience) of YellowHouse Tailoring OS.
 
 ## 🔒 My Identity
 - Archetype: forensic_auditor
 - Roles: critic, specialist, auditor
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_auditor_m1
-- Original parent: d10b382f-07b4-4da2-8c6d-189fabeef293
-- Target: Milestone 1 work products
+- Original parent: bd5e2c6a-8ab6-4fbe-9c79-b37aea15c4c0
+- Target: Milestone 1
 
 ## 🔒 Key Constraints
 - Audit-only — do NOT modify implementation code
 - Trust NOTHING — verify everything independently
-- ORIGINAL_REQUEST.md takes precedence over dispatch if conflicts exist
-- Integrity Mode: development (from ORIGINAL_REQUEST.md)
+- Strict binary audit verdict: CLEAN or INTEGRITY VIOLATION
+- Ground-truth user constraints from ORIGINAL_REQUEST.md take precedence over all else
 
 ## Current Parent
-- Conversation ID: d10b382f-07b4-4da2-8c6d-189fabeef293
-- Updated: 2026-08-06T00:31:00Z
+- Conversation ID: bd5e2c6a-8ab6-4fbe-9c79-b37aea15c4c0
+- Updated: 2026-08-24T15:46:00Z
 
 ## Audit Scope
-- **Work product**: Milestone 1 work products in apps/web/src/ and apps/api/src/
-- **Profile loaded**: General Project (Development Mode)
-- **Audit type**: Forensic integrity check
+- **Work product**: Milestone 1 Deliverables:
+  1. Multi-Tenant RBAC & Route Access Control Matrix (`apps/web/src/lib/rbac-utils.ts`, `apps/web/src/app/(dashboard)/layout.tsx`)
+  2. Master Admin Passkey Gate (`apps/web/src/app/(dashboard)/admin/page.tsx`, `yh-admin-2026` gate)
+  3. Multi-Tenant Safe Storage Persistence (`apps/web/src/lib/storage-utils.ts`)
+  4. SaaS Marketing Landing Page & Interactive Anatomy (`apps/web/src/app/page.tsx`)
+  5. 4 Customer-Facing Atelier Demo Sandboxes (`apps/web/src/app/page.tsx`, `apps/web/src/app/(auth)/login/page.tsx`)
+  6. 3-Step Onboarding Registration Funnel (`apps/web/src/app/onboarding/page.tsx`, `apps/web/src/app/(auth)/register/page.tsx`)
+- **Profile loaded**: General Project (Integrity Forensics)
+- **Audit type**: forensic integrity check
+
+## Attack Surface
+- **Hypotheses tested**:
+  - Hardcoded fake test results or bypasses in source code -> TESTED & CLEAN
+  - Dummy or facade implementations returning hardcoded constants -> TESTED & CLEAN
+  - Flaws/bypasses in RBAC route guards and passkey gate checks -> TESTED & CLEAN (path traversal defense active)
+  - Leakage of admin credentials or admin links on public marketing page -> TESTED & CLEAN (zero admin exposure on `/`)
+  - Storage safety under corrupted JSON or SSR null window -> TESTED & CLEAN
+- **Vulnerabilities found**: 0
+- **Untested angles**: None within Milestone 1 scope
+
+## Loaded Skills
+- None
 
 ## Audit Progress
-- **Phase**: Complete
+- **Phase**: reporting
 - **Checks completed**:
-  - Check 1: Static analysis for hardcoded test results, expected output strings, dummy returns, mock stubs [PASS]
-  - Check 2: Implementation authenticity (ease formulas, posture matrices, fabric yield, form state logic) [PASS]
-  - Check 3: Automated builds & test verification (tsc --noEmit for web & api, test suite tracing) [PASS]
-- **Findings so far**: CLEAN (Zero integrity violations found)
+  1. Source code audit for hardcoded outputs, test cheats, bypasses: CLEAN
+  2. Facade and dummy implementation detection: CLEAN
+  3. RBAC route guard and passkey gate authenticity verification: CLEAN
+  4. Public landing page admin leakage verification: CLEAN
+  5. Empirical test execution (2,367/2,367 passing) and Next.js build (26/26 static pages generated): CLEAN
+- **Checks remaining**: None
+- **Findings so far**: CLEAN
 
 ## Key Decisions Made
-- Audit verdict: CLEAN. Full handoff report recorded in handoff.md.
+- Audit verdict is CLEAN. Writing final handoff report.
 
 ## Artifact Index
-- DISPATCH.md — Audit assignment task instructions
-- BRIEFING.md — Persistent working memory index
-- progress.md — Audit execution progress log
-- handoff.md — Final audit report and verdict (CLEAN)
+- `DISPATCH.md` — Agent dispatch log
+- `BRIEFING.md` — Situational awareness memory
+- `progress.md` — Liveness heartbeat
+- `handoff.md` — Final 5-component Forensic Audit Report

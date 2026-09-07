@@ -42,9 +42,9 @@ assert(isValidSlug('RoyalBespoke') === false, 'Uppercase letters rejected');
 assert(isValidSlug('royal bespoke') === false, 'Spaces rejected');
 
 // 1.3 Rapid typing race condition simulation
-console.log('\nSub-test 1.3: Simulating rapid typing race condition in useEffect');
+console.log('\nSub-test 1.3: Simulating rapid typing race condition with React useEffect cleanup');
 
-// Simulated state store for OnboardingPage
+// Simulated state store for OnboardingPage replicating useEffect lifecycle in src/app/onboarding/page.tsx
 class OnboardingPageSimulator {
   public formState: OnboardingFormState = {
     boutiqueName: '',
@@ -66,24 +66,25 @@ class OnboardingPageSimulator {
   public error = '';
   public isSuccess = false;
 
-  private activeTimer: NodeJS.Timeout | null = null;
-  private pendingNetworkRequests: { id: number; slug: string; resolve: (val: SlugCheckResponse) => void }[] = [];
+  private cleanupFn: (() => void) | null = null;
   private requestCounter = 0;
 
   // Simulate user typing in boutique name or slug input
   public updateSlug(newSlug: string, isManual = true) {
     this.formState.slug = newSlug;
     this.formState.isSlugManuallyEdited = isManual;
-    this.triggerSlugEffectWithoutAbortController();
+    this.triggerSlugEffectWithCleanup();
   }
 
-  // Exact reproduction of useEffect logic in src/app/onboarding/page.tsx (lines 105-144)
-  private triggerSlugEffectWithoutAbortController() {
-    const targetSlug = this.formState.slug.trim();
-
-    if (this.activeTimer) {
-      clearTimeout(this.activeTimer);
+  // Exact reproduction of useEffect lifecycle & cleanup logic in src/app/onboarding/page.tsx (lines 187-231)
+  private triggerSlugEffectWithCleanup() {
+    // 1. Execute previous effect cleanup before mounting new effect (React standard behavior)
+    if (this.cleanupFn) {
+      this.cleanupFn();
+      this.cleanupFn = null;
     }
+
+    const targetSlug = this.formState.slug.trim();
 
     if (!targetSlug) {
       this.slugState = { status: 'idle', message: '' };
@@ -100,30 +101,36 @@ class OnboardingPageSimulator {
 
     this.slugState = { status: 'checking', message: 'Checking availability...' };
 
-    this.activeTimer = setTimeout(() => {
-      const reqId = ++this.requestCounter;
-      // Simulate network request
-      this.dispatchNetworkRequest(reqId, targetSlug);
-    }, 350);
-  }
+    let isCancelled = false;
 
-  private async dispatchNetworkRequest(reqId: number, targetSlug: string) {
-    try {
-      const res = await this.mockApiCheckSlug(reqId, targetSlug);
-      if (res.available) {
-        this.slugState = { status: 'available', message: 'Workspace slug is available!' };
-      } else {
+    const timer = setTimeout(async () => {
+      try {
+        const reqId = ++this.requestCounter;
+        const res = await this.mockApiCheckSlug(reqId, targetSlug);
+        if (isCancelled) return;
+
+        if (res.available) {
+          this.slugState = { status: 'available', message: 'Workspace slug is available!' };
+        } else {
+          this.slugState = {
+            status: 'taken',
+            message: res.message || 'Workspace slug is already taken.',
+          };
+        }
+      } catch (err: any) {
+        if (isCancelled) return;
         this.slugState = {
-          status: 'taken',
-          message: res.message || 'Workspace slug is already taken.',
+          status: 'invalid',
+          message: err.message || 'Error checking slug availability.',
         };
       }
-    } catch (err: any) {
-      this.slugState = {
-        status: 'invalid',
-        message: err.message || 'Error checking slug availability.',
-      };
-    }
+    }, 350);
+
+    // Save cleanup function for next invocation (or unmount)
+    this.cleanupFn = () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }
 
   // Mock API network call with artificial latency controlled by test
@@ -138,7 +145,7 @@ class OnboardingPageSimulator {
     });
   }
 
-  // Validate form submission rules (reproducing handleSubmit lines 162-190)
+  // Validate form submission rules (reproducing handleSubmit)
   public validateSubmission(): string | null {
     if (!this.formState.boutiqueName.trim()) {
       return 'Please enter your boutique name.';
@@ -168,15 +175,15 @@ class OnboardingPageSimulator {
   }
 }
 
-// Run rapid typing out-of-order test
+// Run rapid typing out-of-order test with cleanup
 async function testRapidTypingRaceCondition() {
   const sim = new OnboardingPageSimulator();
 
   // Scenario:
   // User types "royal" -> triggers request for "royal" at t=350ms, network response arrives at t=1000ms (delay 650ms).
-  // Then user types "royal-bespoke" at t=400ms -> triggers request for "royal-bespoke" at t=750ms, network response arrives at t=850ms (delay 100ms).
-  // "royal-bespoke" request finishes FIRST (at t=850ms), setting slugState to 'available'.
-  // Then "royal" request finishes LATER (at t=1000ms), overwriting slugState with 'taken' (stale result)!
+  // Then user types "royal-bespoke" at t=400ms -> triggers cleanup of "royal" (setting isCancelled = true),
+  // and starts timer for "royal-bespoke" at t=750ms with 100ms response delay -> finishes at 850ms.
+  // "royal" response finishes at t=1000ms, but is discarded because isCancelled === true!
 
   sim.mockNetworkResponses.set('royal', { available: false, delayMs: 650 });
   sim.mockNetworkResponses.set('royal-bespoke', { available: true, delayMs: 100 });
@@ -184,24 +191,21 @@ async function testRapidTypingRaceCondition() {
   // Type "royal"
   sim.updateSlug('royal');
 
-  // Fast forward 400ms (timer for "royal" fires at 350ms, starting network call with 650ms delay -> finishes at 1000ms)
+  // Fast forward 400ms (timer for "royal" fired at 350ms, starting in-flight network call with 650ms delay)
   await new Promise((r) => setTimeout(r, 400));
 
-  // Type "royal-bespoke"
+  // Type "royal-bespoke" (triggers cleanup of previous effect, cancelling stale "royal" callback)
   sim.updateSlug('royal-bespoke');
 
-  // Wait 1200ms to let all promises resolve
+  // Wait 1200ms to let all network promises settle
   await new Promise((r) => setTimeout(r, 1200));
 
   console.log(`[Diagnostic] Final slugState status after rapid typing: '${sim.slugState.status}', message: '${sim.slugState.message}'`);
 
-  // Is slugState set to 'taken' (stale from 'royal') or 'available' (current slug 'royal-bespoke')?
-  if (sim.slugState.status === 'taken') {
-    console.error('❌ BUG DETECTED: Race condition present! Stale API response for "royal" overwrote current slug "royal-bespoke" state!');
-    assert(false, 'Rapid typing state protection (Race condition vulnerable)');
-  } else {
-    assert(true, 'Rapid typing state protection');
-  }
+  assert(
+    sim.slugState.status === 'available',
+    'Rapid typing state protection (stale in-flight API response safely cancelled via isCancelled cleanup flag)'
+  );
 }
 
 // ----------------------------------------------------

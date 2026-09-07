@@ -1,16 +1,13 @@
-# Worker M1 Progress
+# Progress — Milestone 1: Multi-Tenant RBAC & Admin Security Hardening
 
-Last visited: 2026-08-23T14:20:00Z
-Status: Completed
+Last visited: 2026-09-02T01:38:40+05:30
 
-## Completed Steps
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Analyzed requirements from ORIGINAL_REQUEST.md, PROJECT.md, and survey_features.md
-- [x] Implemented `apps/web/src/types/ecosystem.ts` (Complete 5-layer TypeScript models, enums, interfaces, and compatibility aliases)
-- [x] Implemented `apps/web/src/lib/ecosystem-algorithms.ts` (Pure business logic, SHA-256 HMAC, collision detection, smart recommendations, contract transitions, trial evaluation)
-- [x] Implemented `apps/web/src/lib/ecosystem-seeds.ts` (Comprehensive, realistic seed catalogs with INR and multi-currency pricing)
-- [x] Implemented `apps/web/src/__tests__/ecosystem-algorithms.test.ts` (92 unit tests covering all algorithms and seed data integrity)
-- [x] Updated `apps/web/src/__tests__/run-tests.ts` to include ecosystem tests
-- [x] Verified full test suite: 1035 tests passing (943 baseline + 92 new), 0 failing
-- [x] Verified production build: `npm run build` succeeds cleanly with 0 TypeScript/ESLint warnings and 14/14 static pages generated
-- [x] Written 5-component handoff report in `handoff.md`
+## Status: Complete
+
+### Tasks:
+- [x] 1. Inspect and update `apps/web/src/lib/rbac-utils.ts` for `ACCOUNTANT` role and verify route access for all 7 platform roles.
+- [x] 2. Inspect and update `apps/web/src/app/(dashboard)/layout.tsx` for `/admin` direct navigation / passkey gate challenge handling.
+- [x] 3. Inspect and update `apps/web/src/app/onboarding/page.tsx` for `handleFinish` removing `yh_auth_user`.
+- [x] 4. Run tests (`npm test`) in `apps/web` (64,892 passed, 0 failed) and `apps/api` (23 passed, 0 failed).
+- [x] 5. Run `npm run build` across monorepo and verify all 26 static pages compile with 0 errors.
+- [x] 6. Write handoff report `handoff.md` and send completion message to orchestrator.

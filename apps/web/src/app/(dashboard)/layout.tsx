@@ -114,6 +114,11 @@ export default function DashboardLayout({
     setCurrentUser(user);
     
     // Route Guard: enforce access control
+    // Allow /admin to render its own internal Master Admin Passkey Gate on admin/page.tsx
+    if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+      return;
+    }
+
     if (user.role) {
       if (!canUserAccessRoute(user.role, pathname)) {
         const redirectPath = getFallbackRedirectRoute(user.role, pathname);

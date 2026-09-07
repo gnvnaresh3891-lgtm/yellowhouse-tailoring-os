@@ -48,6 +48,8 @@ export function runPrintAndRbacExpansionTests(): { passed: number; failed: numbe
   assert(normalizeRole('KARIGAR') === 'EMBROIDERY_ARTISAN', 'Normalizes KARIGAR to EMBROIDERY_ARTISAN');
   assert(normalizeRole('RECEPTIONIST') === 'SALES_FRONT_DESK', 'Normalizes RECEPTIONIST to SALES_FRONT_DESK');
   assert(normalizeRole('CUSTOMER') === 'CUSTOMER_VIEW', 'Normalizes CUSTOMER to CUSTOMER_VIEW');
+  assert(normalizeRole('ACCOUNTANT') === 'ACCOUNTANT', 'Normalizes ACCOUNTANT');
+  assert(normalizeRole('accountant') === 'ACCOUNTANT', 'Normalizes accountant to ACCOUNTANT');
 
   // Super Admin Matrix
   const superAdminRoutes = [
@@ -118,6 +120,17 @@ export function runPrintAndRbacExpansionTests(): { passed: number; failed: numbe
   assert(canUserAccessRoute('CUSTOMER_VIEW', '/dashboard') === false, 'CUSTOMER_VIEW denied /dashboard');
   assert(canUserAccessRoute('CUSTOMER_VIEW', '/production') === false, 'CUSTOMER_VIEW denied /production');
   assert(canUserAccessRoute('CUSTOMER_VIEW', '/equipment') === false, 'CUSTOMER_VIEW denied /equipment');
+
+  // Accountant Matrix
+  const accountantAllowed = [
+    '/dashboard', '/customers', '/measurements', '/orders',
+    '/production', '/marketplace', '/equipment', '/supply', '/bidding', '/stylists'
+  ];
+  for (const r of accountantAllowed) {
+    assert(canUserAccessRoute('ACCOUNTANT', r) === true, `ACCOUNTANT can access ${r}`);
+  }
+  assert(canUserAccessRoute('ACCOUNTANT', '/admin') === false, 'ACCOUNTANT is denied /admin');
+  assert(canUserAccessRoute('ACCOUNTANT', '/staff') === false, 'ACCOUNTANT is denied /staff');
 
   // --------------------------------------------------------------------------
   // SECTION 2: Fallback Redirects & Navigation Filtering

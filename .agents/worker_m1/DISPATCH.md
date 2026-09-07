@@ -1,28 +1,24 @@
-## 2026-08-23T14:15:18Z
+## 2026-09-01T20:02:46Z
+You are the Implementation Worker for Milestone 1: Multi-Tenant RBAC & Admin Security Hardening for YellowHouse Tailoring OS.
 
-You are Worker 1 on Milestone 1 for the YellowHouse Tailoring OS project.
 Your working directory is: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1
+Project root: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse
+Original Request file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\ORIGINAL_REQUEST.md
+PROJECT.md file: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\PROJECT.md
 
-Scope and Owned Files for Milestone 1:
-1. `apps/web/src/types/ecosystem.ts`: Complete TypeScript models, enums, interfaces for all 5 layers:
-   - Layer 1: `FashionBlueprintAsset`, `AssetLicenseCertificate`, `LicenseType` / `LicenseTierType` (`PERSONAL_BESPOKE`, `COMMERCIAL_PRODUCTION`, `EXCLUSIVE_BUYOUT`), `AssetCategory`, `CreatorEarningsLedger`.
-   - Layer 2: `WorkshopMachineListing`, `MachineType` / `MachineHardwareCategory` (`DIGITAL_TEXTILE_PRINTER`, `CNC_LASER_CUTTER` / `LASER_CUTTER`, `MULTI_HEAD_EMBROIDERY` / `EMBROIDERY_MACHINE`, `HEAVY_STITCHING_UNIT` / `TOOL_POSITIONING_UNIT`, `STEAM_FINISHER_FUSING`), `ShiftType` (`HOURLY`, `DAILY_FULL_SHIFT` / `DAILY_SHIFT`, `PANEL_BATCH`), `PanelProductionJobDetails`, `MachineReservationRecord`.
-   - Layer 3: `VendorMaterialItem`, `MaterialCategory` (`FABRIC`, `LINING`, `INTERFACING`, `TRIM`, `EMBELLISHMENT_THREAD` / `COTTON`, `SILK`, `VELVET`, `ORGANZA`, `LININGS`, `TRIMS`), `VolumePricingTier`, `SmartFabricRecommendationResult`, `FabricRecommendationScore` / `FabricRecommendationOption`, `MaterialSourcingOrder`.
-   - Layer 4: `ArtisanPortfolioProfile`, `ArtisanSpecialization` / `ArtisanSpecialty` (`ZARDOZI_EMBROIDERY`, `MASTER_CANVAS_CUTTING`, `TUXEDO_BESPOKE`, `LEHENGA_FLARED_CONSTRUCTION`, `CORSETRY_BONING`, `AARI_THREADWORK`, `SHERWANI_STRUCTURE`, `HAND_ROLLED_BUTTONHOLES`), `ProductionDesignBrief`, `TailorProductionBid`, `ProductionContractRecord`, `EscrowMilestoneStage` / `ProductionContractMilestone`.
-   - Layer 5: `TenantTrialOnboardingProfile`, `TrialTierEntitlements`, `CertifiedStylistProfile`, `StylistSpecialty` / `StylistSpecialization`, `StylistConsultationBookingRecord`.
-2. `apps/web/src/lib/ecosystem-algorithms.ts`: Pure business logic and calculation algorithms:
-   - `calculateLicensePricing(basePrice, licenseType)` & `calculateCreatorEarningsSplit(totalAmount, royaltyRate = 0.88)`
-   - `generateHMACLicenseSignature(assetId, licenseeId, licenseType, timestamp)`
-   - `checkMachineSlotCollision(existingReservations, machineId, startTime, endTime, newReservationId?)`
-   - `calculateMachineBookingCost(machine, shiftType, durationHoursOrDays, withOperator)`
-   - `computeSmartFabricRecommendations(candidateFabrics, criteria: { targetGarmentType, maxBudgetPerMeter, minRequiredYieldMeters, preferredColorTone? })`
-   - `calculateVolumeDiscountedPrice(material, quantityMeters)`
-   - `transitionContractMilestone(currentMilestone, newMilestone, paymentAmount)`
-   - `evaluateTrialEntitlements(trialProfile, currentDate = new Date())` -> returns active status, days remaining, watermark required, max resolution (150 DPI vs 300+ DPI).
-3. `apps/web/src/lib/ecosystem-seeds.ts`: Rich, realistic seed catalogs for all 5 layers with realistic Indian rupee (INR) and multi-currency pricing, high-quality image URLs, and pre-populated assets/machines/vendors/artisans/stylists.
+MANDATORY INTEGRITY WARNING:
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-Requirements:
-- Ensure all types are strictly typed with zero `any` where possible.
-- Run tests (`npm test` in `apps/web`) to verify all 943+ existing tests still pass and your new files compile cleanly.
-- Report all files created, tests executed, and write your report to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1\handoff.md`.
-- Send a message when complete.
+Your Tasks:
+1. In `apps/web/src/lib/rbac-utils.ts`:
+   - Update `normalizeRole` so that `'ACCOUNTANT'` is properly recognized and mapped to `'ACCOUNTANT'`.
+   - Verify route access for all 7 platform roles across application routes.
+2. In `apps/web/src/app/(dashboard)/layout.tsx`:
+   - Check the unauthenticated / route guard redirect logic. Ensure that when navigating directly to `/admin`, the passkey gate on `admin/page.tsx` can render and handle the passkey challenge ('yh-admin-2026') rather than being prematurely redirected to `/dashboard`.
+3. In `apps/web/src/app/onboarding/page.tsx`:
+   - In `handleFinish` ("Sign In to Workspace"), ensure `yh_auth_user` is also removed via `removeLocalStorage('yh_auth_user')` along with `yh_customers`, `yh_orders`, `yh_measurements_current`, so that navigating to `/login` presents a clean, empty credential login form.
+4. Run the test suites and production build:
+   - Run `npm test` in `apps/web` and `apps/api`.
+   - Run `npm run build` across the monorepo to ensure all 26 static pages compile with 0 TypeScript/ESLint/Next.js errors.
+5. Write your report and handoff to `C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\worker_m1\handoff.md`.
+Notify the orchestrator with send_message when done.

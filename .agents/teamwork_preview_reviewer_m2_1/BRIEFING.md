@@ -1,65 +1,67 @@
-# BRIEFING — 2026-08-07T21:44:00Z
+# BRIEFING — 2026-08-24T16:15:00Z
 
 ## Mission
-Perform code review and adversarial critique of Milestone 2 changes (Form Draft Autosave & LocalStorage State Persistence) in YellowHouse Tailoring OS.
+Perform an independent, adversarial, and objective quality review of Milestone 2 (Order Lifecycle, BOM Integration & Barcode/QR Print Systems - R2) for YellowHouse Tailoring OS.
 
 ## 🔒 My Identity
-- Archetype: reviewer, critic
+- Archetype: reviewer_critic
 - Roles: reviewer, critic
 - Working directory: C:\Users\gnvna\.gemini\antigravity\scratch\yellowhouse\.agents\teamwork_preview_reviewer_m2_1
-- Original parent: 4f63ff34-b151-4f5e-adab-826cc63764e0
-- Milestone: M2 - Form Draft Autosave & LocalStorage State Persistence
+- Original parent: bd5e2c6a-8ab6-4fbe-9c79-b37aea15c4c0
+- Milestone: Milestone 2 (Order Lifecycle, BOM Integration & Barcode/QR Print Systems - R2)
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code.
-- Actively check for integrity violations (hardcoded test results, facade implementations, shortcuts, self-certifying work).
-- Verify code quality, safety, SSR/hydration safety, null-checks, autosave debounce/throttling/clear logic, and test coverage.
+- Review-only — do NOT modify implementation code
+- Actively check for integrity violations: no dummy/facade implementations, no hardcoded cheating, no fake verifications
+- Validate all 7 items from the mission scope
+- Run independent test executions and typechecks
+- Issue a clear verdict: APPROVE or REQUEST_CHANGES
 
 ## Current Parent
-- Conversation ID: 4f63ff34-b151-4f5e-adab-826cc63764e0
-- Updated: 2026-08-07T21:44:00Z
+- Conversation ID: bd5e2c6a-8ab6-4fbe-9c79-b37aea15c4c0
+- Updated: 2026-08-24T16:15:00Z
 
 ## Review Scope
 - **Files to review**:
-  - `apps/web/src/lib/storage-utils.ts`
-  - `apps/web/src/app/onboarding/page.tsx`
-  - `apps/web/src/app/(dashboard)/customers/page.tsx`
-  - `apps/web/src/app/(dashboard)/staff/page.tsx`
   - `apps/web/src/app/(dashboard)/orders/page.tsx`
-  - `apps/web/src/__tests__/storage-utils.test.ts`
-- **Interface contracts**: ORIGINAL_REQUEST.md, PROJECT.md, worker handoff.md
-- **Review criteria**: correctness, integrity, SSR safety, error handling, performance, style, test coverage.
+  - `apps/web/src/components/id-codes.tsx`
+  - `apps/web/src/components/print-layouts.tsx`
+  - `apps/web/src/lib/state-sync-utils.ts`
+  - `apps/web/src/lib/fabric-yield.ts`
+  - `apps/web/src/lib/pricing-calculator.ts`
+  - `apps/web/src/lib/storage-utils.ts`
+  - `apps/web/src/__tests__/m2-order-bom-lifecycle.test.ts`
+  - `apps/web/src/__tests__/run-tests.ts`
+- **Interface contracts**: `PROJECT.md`, `ORIGINAL_REQUEST.md`
+- **Review criteria**: Correctness, integrity, adversarial resilience, zero regressions, type safety, print isolation
 
 ## Review Checklist
 - **Items reviewed**:
-  - `storage-utils.ts` (safe getter/setter/remover, null string guard, JSON try/catch)
-  - `onboarding/page.tsx` (multi-step form draft autosave & clear on signup)
-  - `customers/page.tsx` (directory persistence & fallback seeding)
-  - `staff/page.tsx` (recruitment modal draft autosave, staff list persistence)
-  - `orders/page.tsx` (order form draft autosave, client dropdown sync, status launch & kanban sync)
-  - `storage-utils.test.ts` & `m2-stress.test.ts` (unit & integration stress suites)
+  - Custom Tailoring Order Intake & Quick-Add Modal (`orders/page.tsx:2265-2408`)
+  - 12 Garment Presets & Fabric Yield Engine (`orders/page.tsx`, `fabric-yield.ts`)
+  - Customer Fabric SKU Generator (`CUST-FAB-...`)
+  - Dynamic BOM Engine & Client-Provided Trim Toggle (`getDefaultBOMForGarment`)
+  - Pure SVG QR Matrix (`QRCodeSVG`) & Code-128 Barcode (`BarcodeSVG`) in `id-codes.tsx`
+  - Order Stage Transitions & Bidirectional Sync (`state-sync-utils.ts`)
+  - Print CSS Isolation & Modals (`globals.css`, `print-layouts.tsx`, `orders/page.tsx`)
 - **Verdict**: APPROVE
-- **Unverified claims**: none; verified all test suites and typechecks independently.
+- **Unverified claims**: None (all claims verified by independent test runs and code inspection)
 
 ## Attack Surface
 - **Hypotheses tested**:
-  1. Window undefined in SSR context -> returns fallback without throwing exception (PASS)
-  2. Storage item contains raw `"null"` or `"undefined"` string -> returns default fallback value instead of JS `null` (PASS)
-  3. Storage item contains corrupted JSON -> catches parse error and returns fallback value (PASS)
-  4. Form submission clears draft key while preserving directory keys -> verified on onboarding, staff, and orders (PASS)
-  5. Empty local storage load across all 8 dashboard routes -> zero exceptions thrown (PASS)
-- **Vulnerabilities found**: None. Code handles null checks, empty storage fallbacks, and corrupted JSON safely.
-- **Untested angles**: LocalStorage quota exhaustion (browsers limit to ~5MB); base64 image swatches should use object storage URLs in production if size exceeds storage quota.
+  - Substring collision in BOM category matcher (Sherwani vs Churidar precedence) -> Verified resolved
+  - Customer-provided fabric SKU generation collisions -> Verified deterministic timestamp encoding
+  - Storage corruption resilience on order draft -> Verified safe fallback
+  - Print layout leaks of application chrome -> Verified `@media print` isolation
+- **Vulnerabilities found**: 0 (no blocking defects or integrity violations detected)
+- **Untested angles**: None within Milestone 2 scope
 
 ## Key Decisions Made
-- Executed `npm test` and `npx tsc --noEmit` across `apps/web` and `apps/api`.
-- All 196 web assertions and 23 api assertions passed 100%. TypeScript compilation exit code 0.
-- Confirmed zero integrity violations (no hardcoded outputs or dummy facades).
-- Issued final verdict: APPROVE.
+- Confirmed full compliance with Milestone 2 (R2) requirements and issued an APPROVE verdict.
 
 ## Artifact Index
-- DISPATCH.md — Copy of dispatch instruction
-- BRIEFING.md — Working briefing & context
-- progress.md — Liveness heartbeat
-- handoff.md — Final review report with APPROVE verdict
+- `.agents/teamwork_preview_reviewer_m2_1/DISPATCH.md` — Inbound dispatch log
+- `.agents/teamwork_preview_reviewer_m2_1/BRIEFING.md` — Persistent working memory
+- `.agents/teamwork_preview_reviewer_m2_1/progress.md` — Heartbeat and step progress
+- `.agents/teamwork_preview_reviewer_m2_1/handoff.md` — Final review and challenge report
