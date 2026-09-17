@@ -67,6 +67,7 @@ function BodySilhouetteSvg({
   const [zoomLevel, setZoomLevel] = useState<number>(1.0);
   const [showDrapeOverlay, setShowDrapeOverlay] = useState<boolean>(true);
   const [showDimensions, setShowDimensions] = useState<boolean>(true);
+  const [caliperFilterMode, setCaliperFilterMode] = useState<'ALL' | 'KEY' | 'FOCUSED'>('ALL');
   const [showDatumLasers, setShowDatumLasers] = useState<boolean>(true);
   const [showGridScales, setShowGridScales] = useState<boolean>(true);
 
@@ -83,6 +84,7 @@ function BodySilhouetteSvg({
 
   const unitLabel = unitSystem === 'cm' ? 'cm' : 'in';
   const formatVal = (v: number) => unitSystem === 'cm' ? (v * 2.54).toFixed(1) : v.toString();
+  const convertVal = (v: number) => unitSystem === 'cm' ? Number((v * 2.54).toFixed(1)) : v;
 
   // Zoom level clamp formula strictly between 80% and 135%
   const handleZoom = (delta: number) => {
@@ -106,16 +108,35 @@ function BodySilhouetteSvg({
             <span>Drape</span>
           </button>
 
-          <button
-            onClick={() => setShowDimensions(!showDimensions)}
-            className={`px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
-              showDimensions ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm' : 'text-slate-400 hover:text-white bg-slate-900/60 border border-white/5'
-            }`}
-            title="Toggle Caliper Dimension Callouts"
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span>Calipers</span>
-          </button>
+          <div className="flex items-center space-x-1 bg-slate-900/80 p-0.5 rounded-full border border-white/10">
+            <button
+              onClick={() => setShowDimensions(!showDimensions)}
+              className={`px-2.5 py-1 rounded-full font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+                showDimensions ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Toggle Caliper Dimension Callouts"
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>Calipers</span>
+            </button>
+            {showDimensions && (
+              <div className="flex items-center pr-1 space-x-0.5 text-[10px] font-mono">
+                {(['ALL', 'KEY', 'FOCUSED'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setCaliperFilterMode(mode)}
+                    className={`px-1.5 py-0.5 rounded-md font-bold transition-all ${
+                      caliperFilterMode === mode
+                        ? 'bg-blue-500/30 text-blue-200 border border-blue-400/40'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {mode === 'ALL' ? 'All' : mode === 'KEY' ? 'Key' : 'Active'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <button
             onClick={() => setShowDatumLasers(!showDatumLasers)}
@@ -509,26 +530,56 @@ function BodySilhouetteSvg({
             {/* REAL-TIME DIMENSION CALIPER RIBBONS (↔ 42.5 in)             */}
             {/* ============================================================ */}
             {showDimensions && (
-              <g className="select-none pointer-events-none">
+              <g className="select-none">
                 {activePoms.map((pom) => {
                   const isFocused = focusedId === pom.id;
-                  if (!isFocused && !['SH-01', 'SU-01', 'BL-01', 'SH-02', 'SU-02', 'BL-03'].includes(pom.code)) return null;
+                  if (caliperFilterMode === 'FOCUSED' && !isFocused) return null;
+                  if (caliperFilterMode === 'KEY' && !isFocused && !['SH-01', 'SU-01', 'BL-01', 'SH-02', 'SU-02', 'BL-03'].includes(pom.code)) return null;
+                  if (caliperFilterMode === 'ALL' && !isFocused && !['SH-01', 'SU-01', 'BL-01', 'SH-02', 'SU-02', 'BL-03', 'SH-03', 'SU-03', 'BL-04', 'SH-05', 'SU-05', 'SH-08', 'SU-08', 'LH-01', 'LH-02', 'LH-03', 'AN-01', 'AN-02', 'CO-01', 'CO-02'].includes(pom.code)) return null;
 
                   const y = pom.landmarkY + (shoulderOffsetY !== 0 && (pom.code.includes('SH-03') || pom.code.includes('SU-03')) ? shoulderOffsetY : 0);
                   const rawVal = measurements[pom.id] ?? pom.base;
                   const displayStr = `↔ ${formatVal(rawVal)} ${unitLabel}`;
 
+                  // Dynamic caliper spread calculation based on measurement deviation
+                  const spreadOffset = Math.max(-10, Math.min(22, ((rawVal - pom.base) / pom.base) * 26));
+                  const leftX = Math.max(50, 75 - spreadOffset);
+                  const rightX = Math.min(370, 345 + spreadOffset);
+
                   return (
-                    <g key={`caliper-${pom.id}`} className="transition-all duration-300">
-                      {/* Left & Right Caliper Wings */}
-                      <line x1="75" y1={y} x2="135" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '1.8' : '1'} />
-                      <line x1="285" y1={y} x2="345" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '1.8' : '1'} />
-                      {/* End Ticks */}
-                      <line x1="75" y1={y - 5} x2="75" y2={y + 5} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.5" />
-                      <line x1="345" y1={y - 5} x2="345" y2={y + 5} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.5" />
+                    <g 
+                      key={`caliper-${pom.id}`} 
+                      className="transition-all duration-300 cursor-pointer group/caliper pointer-events-auto"
+                      onClick={() => onSelectHotspot(pom.id)}
+                      onMouseEnter={() => onHoverHotspot(pom.id)}
+                      onMouseLeave={() => onHoverHotspot(null)}
+                    >
+                      {/* Left & Right Caliper Wings with Dynamic Horizontal Spread */}
+                      <line x1={leftX} y1={y} x2="135" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '2' : '1.2'} />
+                      <line x1="285" y1={y} x2={rightX} y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '2' : '1.2'} />
+                      
+                      {/* End Boundary Ticks */}
+                      <line x1={leftX} y1={y - 6} x2={leftX} y2={y + 6} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.8" />
+                      <line x1={rightX} y1={y - 6} x2={rightX} y2={y + 6} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.8" />
+                      
+                      {/* Directional Arrow Tips */}
+                      <polygon points={`${leftX + 4},${y - 3} ${leftX},${y} ${leftX + 4},${y + 3}`} fill={isFocused ? '#FACC15' : '#38BDF8'} />
+                      <polygon points={`${rightX - 4},${y - 3} ${rightX},${y} ${rightX - 4},${y + 3}`} fill={isFocused ? '#FACC15' : '#38BDF8'} />
+
                       {/* Dimension Ribbon Tag */}
-                      <rect x="165" y={y - 8} width="90" height="16" rx="4" fill="#0F172A" stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="0.8" opacity="0.85" />
-                      <text x="210" y={y + 4} textAnchor="middle" className={`text-[9px] font-mono font-bold ${isFocused ? 'fill-yellow-400' : 'fill-sky-300'}`}>
+                      <rect 
+                        x="160" y={y - 10} width="100" height="20" rx="6" 
+                        fill="#0F172A" 
+                        stroke={isFocused ? '#FACC15' : '#38BDF8'} 
+                        strokeWidth={isFocused ? '1.5' : '0.8'} 
+                        className="shadow-lg transition-all group-hover/caliper:fill-slate-800"
+                        opacity="0.9"
+                      />
+                      <text 
+                        x="210" y={y + 4} 
+                        textAnchor="middle" 
+                        className={`text-[9.5px] font-mono font-bold select-none ${isFocused ? 'fill-yellow-400' : 'fill-sky-300 group-hover/caliper:fill-white'}`}
+                      >
                         {displayStr}
                       </text>
                     </g>
@@ -648,10 +699,14 @@ function BodySilhouetteSvg({
           if (!pom) return null;
           const rawVal = measurements[pom.id] ?? pom.base;
           const hasError = !!validationErrors[pom.id];
+          const rangePercent = Math.max(0, Math.min(100, Math.round(((rawVal - pom.min) / (pom.max - pom.min)) * 100)));
+          const easeOffset = EASE_OFFSETS[fitPref] || 0;
+          const finishedVal = Number((rawVal + easeOffset).toFixed(2));
+          const dualVal = unitSystem === 'in' ? `${(rawVal * 2.54).toFixed(1)} cm` : `${(rawVal / 2.54).toFixed(1)} in`;
 
           return (
-            <div className="absolute bottom-4 right-4 glass-card-gold rounded-3xl p-4 shadow-[0_16px_40px_rgba(245,158,11,0.25)] backdrop-blur-2xl flex flex-col min-w-[210px] z-30 animate-fade-in border border-[#D4AF37]/50">
-              <div className="flex items-center justify-between space-x-2 mb-2 pb-1.5 border-b border-white/10">
+            <div className="absolute bottom-4 right-4 glass-card-gold rounded-3xl p-4 shadow-[0_20px_50px_rgba(245,158,11,0.3)] backdrop-blur-2xl flex flex-col min-w-[240px] max-w-[280px] z-30 animate-fade-in border border-[#D4AF37]/50">
+              <div className="flex items-center justify-between space-x-2 mb-2 pb-2 border-b border-white/10">
                 <div className="flex items-center space-x-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${hasError ? 'bg-rose-500' : 'bg-amber-400'} animate-pulse`} />
                   <span className="font-mono font-extrabold text-amber-300 text-xs uppercase tracking-wider">{pom.code}</span>
@@ -659,14 +714,40 @@ function BodySilhouetteSvg({
                 <span className="text-[10px] font-mono text-slate-400 font-semibold">{pom.min}"–{pom.max}" range</span>
               </div>
               
-              <span className="font-bold text-white text-xs mb-1 font-display">{pom.name}</span>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-white text-xs font-display truncate">{pom.name}</span>
+                <span className="text-[10px] font-mono text-slate-400">{dualVal}</span>
+              </div>
               
-              <div className="flex items-baseline justify-between mt-2 pt-2 border-t border-white/10">
+              <div className="flex items-baseline justify-between mt-2 pt-1">
                 <span className="text-[11px] text-slate-400">Target Value:</span>
                 <div className="flex items-baseline space-x-1">
                   <span className="font-mono font-black text-2xl text-amber-300">{formatVal(rawVal)}</span>
                   <span className="font-mono text-xs text-amber-400 font-bold">{unitLabel}</span>
                 </div>
+              </div>
+
+              {/* Anatomical Tolerance Range Progress Bar */}
+              <div className="w-full mt-2">
+                <div className="flex justify-between text-[9px] font-mono text-slate-400 mb-1">
+                  <span>{convertVal(pom.min)}{unitLabel}</span>
+                  <span className="text-amber-300/90">{rangePercent}% tolerance</span>
+                  <span>{convertVal(pom.max)}{unitLabel}</span>
+                </div>
+                <div className="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-white/10">
+                  <div 
+                    className={`h-full transition-all duration-300 ${hasError ? 'bg-rose-500' : 'bg-gradient-to-r from-amber-400 to-[#D4AF37]'}`} 
+                    style={{ width: `${rangePercent}%` }} 
+                  />
+                </div>
+              </div>
+
+              {/* Live Ease Calculation Preview */}
+              <div className="mt-2.5 px-2 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 flex items-center justify-between text-[10px]">
+                <span className="text-slate-400">Finished Garment:</span>
+                <span className="font-mono font-bold text-amber-300">
+                  {formatVal(finishedVal)}{unitLabel} <span className="text-slate-400 font-normal">({easeOffset >= 0 ? '+' : ''}{easeOffset}" {fitPref})</span>
+                </span>
               </div>
 
               {/* Dynamic Caliper Steppers (-0.5", -0.25", +0.25", +0.5") strictly clamped */}
@@ -1179,6 +1260,9 @@ function MeasurementsContent() {
 
                 const easeOffset = EASE_OFFSETS[fitPref] || 0;
                 const isAffected = ['Chest Girth', 'Waist Girth', 'Hip Girth', 'Sleeve Length', 'Bust Girth'].includes(pom.name);
+                const rangePercent = Math.max(0, Math.min(100, Math.round(((rawVal - pom.min) / (pom.max - pom.min)) * 100)));
+                const finishedVal = Number((rawVal + (isAffected ? easeOffset : 0)).toFixed(2));
+                const dualVal = unitSystem === 'in' ? `${(rawVal * 2.54).toFixed(1)} cm` : `${(rawVal / 2.54).toFixed(1)} in`;
 
                 return (
                   <div
@@ -1254,6 +1338,33 @@ function MeasurementsContent() {
                       >
                         +0.5"
                       </button>
+                    </div>
+
+                    {/* Tolerance Progress Bar */}
+                    <div className="w-full mt-2.5 pt-2 border-t border-white/5">
+                      <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 mb-1">
+                        <span>{convertVal(pom.min)} {unitLabel}</span>
+                        <span className={hasError ? 'text-rose-400 font-semibold' : 'text-amber-300/80 font-medium'}>
+                          {rangePercent}% tolerance
+                        </span>
+                        <span>{convertVal(pom.max)} {unitLabel}</span>
+                      </div>
+                      <div className="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-white/10">
+                        <div 
+                          className={`h-full transition-all duration-300 ${hasError ? 'bg-rose-500' : 'bg-gradient-to-r from-amber-400 to-[#D4AF37]'}`} 
+                          style={{ width: `${rangePercent}%` }} 
+                        />
+                      </div>
+                    </div>
+
+                    {/* Finished Garment Readout & Dual Readout */}
+                    <div className="flex items-center justify-between mt-2 pt-1 text-[10px] font-mono text-slate-400">
+                      <span>Dual: <span className="text-slate-300 font-semibold">{dualVal}</span></span>
+                      {isAffected && easeOffset !== 0 ? (
+                        <span className="text-amber-300/90 font-medium">Finished with {fitPref} ease: {finishedVal}"</span>
+                      ) : (
+                        <span className="text-slate-500">Base Anatomical</span>
+                      )}
                     </div>
 
                     {hasError && (
