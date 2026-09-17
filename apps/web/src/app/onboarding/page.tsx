@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Scissors,
@@ -22,13 +23,18 @@ import {
   Crown,
   Layers,
   Palette,
-  PartyPopper,
   Store,
+  ChevronRight,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { fetchApi } from '@/lib/api';
 import { slugify, isValidSlug } from '@/lib/slug';
 import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
-import { Tooltip } from '@/components/Tooltip';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import type {
   SlugCheckerState,
   SlugCheckResponse,
@@ -41,7 +47,7 @@ interface TemplateItem {
   category: string;
   description: string;
   pomsCount: number;
-  badgeClass: string;
+  badgeVariant: 'gold' | 'info' | 'success' | 'warning';
   icon: React.ElementType;
 }
 
@@ -50,36 +56,40 @@ const TEMPLATE_OPTIONS: TemplateItem[] = [
     id: 'mens_ethnic',
     name: "Men's Ethnic",
     category: 'Ethnic & Royal',
-    description: 'Pre-loaded POMs for Sherwanis, Kurta Pyjamas, Nehru Jackets, Dhoti Sets & Royal Bandhgalas.',
+    description:
+      'Pre-loaded POMs for Sherwanis, Kurta Pyjamas, Nehru Jackets, Dhoti Sets & Royal Bandhgalas.',
     pomsCount: 28,
-    badgeClass: 'badge-gold',
+    badgeVariant: 'gold',
     icon: Layers,
   },
   {
     id: 'mens_western',
     name: "Men's Western",
     category: 'Bespoke Western',
-    description: 'Precision POM schemas for 3-Piece Suits, Dinner Tuxedos, Blazers, Dress Shirts & Trousers.',
+    description:
+      'Precision POM schemas for 3-Piece Suits, Dinner Tuxedos, Blazers, Dress Shirts & Trousers.',
     pomsCount: 32,
-    badgeClass: 'badge-blue',
+    badgeVariant: 'info',
     icon: Shirt,
   },
   {
     id: 'womens_ethnic',
     name: "Women's Ethnic",
     category: 'Couture Ethnic',
-    description: 'Structured POM blueprints for Lehenga Cholis, Heavy Sari Blouses, Anarkalis & Gararas.',
+    description:
+      'Structured POM blueprints for Lehenga Cholis, Heavy Sari Blouses, Anarkalis & Gararas.',
     pomsCount: 36,
-    badgeClass: 'badge-emerald',
+    badgeVariant: 'success',
     icon: Crown,
   },
   {
     id: 'womens_couture',
     name: "Women's Couture",
     category: 'High Couture',
-    description: 'Advanced measurement logic for Evening Gowns, Structured Corsetry, Ballgowns & Draped Capes.',
+    description:
+      'Advanced measurement logic for Evening Gowns, Structured Corsetry, Ballgowns & Draped Capes.',
     pomsCount: 40,
-    badgeClass: 'badge-amber',
+    badgeVariant: 'warning',
     icon: Palette,
   },
 ];
@@ -116,6 +126,10 @@ export default function MultiTenantOnboardingPage() {
     confirmPassword: '',
   });
 
+  // Password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   // Slug Availability State
   const [slugState, setSlugState] = useState<SlugCheckerState>({
     status: 'idle',
@@ -139,7 +153,10 @@ export default function MultiTenantOnboardingPage() {
         isSlugManuallyEdited: draft.isSlugManuallyEdited ?? prev.isSlugManuallyEdited,
         city: draft.city || prev.city,
         phone: draft.phone || prev.phone,
-        templates: Array.isArray(draft.templates) && draft.templates.length > 0 ? draft.templates : prev.templates,
+        templates:
+          Array.isArray(draft.templates) && draft.templates.length > 0
+            ? draft.templates
+            : prev.templates,
         ownerName: draft.ownerName || prev.ownerName,
         email: draft.email || prev.email,
       }));
@@ -349,324 +366,409 @@ export default function MultiTenantOnboardingPage() {
     }
   };
 
-  const selectedTemplateItems = TEMPLATE_OPTIONS.filter((t) => formState.templates.includes(t.id));
-  const totalPomsSeeded = selectedTemplateItems.reduce((acc, curr) => acc + curr.pomsCount, 0);
-
   return (
-    <div className="space-y-6 animate-fade-in max-w-4xl mx-auto pb-12">
-      <div className="glass-card-gold rounded-3xl p-6 sm:p-10 border border-gold-500/30 shadow-2xl">
-        {isSuccess ? (
-          <div className="py-8 text-center space-y-6 animate-fade-in">
-            <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-500/30 via-yellow-500/20 to-emerald-400/30 border-2 border-emerald-400 text-emerald-400 flex items-center justify-center shadow-2xl shadow-emerald-500/30 pulse-gold">
-                <Check className="w-10 h-10 stroke-[3] text-emerald-300" />
-              </div>
-            </div>
+    <div className="min-h-screen bg-canvas text-slate-100 py-12 px-4 sm:px-6 lg:px-8 flex flex-col justify-center items-center relative overflow-hidden font-sans selection:bg-yellow-500/25 selection:text-yellow-200">
+      {/* Decorative Ambient Lighting */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-gradient-to-tr from-[#D4AF37]/10 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-            <div className="space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                Workspace Provisioned Successfully!
-              </h2>
-              <p className="text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
-                Atelier <span className="text-yellow-400 font-mono font-bold">{formState.boutiqueName}</span> has been activated under <span className="text-white font-mono font-bold">{formState.email}</span>. Please sign in with your password to enter your private workspace.
-              </p>
-            </div>
-
-            <div className="pt-4 flex justify-center max-w-md mx-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  removeLocalStorage('yh_auth_user');
-                  removeLocalStorage('yh_customers');
-                  removeLocalStorage('yh_orders');
-                  removeLocalStorage('yh_measurements_current');
-                  router.push('/login');
-                }}
-                className="btn-gold w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2"
-              >
-                <span>Sign In to Workspace</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+      {/* Brand Header */}
+      <div className="text-center mb-8 animate-fade-in flex flex-col items-center relative z-10">
+        <Link href="/" className="group inline-flex flex-col items-center focus:outline-none">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#D4AF37] via-amber-400 to-[#C59B27] p-0.5 shadow-ios-gold group-hover:scale-105 transition-transform duration-300 mb-2.5">
+            <div className="w-full h-full bg-[#07090E] rounded-[14px] flex items-center justify-center">
+              <Scissors className="w-6 h-6 text-yellow-400 group-hover:rotate-12 transition-transform duration-300" />
             </div>
           </div>
-        ) : (
-          <>
-            <div className="text-center mb-6 space-y-1.5">
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>3-Step Atelier Setup Wizard</span>
+          <div className="flex items-center space-x-2">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-white group-hover:text-yellow-300 transition-colors">
+              YellowHouse
+            </h1>
+            <Badge variant="gold" size="sm">OS</Badge>
+          </div>
+        </Link>
+      </div>
+
+      <div className="w-full max-w-3xl relative z-10">
+        <Card variant="glass" padding="lg" className="rounded-3xl border-white/10 shadow-ios-xl">
+          {isSuccess ? (
+            /* SUCCESS PROVISIONING SCREEN WITH DEMO DATA EVICTION */
+            <div className="py-8 text-center space-y-6 animate-fade-in">
+              <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 flex items-center justify-center shadow-ios-lg">
+                <Check className="w-10 h-10 stroke-[3]" />
               </div>
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                Multi-Tenant Atelier Onboarding
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400 max-w-lg mx-auto">
-                Configure your boutique identity, seed measurement schemas, and activate your master owner account.
-              </p>
+
+              <div className="space-y-2">
+                <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                  Workspace Provisioned Successfully!
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto leading-relaxed">
+                  Atelier <span className="text-yellow-400 font-mono font-bold">{formState.boutiqueName}</span> has been activated under{' '}
+                  <span className="text-white font-mono font-bold">{formState.email}</span>. Please sign in with your credentials to enter your private isolated workspace.
+                </p>
+              </div>
+
+              <div className="pt-4 flex justify-center max-w-sm mx-auto">
+                <Button
+                  variant="gold"
+                  size="lg"
+                  onClick={() => {
+                    // CRITICAL INTEGRITY INVARIANT: Clean up all demo data upon sign-in
+                    removeLocalStorage('yh_auth_user');
+                    removeLocalStorage('yh_customers');
+                    removeLocalStorage('yh_orders');
+                    removeLocalStorage('yh_measurements_current');
+                    removeLocalStorage('yh_onboarding_draft');
+                    router.push('/login');
+                  }}
+                  rightIcon={<ArrowRight className="w-4 h-4" />}
+                  className="w-full shadow-ios-gold"
+                >
+                  Sign In to Workspace
+                </Button>
+              </div>
             </div>
-
-            {error && (
-              <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium flex items-center space-x-2.5 animate-fade-in">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {step === 1 && (
-              <form onSubmit={handleNextFromStep1} className="space-y-6 animate-fade-in">
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                    <Building2 className="w-4 h-4 text-yellow-400" />
-                    <span>1. Boutique Details & Workspace Identity</span>
-                  </h3>
+          ) : (
+            <>
+              {/* WIZARD HEADER & PROGRESS INDICATOR */}
+              <div className="text-center mb-8 space-y-3">
+                <div className="inline-flex items-center space-x-2 badge-gold px-3.5 py-1 rounded-full text-xs font-semibold">
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                  <span>3-Step Atelier Setup Wizard</span>
                 </div>
+                <h2 className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                  Multi-Tenant Atelier Onboarding
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Configure your boutique identity, seed measurement schemas, and activate your master owner account.
+                </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label htmlFor="boutiqueName" className="text-xs font-semibold text-slate-300">
-                      Boutique / Atelier Name <span className="text-yellow-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <Store className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
+                {/* APPLE-GRADE CONTINUOUS 3-STEP PROGRESS PILL */}
+                <div className="pt-3 max-w-md mx-auto">
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { num: 1, label: 'Atelier Identity' },
+                      { num: 2, label: 'CAD Blueprints' },
+                      { num: 3, label: 'Owner Launch' },
+                    ].map((s) => (
+                      <div key={s.num} className="flex flex-col items-center space-y-1.5">
+                        <div
+                          className={`h-1.5 w-full rounded-full transition-all duration-300 ${
+                            step >= s.num
+                              ? 'bg-gradient-to-r from-yellow-400 to-amber-500 shadow-ios-gold'
+                              : 'bg-slate-800'
+                          }`}
+                        />
+                        <span
+                          className={`text-[11px] font-semibold tracking-tight transition-colors ${
+                            step >= s.num ? 'text-white' : 'text-slate-500'
+                          }`}
+                        >
+                          {s.num}. {s.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {error && (
+                <div className="mb-6 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center space-x-2.5 animate-fade-in shadow-ios-sm">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* STEP 1: IDENTITY & SLUG VERIFICATION */}
+              {step === 1 && (
+                <form onSubmit={handleNextFromStep1} className="space-y-6 animate-fade-in">
+                  <div className="space-y-1 border-b border-white/5 pb-3">
+                    <h3 className="font-display text-base font-bold text-white flex items-center space-x-2 tracking-tight">
+                      <Building2 className="w-4 h-4 text-yellow-400" />
+                      <span>1. Boutique Details & Workspace Identity</span>
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <Input
                         id="boutiqueName"
+                        label="Boutique / Atelier Name *"
                         type="text"
                         required
                         placeholder="e.g. Royal Savile Row Atelier"
                         value={formState.boutiqueName}
                         onChange={handleBoutiqueNameChange}
-                        className="input-dark pl-9"
+                        leftIcon={<Store className="w-4 h-4" />}
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-1.5 md:col-span-1">
-                    <label htmlFor="city" className="text-xs font-semibold text-slate-300">
-                      City <span className="text-yellow-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <MapPin className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
+                    <div className="md:col-span-1">
+                      <Input
                         id="city"
+                        label="City *"
                         type="text"
                         required
-                        placeholder="e.g. Mumbai"
+                        placeholder="e.g. Mumbai / London"
                         value={formState.city}
-                        onChange={(e) => setFormState(prev => ({ ...prev, city: e.target.value }))}
-                        className="input-dark pl-9"
+                        onChange={(e) =>
+                          setFormState((prev) => ({ ...prev, city: e.target.value }))
+                        }
+                        leftIcon={<MapPin className="w-4 h-4" />}
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-1.5 md:col-span-1">
-                    <label htmlFor="phone" className="text-xs font-semibold text-slate-300">
-                      Phone <span className="text-yellow-400">*</span>
-                    </label>
-                    <div className="relative">
-                      <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
+                    <div className="md:col-span-1">
+                      <Input
                         id="phone"
+                        label="Phone *"
                         type="tel"
                         required
                         placeholder="e.g. +91 98765 43210"
                         value={formState.phone}
-                        onChange={(e) => setFormState(prev => ({ ...prev, phone: e.target.value }))}
-                        className="input-dark pl-9"
+                        onChange={(e) =>
+                          setFormState((prev) => ({ ...prev, phone: e.target.value }))
+                        }
+                        leftIcon={<Phone className="w-4 h-4" />}
                       />
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label
+                        htmlFor="tenantSlug"
+                        className="block text-xs font-semibold text-slate-300 tracking-tight"
+                      >
+                        Custom Tenant Subdomain Slug *
+                      </label>
+                      <input
+                        id="tenantSlug"
+                        type="text"
+                        required
+                        placeholder="royal-savile-row"
+                        value={formState.slug}
+                        onChange={handleSlugChange}
+                        className={`w-full bg-slate-900/70 border rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-500 backdrop-blur-xl font-mono transition-all outline-none ${
+                          slugState.status === 'invalid' || slugState.status === 'taken'
+                            ? 'border-rose-500/80 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+                            : slugState.status === 'available'
+                            ? 'border-emerald-500/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                            : 'border-white/10 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]/20'
+                        }`}
+                      />
+
+                      {formState.slug && (
+                        <div className="mt-1.5 flex items-center space-x-1.5 text-xs font-medium">
+                          {slugState.status === 'checking' && (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-yellow-400" />
+                              <span className="text-slate-400">{slugState.message}</span>
+                            </>
+                          )}
+                          {slugState.status === 'available' && (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-emerald-400 font-medium">{slugState.message}</span>
+                            </>
+                          )}
+                          {(slugState.status === 'taken' || slugState.status === 'invalid') && (
+                            <>
+                              <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                              <span className="text-rose-400 font-medium">{slugState.message}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label htmlFor="tenantSlug" className="text-xs font-semibold text-slate-300">
-                      Custom Tenant Subdomain Slug <span className="text-yellow-400">*</span>
-                    </label>
-                    <input
-                      id="tenantSlug"
-                      type="text"
-                      required
-                      placeholder="royal-savile-row"
-                      value={formState.slug}
-                      onChange={handleSlugChange}
-                      className={`input-dark font-mono ${slugState.status === 'invalid' || slugState.status === 'taken' ? 'border-rose-500/50 focus:border-rose-500' : slugState.status === 'available' ? 'border-emerald-500/50 focus:border-emerald-500' : ''}`}
-                    />
-                    {formState.slug && (
-                      <div className="mt-1.5 flex items-center space-x-1.5 text-xs font-medium">
-                        {slugState.status === 'checking' && (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin text-yellow-400" />
-                            <span className="text-slate-400">{slugState.message}</span>
-                          </>
-                        )}
-                        {slugState.status === 'available' && (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-400">{slugState.message}</span>
-                          </>
-                        )}
-                        {(slugState.status === 'taken' || slugState.status === 'invalid') && (
-                          <>
-                            <XCircle className="w-3.5 h-3.5 text-rose-400" />
-                            <span className="text-rose-400">{slugState.message}</span>
-                          </>
-                        )}
-                      </div>
-                    )}
+                  <div className="pt-4 border-t border-white/5 flex justify-end">
+                    <Button
+                      type="submit"
+                      variant="gold"
+                      size="md"
+                      rightIcon={<ArrowRight className="w-4 h-4" />}
+                    >
+                      Continue to Blueprints
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* STEP 2: BLUEPRINT PRESET SELECTION */}
+              {step === 2 && (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="space-y-1 border-b border-white/5 pb-3">
+                    <h3 className="font-display text-base font-bold text-white flex items-center space-x-2 tracking-tight">
+                      <Ruler className="w-4 h-4 text-yellow-400" />
+                      <span>2. Measurement Template Selection</span>
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {TEMPLATE_OPTIONS.map((tmpl) => {
+                      const isSelected = formState.templates.includes(tmpl.id);
+                      const IconComponent = tmpl.icon;
+                      return (
+                        <Card
+                          key={tmpl.id}
+                          variant={isSelected ? 'gold' : 'glass'}
+                          padding="md"
+                          hoverable
+                          onClick={() => toggleTemplate(tmpl.id)}
+                          className={`rounded-2.5xl cursor-pointer border transition-all ${
+                            isSelected
+                              ? 'border-[#D4AF37]/50 shadow-ios-gold'
+                              : 'border-white/10 hover:border-white/20 shadow-ios-sm'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-slate-850 flex items-center justify-center text-yellow-400 border border-white/10">
+                                <IconComponent className="w-4 h-4" />
+                              </div>
+                              <h4 className="font-display text-sm font-bold text-white tracking-tight">{tmpl.name}</h4>
+                            </div>
+                            <Badge variant={tmpl.badgeVariant} size="sm">
+                              {tmpl.pomsCount} POMs
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1 leading-relaxed">{tmpl.description}</p>
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-4 border-t border-white/5 flex justify-between">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="md"
+                      onClick={() => setStep(1)}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="gold"
+                      size="md"
+                      onClick={handleNextFromStep2}
+                      rightIcon={<ArrowRight className="w-4 h-4" />}
+                    >
+                      Continue to Owner Setup
+                    </Button>
                   </div>
                 </div>
+              )}
 
-                <div className="pt-4 border-t border-slate-800/80 flex justify-end">
-                  <button
-                    type="submit"
-                    className="btn-gold px-6 py-3 rounded-xl text-sm font-bold flex items-center space-x-2"
-                  >
-                    <span>Continue to Templates</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </form>
-            )}
+              {/* STEP 3: ATELIER OWNER SETUP & LAUNCH */}
+              {step === 3 && (
+                <form onSubmit={handleFinalSubmit} className="space-y-6 animate-fade-in">
+                  <div className="space-y-1 border-b border-white/5 pb-3">
+                    <h3 className="font-display text-base font-bold text-white flex items-center space-x-2 tracking-tight">
+                      <User className="w-4 h-4 text-yellow-400" />
+                      <span>3. Atelier Owner Account Setup</span>
+                    </h3>
+                  </div>
 
-            {step === 2 && (
-              <div className="space-y-6 animate-fade-in">
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                    <Ruler className="w-4 h-4 text-yellow-400" />
-                    <span>2. Measurement Template Selection</span>
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {TEMPLATE_OPTIONS.map((tmpl) => {
-                    const isSelected = formState.templates.includes(tmpl.id);
-                    return (
-                      <div
-                        key={tmpl.id}
-                        onClick={() => toggleTemplate(tmpl.id)}
-                        className={`cursor-pointer rounded-2xl p-5 border transition-all ${
-                          isSelected
-                            ? 'glass-card-gold border-yellow-500/50'
-                            : 'glass-card border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <h4 className="text-sm font-bold text-white">{tmpl.name}</h4>
-                        <p className="text-xs text-slate-400 mt-1">{tmpl.description}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="pt-4 border-t border-slate-800/80 flex justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="btn-ghost px-5 py-2.5 text-xs"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleNextFromStep2}
-                    className="btn-gold px-6 py-2.5 text-xs font-bold"
-                  >
-                    Continue to Owner Setup
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {step === 3 && (
-              <form onSubmit={handleFinalSubmit} className="space-y-6 animate-fade-in">
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                    <User className="w-4 h-4 text-yellow-400" />
-                    <span>3. Atelier Owner Account Setup</span>
-                  </h3>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="ownerName" className="text-xs font-semibold text-slate-300">
-                      Owner Name
-                    </label>
-                    <input
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
                       id="ownerName"
+                      label="Owner Full Name *"
                       type="text"
                       required
                       placeholder="Master Latif"
                       value={formState.ownerName}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, ownerName: e.target.value }))}
-                      className="input-dark"
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, ownerName: e.target.value }))
+                      }
+                      leftIcon={<User className="w-4 h-4" />}
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="ownerEmail" className="text-xs font-semibold text-slate-300">
-                      Owner Email
-                    </label>
-                    <input
+
+                    <Input
                       id="ownerEmail"
+                      label="Owner Email *"
                       type="email"
                       required
                       placeholder="latif@atelier.com"
                       value={formState.email}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, email: e.target.value }))}
-                      className="input-dark"
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, email: e.target.value }))
+                      }
+                      leftIcon={<Mail className="w-4 h-4" />}
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="password" className="text-xs font-semibold text-slate-300">
-                      Password
-                    </label>
-                    <input
+
+                    <Input
                       id="password"
-                      type="password"
+                      label="Password (min. 6 chars) *"
+                      type={showPassword ? 'text' : 'password'}
                       required
                       minLength={6}
+                      placeholder="••••••••••••"
                       value={formState.password}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, password: e.target.value }))}
-                      className="input-dark"
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, password: e.target.value }))
+                      }
+                      leftIcon={<Lock className="w-4 h-4" />}
+                      rightIcon={
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="text-slate-400 hover:text-slate-200 transition-colors pointer-events-auto"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      }
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="confirmPassword" className="text-xs font-semibold text-slate-300">
-                      Confirm Password
-                    </label>
-                    <input
-                      id="confirmPassword"
-                      type="password"
-                      required
-                      value={formState.confirmPassword}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                      className="input-dark"
-                    />
-                  </div>
-                </div>
 
-                <div className="pt-4 border-t border-slate-800/80 flex justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setStep(2)}
-                    className="btn-ghost px-5 py-2.5 text-xs"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="btn-gold px-6 py-2.5 text-xs font-bold flex items-center space-x-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Provisioning...</span>
-                      </>
-                    ) : (
-                      <span>Launch My Atelier</span>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
-          </>
-        )}
+                    <Input
+                      id="confirmPassword"
+                      label="Confirm Password *"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      required
+                      placeholder="••••••••••••"
+                      value={formState.confirmPassword}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                      }
+                      leftIcon={<Lock className="w-4 h-4" />}
+                      rightIcon={
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="text-slate-400 hover:text-slate-200 transition-colors pointer-events-auto"
+                          aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      }
+                    />
+                  </div>
+
+                  <div className="pt-4 border-t border-white/5 flex justify-between">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="md"
+                      onClick={() => setStep(2)}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="gold"
+                      size="md"
+                      isLoading={isSubmitting}
+                      rightIcon={<ArrowRight className="w-4 h-4" />}
+                      className="shadow-ios-gold"
+                    >
+                      {isSubmitting ? 'Provisioning...' : 'Launch My Atelier'}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </>
+          )}
+        </Card>
       </div>
     </div>
   );

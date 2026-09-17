@@ -33,108 +33,26 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { Tooltip } from '@/components/Tooltip';
-
-interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  plan: 'Enterprise' | 'Pro' | 'Starter';
-  status: 'Active' | 'Suspended';
-  staffCount: number;
-  orders: number;
-  mrr: string;
-  mrrValue: number;
-  owner: string;
-  location: string;
-  joinedDate: string;
-}
-
-const initialTenants: Tenant[] = [
-  {
-    id: 't-1',
-    name: 'Royal Silhouette Atelier',
-    slug: 'royal-silhouette',
-    plan: 'Enterprise',
-    status: 'Active',
-    staffCount: 12,
-    orders: 342,
-    mrr: '₹45,000',
-    mrrValue: 45000,
-    owner: 'Vikramaditya R.',
-    location: 'New Delhi',
-    joinedDate: 'Jan 2024',
-  },
-  {
-    id: 't-2',
-    name: 'Maharani Couture House',
-    slug: 'maharani-couture',
-    plan: 'Pro',
-    status: 'Active',
-    staffCount: 8,
-    orders: 215,
-    mrr: '₹25,000',
-    mrrValue: 25000,
-    owner: 'Sunita Rao',
-    location: 'Jaipur',
-    joinedDate: 'Mar 2024',
-  },
-  {
-    id: 't-3',
-    name: "Nawab's Bespoke",
-    slug: 'nawabs-bespoke',
-    plan: 'Pro',
-    status: 'Active',
-    staffCount: 6,
-    orders: 178,
-    mrr: '₹25,000',
-    mrrValue: 25000,
-    owner: 'Tariq Nawab',
-    location: 'Lucknow',
-    joinedDate: 'Apr 2024',
-  },
-  {
-    id: 't-4',
-    name: 'Silk Thread Studio',
-    slug: 'silk-thread',
-    plan: 'Starter',
-    status: 'Active',
-    staffCount: 3,
-    orders: 89,
-    mrr: '₹5,000',
-    mrrValue: 5000,
-    owner: 'Ananya Sharma',
-    location: 'Bengaluru',
-    joinedDate: 'May 2024',
-  },
-  {
-    id: 't-5',
-    name: 'Zari & Zardozi Works',
-    slug: 'zari-zardozi',
-    plan: 'Pro',
-    status: 'Suspended',
-    staffCount: 5,
-    orders: 134,
-    mrr: '₹0',
-    mrrValue: 0,
-    owner: 'Farooq Ali',
-    location: 'Hyderabad',
-    joinedDate: 'Feb 2024',
-  },
-  {
-    id: 't-6',
-    name: 'Golden Needle Tailors',
-    slug: 'golden-needle',
-    plan: 'Starter',
-    status: 'Active',
-    staffCount: 2,
-    orders: 45,
-    mrr: '₹5,000',
-    mrrValue: 5000,
-    owner: 'Ramesh Kumar',
-    location: 'Mumbai',
-    joinedDate: 'Jun 2024',
-  },
-];
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import {
+  Tenant,
+  TenantPlan,
+  TenantStatus,
+  AuditLog,
+  INITIAL_TENANTS,
+  verifyMasterPasskey,
+  isSuperAdminUser,
+  filterTenants,
+  computeTenantStats,
+  toggleTenantStatus as executeToggleTenantStatus,
+  createNewTenant,
+  aggregateAuditLogs,
+  generateAuditCsv,
+} from '@/lib/admin-utils';
 
 export default function GlobalAdminDashboard() {
   const router = useRouter();
@@ -142,14 +60,16 @@ export default function GlobalAdminDashboard() {
   const [adminPasskey, setAdminPasskey] = useState('');
   const [passkeyError, setPasskeyError] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [tenants, setTenants] = useState<Tenant[]>(() => getLocalStorage('yh_admin_tenants', initialTenants));
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>(() =>
+    getLocalStorage<Tenant[]>('yh_admin_tenants', INITIAL_TENANTS)
+  );
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [showAuditPanel, setShowAuditPanel] = useState(false);
 
-  // RBAC Route Guard
+  // RBAC Route Guard: Auto-authorize if user already holds SUPER_ADMIN or SYSTEM_ADMIN
   useEffect(() => {
     const user = getLocalStorage<{ name: string; role: string } | null>('yh_auth_user', null);
-    if (user && (user.role === 'SUPER_ADMIN' || user.role === 'SYSTEM_ADMIN')) {
+    if (isSuperAdminUser(user)) {
       setIsAuthorized(true);
     }
   }, []);
@@ -166,26 +86,15 @@ export default function GlobalAdminDashboard() {
     setIsAuthenticating(true);
 
     setTimeout(() => {
-      // Secure internal admin passkeys
-      if (adminPasskey === 'yh-admin-2026' || adminPasskey === 'admin123' || adminPasskey === 'yellowhouse@admin') {
-        const adminUser = {
-          id: 'usr_sysadmin_internal',
-          name: 'Platform Administrator',
-          email: 'admin@yellowhouse.com',
-          role: 'SUPER_ADMIN',
-          tenant: {
-            id: 'tenant-global-sys',
-            name: 'YellowHouse Platform HQ',
-            code: 'GLOBAL-HQ',
-          },
-          loggedInAt: new Date().toISOString(),
-        };
-
-        setLocalStorage('yh_auth_user', adminUser);
+      const result = verifyMasterPasskey(adminPasskey);
+      if (result.success && result.user) {
+        setLocalStorage('yh_auth_user', result.user);
         setIsAuthorized(true);
-        setNotification('Administrative access granted. Welcome to Global System Console.');
+        showNotification('Administrative access granted. Welcome to Global Security Console.');
       } else {
-        setPasskeyError('Invalid administrative passkey. Access restricted to authorized platform personnel.');
+        setPasskeyError(
+          result.error || 'Invalid administrative passkey. Access restricted to authorized platform personnel.'
+        );
       }
       setIsAuthenticating(false);
     }, 400);
@@ -196,32 +105,18 @@ export default function GlobalAdminDashboard() {
     setLocalStorage('yh_admin_tenants', tenants);
   }, [tenants]);
 
-  // Aggregate Audit Logs
+  // Aggregate Audit Logs from soft-delete keys
   useEffect(() => {
     if (showAuditPanel) {
-      const deletedOrders = getLocalStorage('yh_deleted_orders_log', []) || [];
-      const deletedCustomers = getLocalStorage('yh_deleted_customers_log', []) || [];
-      const deletedJobs = getLocalStorage('yh_deleted_jobs_log', []) || [];
-      
-      let combined = [
-        ...deletedOrders.map((l: any) => ({ ...l, entity: 'Order', entityName: l.orderNumber || l.id })),
-        ...deletedCustomers.map((l: any) => ({ ...l, entity: 'Customer', entityName: l.customerName || l.id })),
-        ...deletedJobs.map((l: any) => ({ ...l, entity: 'Job', entityName: l.jobTitle || l.id }))
-      ];
-      
-      const normalizedLogs = combined.map(l => ({
-        id: l.id || Date.now().toString() + Math.random(),
-        action: l.action || 'DELETE',
-        entity: l.entity,
-        entityName: l.entityName || 'Unknown',
-        reason: l.reason || 'No reason provided',
-        timestamp: l.timestamp || l.deletedAt || new Date().toISOString()
-      }));
+      const deletedOrders = getLocalStorage<any[]>('yh_deleted_orders_log', []) || [];
+      const deletedCustomers = getLocalStorage<any[]>('yh_deleted_customers_log', []) || [];
+      const deletedJobs = getLocalStorage<any[]>('yh_deleted_jobs_log', []) || [];
 
-      normalizedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      setAuditLogs(normalizedLogs);
+      const normalized = aggregateAuditLogs(deletedOrders, deletedCustomers, deletedJobs);
+      setAuditLogs(normalized);
     }
   }, [showAuditPanel]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [planFilter, setPlanFilter] = useState<'All' | 'Enterprise' | 'Pro' | 'Starter'>('All');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Suspended'>('All');
@@ -232,7 +127,7 @@ export default function GlobalAdminDashboard() {
   // New Tenant Form state
   const [newTenantName, setNewTenantName] = useState('');
   const [newTenantSlug, setNewTenantSlug] = useState('');
-  const [newTenantPlan, setNewTenantPlan] = useState<'Enterprise' | 'Pro' | 'Starter'>('Pro');
+  const [newTenantPlan, setNewTenantPlan] = useState<TenantPlan>('Pro');
   const [newTenantOwner, setNewTenantOwner] = useState('');
   const [newTenantLocation, setNewTenantLocation] = useState('');
   const [newTenantStaff, setNewTenantStaff] = useState('5');
@@ -244,31 +139,16 @@ export default function GlobalAdminDashboard() {
 
   // Filtered tenants logic
   const filteredTenants = useMemo(() => {
-    return tenants.filter((t) => {
-      const matchesSearch =
-        t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.owner.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesPlan = planFilter === 'All' || t.plan === planFilter;
-      const matchesStatus = statusFilter === 'All' || t.status === statusFilter;
-      return matchesSearch && matchesPlan && matchesStatus;
-    });
+    return filterTenants(tenants, searchTerm, planFilter, statusFilter);
   }, [tenants, searchTerm, planFilter, statusFilter]);
 
   // Toggle tenant status
-  const toggleTenantStatus = (id: string) => {
-    setTenants((prev) =>
-      prev.map((t) => {
-        if (t.id === id) {
-          const newStatus = t.status === 'Active' ? 'Suspended' : 'Active';
-          const newMrr = newStatus === 'Suspended' ? '₹0' : t.plan === 'Enterprise' ? '₹45,000' : t.plan === 'Pro' ? '₹25,000' : '₹5,000';
-          const newMrrVal = newStatus === 'Suspended' ? 0 : t.plan === 'Enterprise' ? 45000 : t.plan === 'Pro' ? 25000 : 5000;
-          showNotification(`Tenant "${t.name}" status updated to ${newStatus}`);
-          return { ...t, status: newStatus, mrr: newMrr, mrrValue: newMrrVal };
-        }
-        return t;
-      })
-    );
+  const handleToggleStatus = (id: string) => {
+    const { updatedTenants, affectedTenant, newStatus } = executeToggleTenantStatus(tenants, id);
+    setTenants(updatedTenants);
+    if (affectedTenant) {
+      showNotification(`Tenant "${affectedTenant.name}" status updated to ${newStatus}`);
+    }
   };
 
   // Handle Add Tenant
@@ -276,23 +156,14 @@ export default function GlobalAdminDashboard() {
     e.preventDefault();
     if (!newTenantName || !newTenantSlug) return;
 
-    const mrrVal = newTenantPlan === 'Enterprise' ? 45000 : newTenantPlan === 'Pro' ? 25000 : 5000;
-    const mrrStr = `₹${mrrVal.toLocaleString('en-IN')}`;
-
-    const newTenant: Tenant = {
-      id: `t-${Date.now()}`,
+    const newTenant = createNewTenant({
       name: newTenantName,
-      slug: newTenantSlug.toLowerCase().replace(/\s+/g, '-'),
+      slug: newTenantSlug,
       plan: newTenantPlan,
-      status: 'Active',
-      staffCount: parseInt(newTenantStaff) || 1,
-      orders: 0,
-      mrr: mrrStr,
-      mrrValue: mrrVal,
-      owner: newTenantOwner || 'Atelier Manager',
-      location: newTenantLocation || 'India',
-      joinedDate: 'Just Now',
-    };
+      owner: newTenantOwner,
+      location: newTenantLocation,
+      staffCount: parseInt(newTenantStaff, 10) || 1,
+    });
 
     setTenants((prev) => [newTenant, ...prev]);
     setIsAddModalOpen(false);
@@ -307,48 +178,37 @@ export default function GlobalAdminDashboard() {
   };
 
   // Stats calculation
-  const { totalTenantsCount, activeSubsCount, monthlyRevenueStr, totalOrdersStr, karigarPoolCount, systemUptimeStr, distributionData } = useMemo(() => {
-    const total = tenants.length;
-    const active = tenants.filter(t => t.status === 'Active').length;
-    const rev = tenants.reduce((acc, t) => acc + (t.status === 'Active' ? t.mrrValue : 0), 0);
-    const orders = tenants.reduce((acc, t) => acc + t.orders, 0);
-    const staff = tenants.reduce((acc, t) => acc + t.staffCount, 0);
-
-    const proCount = tenants.filter(t => t.plan === 'Pro').length;
-    const starterCount = tenants.filter(t => t.plan === 'Starter').length;
-    const enterpriseCount = tenants.filter(t => t.plan === 'Enterprise').length;
-
-    return {
-      totalTenantsCount: total,
-      activeSubsCount: active,
-      monthlyRevenueStr: `₹${rev.toLocaleString('en-IN')}`,
-      totalOrdersStr: orders.toLocaleString('en-IN'),
-      karigarPoolCount: staff,
-      systemUptimeStr: '99.97%',
-      distributionData: [
-        { plan: 'Pro', count: proCount, percentage: total ? (proCount / total) * 100 : 0, color: 'bg-blue-500', badgeClass: 'badge-blue', icon: Zap },
-        { plan: 'Starter', count: starterCount, percentage: total ? (starterCount / total) * 100 : 0, color: 'bg-amber-500', badgeClass: 'badge-amber', icon: Layers },
-        { plan: 'Enterprise', count: enterpriseCount, percentage: total ? (enterpriseCount / total) * 100 : 0, color: 'bg-gold-500', badgeClass: 'badge-gold', icon: Crown },
-      ]
-    };
+  const {
+    totalTenantsCount,
+    activeSubsCount,
+    monthlyRevenueStr,
+    totalOrdersStr,
+    karigarPoolCount,
+    systemUptimeStr,
+    distributionData,
+  } = useMemo(() => {
+    return computeTenantStats(tenants);
   }, [tenants]);
 
   if (!isAuthorized) {
     return (
-      <div className="flex items-center justify-center min-h-[70vh] px-4 animate-fade-in">
-        <div className="max-w-md w-full glass-card rounded-3xl p-8 border border-amber-500/40 shadow-2xl shadow-amber-500/10 space-y-6 relative overflow-hidden">
-          {/* Glowing Top Pill */}
-          <div className="flex items-center justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/20 animate-pulse">
+      <div className="flex items-center justify-center min-h-[75vh] px-4 animate-fade-in">
+        <div className="max-w-md w-full backdrop-blur-2xl bg-slate-900/80 rounded-3xl p-8 border border-amber-500/30 shadow-ios-xl relative overflow-hidden space-y-6">
+          {/* Top Subtle Amber Ambient Highlight */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
+
+          {/* Glowing Pill Icon */}
+          <div className="flex items-center justify-center pt-2">
+            <div className="w-16 h-16 rounded-2.5xl bg-amber-500/15 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37] shadow-ios-gold animate-pulse">
               <Lock className="w-8 h-8" />
             </div>
           </div>
 
           <div className="text-center space-y-2">
-            <h2 className="text-2xl font-black text-white tracking-tight">
-              Internal Admin Console
+            <h2 className="text-2xl font-black text-white tracking-tight font-display">
+              Master Admin Console
             </h2>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed font-sans">
               This environment is strictly reserved for YellowHouse Platform Administrators and is password-protected.
             </p>
           </div>
@@ -357,15 +217,17 @@ export default function GlobalAdminDashboard() {
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
                 <span>Administrative Passkey</span>
-                <span className="text-[10px] font-mono text-amber-400">Restricted Access</span>
+                <span className="text-[10px] font-mono text-[#D4AF37] uppercase tracking-wider">
+                  Restricted Access
+                </span>
               </label>
               <div className="relative">
                 <input
                   type="password"
                   value={adminPasskey}
                   onChange={(e) => setAdminPasskey(e.target.value)}
-                  placeholder="Enter master passkey..."
-                  className="w-full px-4 py-3 rounded-xl bg-[#070A12] border border-slate-700 text-white placeholder-slate-500 text-sm font-mono focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
+                  placeholder="Enter master passkey (e.g. yh-admin-2026)..."
+                  className="w-full px-4 py-3 rounded-xl bg-[#070A12]/90 border border-slate-700/80 text-white placeholder-slate-500 text-sm font-mono focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
                   autoFocus
                 />
                 <Key className="w-4 h-4 text-slate-500 absolute right-3.5 top-3.5 pointer-events-none" />
@@ -379,38 +241,37 @@ export default function GlobalAdminDashboard() {
             </div>
 
             <div className="space-y-2 pt-2">
-              <button
+              <Button
                 type="submit"
-                disabled={isAuthenticating}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-600 hover:from-amber-300 hover:to-yellow-500 text-slate-950 font-extrabold text-xs flex items-center justify-center space-x-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                variant="gold"
+                size="lg"
+                isLoading={isAuthenticating}
+                className="w-full text-slate-950 font-extrabold text-xs shadow-ios-gold cursor-pointer"
               >
-                {isAuthenticating ? (
+                {!isAuthenticating && (
                   <>
-                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    <span>Verifying Credentials...</span>
-                  </>
-                ) : (
-                  <>
-                    <Shield className="w-4 h-4" />
+                    <Shield className="w-4 h-4 mr-2" />
                     <span>Unlock Admin Console</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="md"
                 onClick={() => router.push('/dashboard')}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold transition-colors"
+                className="w-full text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
               >
                 Return to Atelier Dashboard
-              </button>
+              </Button>
             </div>
           </form>
 
-          <div className="pt-3 border-t border-slate-800/80 text-center">
+          <div className="pt-3 border-t border-white/5 text-center">
             <p className="text-[11px] text-slate-500 font-mono">
-              YellowHouse SaaS Platform Security Engine
+              YellowHouse SaaS Platform Security Engine • Active Defense
             </p>
           </div>
         </div>
@@ -422,8 +283,8 @@ export default function GlobalAdminDashboard() {
     <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-8 animate-fade-in pb-12">
       {/* Toast Notification */}
       {notification && (
-        <div className="fixed bottom-6 right-6 z-50 glass-card-gold rounded-xl px-4 py-3 text-sm text-gold-300 font-semibold shadow-2xl flex items-center space-x-2 border border-gold-500/40 animate-fade-in">
-          <Sparkles className="w-4 h-4 text-gold-400" />
+        <div className="fixed bottom-6 right-6 z-50 backdrop-blur-2xl bg-slate-900/90 rounded-2xl px-5 py-3 text-sm text-yellow-300 font-semibold shadow-ios-xl flex items-center space-x-2 border border-[#D4AF37]/40 animate-fade-in">
+          <Sparkles className="w-4 h-4 text-[#D4AF37]" />
           <span>{notification}</span>
         </div>
       )}
@@ -432,39 +293,43 @@ export default function GlobalAdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400 shadow-lg shadow-gold-500/10">
-              <Shield className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-2xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] shadow-ios-gold">
+              <Shield className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight font-display flex items-center gap-2.5">
                 System Administration
-                <span className="badge badge-gold font-mono">
+                <Badge variant="gold" size="sm" className="font-mono">
                   Global OS v2.4
-                </span>
+                </Badge>
               </h1>
-              <p className="text-sm text-slate-400 mt-0.5">
-                Global platform oversight & tenant management
+              <p className="text-sm text-slate-400 mt-0.5 font-sans">
+                Global platform security console & multi-tenant atelier management
               </p>
             </div>
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => setShowAuditPanel(true)}
-            className="btn-ghost flex items-center space-x-2 text-xs cursor-pointer"
+            className="cursor-pointer gap-2"
           >
             <Server className="w-3.5 h-3.5" />
             <span>Audit Logs</span>
-          </button>
+          </Button>
           <Tooltip content="Provision new tenant boutique instance on platform">
-            <button
+            <Button
+              variant="gold"
+              size="sm"
               onClick={() => setIsAddModalOpen(true)}
-              className="btn-gold flex items-center space-x-2 text-xs cursor-pointer"
+              className="cursor-pointer gap-2 text-slate-950 font-bold"
             >
               <Plus className="w-4 h-4" />
               <span>Add New Tenant</span>
-            </button>
+            </Button>
           </Tooltip>
         </div>
       </div>
@@ -472,14 +337,14 @@ export default function GlobalAdminDashboard() {
       {/* 6 KPI Stat Cards (2 rows x 3 cols) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {/* Card 1: Total Tenants */}
-        <div className="glass-card rounded-2xl p-5 border border-slate-800/80 relative overflow-hidden group hover:border-slate-700 transition-all">
+        <Card variant="glass" padding="md" className="group hover:border-white/20 transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-3">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Total Tenants
             </span>
-            <span className="badge badge-emerald flex items-center gap-1">
+            <Badge variant="success" size="sm" className="gap-1">
               <ArrowUpRight className="w-3 h-3" /> +3 this month
-            </span>
+            </Badge>
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="flex items-center space-x-3">
@@ -494,63 +359,67 @@ export default function GlobalAdminDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Card 2: Active Subscriptions */}
-        <div className="glass-card rounded-2xl p-5 border border-slate-800/80 relative overflow-hidden group hover:border-slate-700 transition-all">
+        <Card variant="glass" padding="md" className="group hover:border-white/20 transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-3">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Active Subscriptions
             </span>
-            <span className="badge badge-gold font-mono">91.6% Active Rate</span>
+            <Badge variant="gold" size="sm" className="font-mono">
+              91.6% Active Rate
+            </Badge>
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-gold-500/10 border border-gold-500/20 text-gold-400">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[#D4AF37]">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <div>
                 <span className="text-3xl font-extrabold text-white tracking-tight font-mono">
                   {activeSubsCount}
                 </span>
-                <p className="text-[11px] text-slate-400 mt-0.5">2 Suspended / Pending review</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">1 Suspended / In Review</p>
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Card 3: Monthly Revenue */}
-        <div className="glass-card-gold rounded-2xl p-5 relative overflow-hidden group transition-all">
+        <Card variant="gold" padding="md" className="group transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-gold-400">
-              Monthly Revenue
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#D4AF37]">
+              Monthly Revenue (MRR)
             </span>
-            <span className="badge badge-gold flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 text-gold-400" /> +18.4% MoM
-            </span>
+            <Badge variant="gold" size="sm" className="gap-1">
+              <TrendingUp className="w-3 h-3 text-[#D4AF37]" /> +18.4% MoM
+            </Badge>
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="flex items-center space-x-3">
-              <div className="p-2.5 rounded-xl bg-gold-500/20 border border-gold-500/40 text-gold-400">
+              <div className="p-2.5 rounded-xl bg-amber-500/20 border border-[#D4AF37]/40 text-[#D4AF37]">
                 <IndianRupee className="w-5 h-5" />
               </div>
               <div>
-                <span className="text-3xl font-extrabold text-gold-400 tracking-tight font-mono">
+                <span className="text-3xl font-extrabold text-[#D4AF37] tracking-tight font-mono">
                   {monthlyRevenueStr}
                 </span>
-                <p className="text-[11px] text-slate-300 mt-0.5">Avg MRR ₹38,409 per tenant</p>
+                <p className="text-[11px] text-slate-300 mt-0.5">Recurring subscription baseline</p>
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Card 4: Total Orders (Platform) */}
-        <div className="glass-card rounded-2xl p-5 border border-slate-800/80 relative overflow-hidden group hover:border-slate-700 transition-all">
+        <Card variant="glass" padding="md" className="group hover:border-white/20 transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-3">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Total Orders (Platform)
             </span>
-            <span className="badge badge-blue">+240 this week</span>
+            <Badge variant="info" size="sm">
+              +240 this week
+            </Badge>
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="flex items-center space-x-3">
@@ -565,15 +434,17 @@ export default function GlobalAdminDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Card 5: Karigar Pool */}
-        <div className="glass-card rounded-2xl p-5 border border-slate-800/80 relative overflow-hidden group hover:border-slate-700 transition-all">
+        <Card variant="glass" padding="md" className="group hover:border-white/20 transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-3">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Karigar Pool
             </span>
-            <span className="badge badge-amber">94% Utilization</span>
+            <Badge variant="warning" size="sm">
+              94% Utilization
+            </Badge>
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="flex items-center space-x-3">
@@ -588,17 +459,17 @@ export default function GlobalAdminDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Card 6: System Uptime */}
-        <div className="glass-card rounded-2xl p-5 border border-slate-800/80 relative overflow-hidden group hover:border-slate-700 transition-all">
+        <Card variant="glass" padding="md" className="group hover:border-white/20 transition-all">
           <div className="flex items-center justify-between text-slate-400 mb-3">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               System Uptime
             </span>
-            <span className="badge badge-emerald flex items-center gap-1">
+            <Badge variant="success" size="sm" className="gap-1">
               <Server className="w-3 h-3" /> Operational
-            </span>
+            </Badge>
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="flex items-center space-x-3">
@@ -609,61 +480,65 @@ export default function GlobalAdminDashboard() {
                 <span className="text-3xl font-extrabold text-white tracking-tight font-mono">
                   {systemUptimeStr}
                 </span>
-                <p className="text-[11px] text-slate-400 mt-0.5">Avg response time: 42ms</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Avg response latency: 42ms</p>
               </div>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Mini Visualization: Subscription Plan Distribution */}
-      <div className="glass-card rounded-2xl p-6 border border-slate-800/80 space-y-4">
+      <Card variant="glass" padding="lg" className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-bold text-white flex items-center space-x-2">
-              <Layers className="w-4 h-4 text-gold-400" />
+            <h2 className="text-base font-bold text-white flex items-center space-x-2 font-display">
+              <Layers className="w-4 h-4 text-[#D4AF37]" />
               <span>Subscription Plan Distribution</span>
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5 font-sans">
               Platform tenant distribution breakdown across active subscription tiers
             </p>
           </div>
           <div className="flex items-center space-x-2 text-xs font-mono">
             <span className="text-slate-400">Total Tenants:</span>
-            <span className="text-gold-400 font-bold">24</span>
+            <span className="text-[#D4AF37] font-bold">{totalTenantsCount}</span>
           </div>
         </div>
 
         {/* Stacked Bar Container */}
         <div className="space-y-2">
-          <div className="h-4 w-full bg-slate-900 rounded-xl overflow-hidden flex border border-slate-800 p-0.5">
-            {distributionData.map((item) => (
-              <div
-                key={item.plan}
-                style={{ width: `${item.percentage}%` }}
-                className={`h-full ${item.color} first:rounded-l-lg last:rounded-r-lg transition-all duration-500 relative group cursor-pointer`}
-                title={`${item.plan}: ${item.count} tenants (${item.percentage}%)`}
-              />
-            ))}
+          <div className="h-4 w-full bg-slate-950/80 rounded-xl overflow-hidden flex border border-white/10 p-0.5 shadow-inner">
+            {distributionData.map((item) => {
+              const widthPct = Math.max(0, item.percentage);
+              if (widthPct === 0) return null;
+              return (
+                <div
+                  key={item.plan}
+                  style={{ width: `${widthPct}%` }}
+                  className={`h-full ${item.color} first:rounded-l-lg last:rounded-r-lg transition-all duration-500 relative group cursor-pointer`}
+                  title={`${item.plan}: ${item.count} tenants (${widthPct}%)`}
+                />
+              );
+            })}
           </div>
 
           {/* Breakdown cards / legends */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             {distributionData.map((item) => {
-              const IconComp = item.icon;
+              const IconComp = item.plan === 'Enterprise' ? Crown : item.plan === 'Pro' ? Zap : Layers;
               return (
                 <div
                   key={item.plan}
-                  className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition-colors"
+                  className="p-3.5 rounded-2xl bg-slate-900/60 border border-white/10 flex items-center justify-between hover:border-white/20 transition-colors"
                 >
                   <div className="flex items-center space-x-2.5">
-                    <span className={`badge ${item.badgeClass} flex items-center space-x-1`}>
-                      <IconComp className="w-3 h-3 mr-0.5" />
+                    <Badge variant={item.plan === 'Enterprise' ? 'gold' : item.plan === 'Pro' ? 'info' : 'warning'} size="sm">
+                      <IconComp className="w-3 h-3 mr-1" />
                       <span>{item.plan}</span>
-                    </span>
+                    </Badge>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-bold text-white font-mono">{item.count} tenants</span>
+                    <span className="text-sm font-bold text-white font-mono">{item.count} ateliers</span>
                     <span className="text-[11px] text-slate-400 block font-mono">({item.percentage}%)</span>
                   </div>
                 </div>
@@ -671,24 +546,24 @@ export default function GlobalAdminDashboard() {
             })}
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Tenant Directory Table Container */}
-      <div className="glass-card rounded-2xl border border-slate-800/80 overflow-hidden space-y-4 shadow-2xl">
+      <Card variant="glass" padding="none" className="overflow-hidden shadow-ios-xl">
         {/* Table Header & Controls */}
-        <div className="p-6 border-b border-slate-800/80 space-y-4">
+        <div className="p-6 border-b border-white/10 space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
-                <Building2 className="w-5 h-5 text-gold-400" />
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2 font-display">
+                <Building2 className="w-5 h-5 text-[#D4AF37]" />
                 <span>Tenant Directory</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5 font-sans">
                 Overview of all registered ateliers, subscription status, order volume, and revenue
               </p>
             </div>
             <div className="text-xs text-slate-400 font-mono">
-              Showing <span className="text-gold-400 font-bold">{filteredTenants.length}</span> of{' '}
+              Showing <span className="text-[#D4AF37] font-bold">{filteredTenants.length}</span> of{' '}
               <span className="text-slate-200">{tenants.length}</span> listed ateliers
             </div>
           </div>
@@ -703,12 +578,12 @@ export default function GlobalAdminDashboard() {
                 placeholder="Search tenant by name, slug, or owner..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="input-dark pl-10 pr-4 py-2 text-xs"
+                className="w-full pl-10 pr-8 py-2.5 rounded-full bg-slate-950/80 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all font-sans"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -721,7 +596,7 @@ export default function GlobalAdminDashboard() {
               <select
                 value={planFilter}
                 onChange={(e) => setPlanFilter(e.target.value as any)}
-                className="input-dark py-2 text-xs cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-full bg-slate-950/80 border border-white/10 text-slate-200 text-xs focus:outline-none focus:border-[#D4AF37] cursor-pointer font-sans"
               >
                 <option value="All">All Subscription Plans</option>
                 <option value="Enterprise">Enterprise Tier</option>
@@ -735,7 +610,7 @@ export default function GlobalAdminDashboard() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="input-dark py-2 text-xs cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-full bg-slate-950/80 border border-white/10 text-slate-200 text-xs focus:outline-none focus:border-[#D4AF37] cursor-pointer font-sans"
               >
                 <option value="All">All Statuses</option>
                 <option value="Active">Active Only</option>
@@ -749,7 +624,7 @@ export default function GlobalAdminDashboard() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-800/80 bg-slate-950/60 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+              <tr className="border-b border-white/10 bg-slate-950/60 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
                 <th className="px-6 py-3.5">Tenant Name</th>
                 <th className="px-4 py-3.5">Slug</th>
                 <th className="px-4 py-3.5">Plan</th>
@@ -760,7 +635,7 @@ export default function GlobalAdminDashboard() {
                 <th className="px-6 py-3.5 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-white/5">
               {filteredTenants.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
@@ -771,15 +646,15 @@ export default function GlobalAdminDashboard() {
                 </tr>
               ) : (
                 filteredTenants.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-800/40 transition-colors">
+                  <tr key={t.id} className="hover:bg-white/[0.03] transition-colors">
                     {/* Tenant Name */}
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-gold-400 text-xs">
+                        <div className="w-9 h-9 rounded-xl bg-slate-850 border border-white/10 flex items-center justify-center font-bold text-[#D4AF37] text-xs shadow-ios-sm">
                           {t.name.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-semibold text-white text-xs hover:text-gold-400 transition-colors">
+                          <p className="font-semibold text-white text-xs hover:text-[#D4AF37] transition-colors">
                             {t.name}
                           </p>
                           <p className="text-[11px] text-slate-500">
@@ -790,34 +665,34 @@ export default function GlobalAdminDashboard() {
                     </td>
 
                     {/* Slug */}
-                    <td className="px-4 py-4 font-mono text-gold-400 text-xs">
+                    <td className="px-4 py-4 font-mono text-[#D4AF37] text-xs">
                       {t.slug}
                     </td>
 
                     {/* Plan Badge */}
                     <td className="px-4 py-4">
-                      <span
-                        className={`badge ${
+                      <Badge
+                        variant={
                           t.plan === 'Enterprise'
-                            ? 'badge-gold'
+                            ? 'gold'
                             : t.plan === 'Pro'
-                            ? 'badge-blue'
-                            : 'badge-amber'
-                        }`}
+                            ? 'info'
+                            : 'warning'
+                        }
+                        size="sm"
                       >
                         {t.plan}
-                      </span>
+                      </Badge>
                     </td>
 
                     {/* Status Badge */}
                     <td className="px-4 py-4">
-                      <span
-                        className={`badge ${
-                          t.status === 'Active' ? 'badge-emerald' : 'badge-rose'
-                        }`}
+                      <Badge
+                        variant={t.status === 'Active' ? 'success' : 'danger'}
+                        size="sm"
                       >
                         {t.status}
-                      </span>
+                      </Badge>
                     </td>
 
                     {/* Staff Count */}
@@ -841,18 +716,24 @@ export default function GlobalAdminDashboard() {
                         <Tooltip content="Inspect tenant metadata and subscription details">
                           <button
                             onClick={() => setSelectedTenant(t)}
-                            className="p-1.5 rounded-lg border border-slate-800 text-slate-400 hover:text-gold-400 hover:bg-slate-800 transition-all cursor-pointer"
+                            className="p-2 rounded-xl border border-white/10 text-slate-400 hover:text-[#D4AF37] hover:bg-white/5 transition-all cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                         </Tooltip>
-                        <Tooltip content={t.status === 'Active' ? 'Suspend tenant platform access' : 'Reactivate tenant access'}>
+                        <Tooltip
+                          content={
+                            t.status === 'Active'
+                              ? 'Suspend tenant platform access'
+                              : 'Reactivate tenant access'
+                          }
+                        >
                           <button
-                            onClick={() => toggleTenantStatus(t.id)}
-                            className={`p-1.5 rounded-lg border text-xs transition-all cursor-pointer ${
+                            onClick={() => handleToggleStatus(t.id)}
+                            className={`p-2 rounded-xl border text-xs transition-all cursor-pointer ${
                               t.status === 'Active'
-                                ? 'border-rose-950 text-rose-400 hover:bg-rose-950/40'
-                                : 'border-emerald-950 text-emerald-400 hover:bg-emerald-950/40'
+                                ? 'border-rose-500/30 text-rose-400 hover:bg-rose-500/15'
+                                : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/15'
                             }`}
                           >
                             {t.status === 'Active' ? (
@@ -870,154 +751,154 @@ export default function GlobalAdminDashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
       {/* Modal: View Tenant Details */}
       {selectedTenant && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="glass-card-gold rounded-2xl max-w-lg w-full p-6 space-y-5 border border-gold-500/30 relative shadow-2xl">
+          <Card variant="gold" padding="lg" className="max-w-lg w-full space-y-5 shadow-ios-xl relative">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-gold-500/10 border border-gold-500/30 text-gold-400 font-bold flex items-center justify-center text-base">
+                <div className="w-11 h-11 rounded-2xl bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[#D4AF37] font-bold flex items-center justify-center text-base shadow-ios-gold">
                   {selectedTenant.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">{selectedTenant.name}</h3>
-                  <p className="text-xs text-gold-400 font-mono">{selectedTenant.slug}</p>
+                  <h3 className="text-lg font-bold text-white font-display">{selectedTenant.name}</h3>
+                  <p className="text-xs text-[#D4AF37] font-mono">{selectedTenant.slug}</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedTenant(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-white/10">
                 <p className="text-[10px] text-slate-400 uppercase font-semibold">Plan</p>
                 <p className="font-bold text-white mt-1">{selectedTenant.plan} Tier</p>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-white/10">
                 <p className="text-[10px] text-slate-400 uppercase font-semibold">Status</p>
                 <p className="font-bold text-white mt-1">{selectedTenant.status}</p>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-white/10">
                 <p className="text-[10px] text-slate-400 uppercase font-semibold">Owner / Admin</p>
                 <p className="font-bold text-white mt-1">{selectedTenant.owner}</p>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-white/10">
                 <p className="text-[10px] text-slate-400 uppercase font-semibold">Location</p>
                 <p className="font-bold text-white mt-1">{selectedTenant.location}</p>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-white/10">
                 <p className="text-[10px] text-slate-400 uppercase font-semibold">Staff Count</p>
                 <p className="font-bold text-white mt-1 font-mono">{selectedTenant.staffCount} Active Members</p>
               </div>
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-white/10">
                 <p className="text-[10px] text-slate-400 uppercase font-semibold">MRR</p>
-                <p className="font-bold text-gold-400 mt-1 font-mono">{selectedTenant.mrr}</p>
+                <p className="font-bold text-[#D4AF37] mt-1 font-mono">{selectedTenant.mrr}</p>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-              <button
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => {
-                  toggleTenantStatus(selectedTenant.id);
+                  handleToggleStatus(selectedTenant.id);
                   setSelectedTenant(null);
                 }}
-                className="btn-ghost text-xs flex items-center space-x-1 cursor-pointer"
+                className="cursor-pointer gap-1.5"
               >
-                {selectedTenant.status === 'Active' ? <Ban className="w-3.5 h-3.5 text-rose-400" /> : <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                {selectedTenant.status === 'Active' ? (
+                  <Ban className="w-3.5 h-3.5 text-rose-400" />
+                ) : (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                )}
                 <span>{selectedTenant.status === 'Active' ? 'Suspend Access' : 'Reactivate Access'}</span>
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="gold"
+                size="sm"
                 onClick={() => setSelectedTenant(null)}
-                className="btn-gold text-xs cursor-pointer"
+                className="cursor-pointer text-slate-950 font-bold"
               >
                 Close Details
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Modal: Audit Logs */}
       {showAuditPanel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="glass-card rounded-2xl max-w-4xl w-full p-6 flex flex-col max-h-[80vh] border border-slate-700 relative shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+          <Card variant="glass" padding="lg" className="max-w-4xl w-full flex flex-col max-h-[85vh] shadow-ios-xl relative">
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <h3 className="text-lg font-bold text-white flex items-center space-x-2 font-display">
                 <Server className="w-5 h-5 text-slate-400" />
-                <span>System Audit Logs</span>
+                <span>System Soft-Delete Audit Logs</span>
               </h3>
               <div className="flex items-center space-x-3">
-                <button
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => {
-                    const csvRows = [
-                      ['ID', 'Timestamp', 'Action', 'Entity', 'Entity Name', 'Reason'],
-                      ...auditLogs.map(l => [
-                        l.id,
-                        new Date(l.timestamp).toLocaleString(),
-                        l.action,
-                        l.entity,
-                        `"${l.entityName}"`,
-                        `"${l.reason}"`
-                      ])
-                    ];
-                    const csvContent = csvRows.map(e => e.join(",")).join("\n");
+                    const csvContent = generateAuditCsv(auditLogs);
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", url);
-                    link.setAttribute("download", "audit_logs.csv");
+                    const link = document.createElement('a');
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', 'yellowhouse_audit_logs.csv');
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                     showNotification('Audit Logs downloaded successfully');
                   }}
-                  className="btn-ghost text-xs flex items-center space-x-2 cursor-pointer"
+                  className="cursor-pointer gap-1.5 text-xs"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Export CSV</span>
-                </button>
+                </Button>
                 <button
                   onClick={() => setShowAuditPanel(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
-            
+
             <div className="flex-1 overflow-auto mt-4 pr-2 custom-scrollbar">
               {auditLogs.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 text-slate-500">
-                  <Activity className="w-8 h-8 mb-2 opacity-50" />
-                  <p className="text-sm">No audit logs found</p>
+                <div className="flex flex-col items-center justify-center h-48 text-slate-500 space-y-2">
+                  <Activity className="w-8 h-8 opacity-40" />
+                  <p className="text-sm font-medium">No soft-delete audit records found</p>
+                  <p className="text-xs text-slate-600">Soft-deleted orders, customers, and jobs appear here automatically</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs whitespace-nowrap">
-                    <thead className="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/50 sticky top-0">
+                    <thead className="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-950/60 sticky top-0">
                       <tr>
-                        <th className="px-4 py-3 font-medium rounded-tl-lg">Time</th>
+                        <th className="px-4 py-3 font-medium rounded-tl-xl">Time</th>
                         <th className="px-4 py-3 font-medium">Action</th>
                         <th className="px-4 py-3 font-medium">Entity</th>
-                        <th className="px-4 py-3 font-medium rounded-tr-lg">Details / Reason</th>
+                        <th className="px-4 py-3 font-medium rounded-tr-xl">Details / Reason</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-white/5">
                       {auditLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
+                        <tr key={log.id} className="hover:bg-white/[0.03] transition-colors">
                           <td className="px-4 py-3 text-slate-400 font-mono">
                             {new Date(log.timestamp).toLocaleString()}
                           </td>
                           <td className="px-4 py-3">
-                            <span className="badge badge-rose text-[10px]">
+                            <Badge variant="danger" size="sm" className="font-mono text-[10px]">
                               {log.action}
-                            </span>
+                            </Badge>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center space-x-2">
@@ -1038,30 +919,30 @@ export default function GlobalAdminDashboard() {
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Modal: Add New Tenant */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="glass-card-gold rounded-2xl max-w-md w-full p-6 space-y-4 border border-gold-500/30 relative shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                <Plus className="w-4 h-4 text-gold-400" />
+          <Card variant="gold" padding="lg" className="max-w-md w-full space-y-4 shadow-ios-xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-base font-bold text-white flex items-center space-x-2 font-display">
+                <Plus className="w-4 h-4 text-[#D4AF37]" />
                 <span>Onboard New Atelier Tenant</span>
               </h3>
               <button
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-xl text-slate-400 hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleAddTenant} className="space-y-3 text-xs">
+            <form onSubmit={handleAddTenant} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">Tenant Atelier Name *</label>
+                <label className="block text-slate-300 mb-1 font-medium">Tenant Atelier Name *</label>
                 <input
                   type="text"
                   required
@@ -1071,29 +952,29 @@ export default function GlobalAdminDashboard() {
                     setNewTenantName(e.target.value);
                     setNewTenantSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
                   }}
-                  className="input-dark"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-[#D4AF37]"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">Tenant Slug (Subdomain) *</label>
+                <label className="block text-slate-300 mb-1 font-medium">Tenant Slug (Subdomain) *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. royal-silk"
                   value={newTenantSlug}
                   onChange={(e) => setNewTenantSlug(e.target.value)}
-                  className="input-dark font-mono text-gold-400"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/10 text-[#D4AF37] font-mono text-xs focus:outline-none focus:border-[#D4AF37]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">Subscription Plan</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Subscription Plan</label>
                   <select
                     value={newTenantPlan}
                     onChange={(e) => setNewTenantPlan(e.target.value as any)}
-                    className="input-dark cursor-pointer"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950/80 border border-white/10 text-white text-xs cursor-pointer focus:outline-none focus:border-[#D4AF37]"
                   >
                     <option value="Starter">Starter (₹5,000/mo)</option>
                     <option value="Pro">Pro (₹25,000/mo)</option>
@@ -1101,56 +982,62 @@ export default function GlobalAdminDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-400 mb-1 font-medium">Staff Count</label>
+                  <label className="block text-slate-300 mb-1 font-medium">Staff Count</label>
                   <input
                     type="number"
                     min="1"
                     value={newTenantStaff}
                     onChange={(e) => setNewTenantStaff(e.target.value)}
-                    className="input-dark font-mono"
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-950/80 border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-[#D4AF37]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">Owner / Lead Contact</label>
+                <label className="block text-slate-300 mb-1 font-medium">Owner / Lead Contact</label>
                 <input
                   type="text"
                   placeholder="e.g. Master Latif"
                   value={newTenantOwner}
                   onChange={(e) => setNewTenantOwner(e.target.value)}
-                  className="input-dark"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-[#D4AF37]"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1 font-medium">Location / City</label>
+                <label className="block text-slate-300 mb-1 font-medium">Location / City</label>
                 <input
                   type="text"
                   placeholder="e.g. Mumbai, Maharashtra"
                   value={newTenantLocation}
                   onChange={(e) => setNewTenantLocation(e.target.value)}
-                  className="input-dark"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-[#D4AF37]"
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-end space-x-2">
-                <button
+              <div className="pt-3 border-t border-white/10 flex items-center justify-end space-x-2">
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="btn-ghost py-2 cursor-pointer"
+                  className="cursor-pointer"
                 >
                   Cancel
-                </button>
-                <button type="submit" className="btn-gold py-2 cursor-pointer">
+                </Button>
+                <Button
+                  type="submit"
+                  variant="gold"
+                  size="sm"
+                  className="cursor-pointer text-slate-950 font-bold"
+                >
                   Create Tenant
-                </button>
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
         </div>
       )}
     </div>
   );
 }
-

@@ -7,152 +7,37 @@ import {
   CheckCircle2, Info, Sparkles, History, ArrowRight, 
   ArrowUpRight, ArrowDownRight, Minus, Plus, X, Printer,
   ZoomIn, ZoomOut, Maximize2, Layers, Crosshair, Grid,
-  SlidersHorizontal, EyeOff, Tag, Compass, Scissors
+  SlidersHorizontal, EyeOff, Tag, Compass, Scissors, ChevronRight
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
 import { Tooltip } from '@/components/Tooltip';
 import { MeasurementCard } from '@/components/print-layouts';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 
-// ============================================================
-// TYPE DEFINITIONS (inline for self-contained page)
-// ============================================================
-type Gender = 'Men' | 'Women';
-type GarmentType = 'Sherwani' | 'Suit' | 'Blouse' | 'Lehenga' | 'Anarkali' | 'Corset';
-type FitPref = 'Skinny' | 'Slim' | 'Regular' | 'Relaxed';
-type UnitSys = 'in' | 'cm';
-type ViewMode = 'front' | 'back';
-type ShoulderSlope = 'Normal' | 'Sloped' | 'Square';
-type ChestStance = 'Normal' | 'Forward' | 'Barrel';
-type BackPosture = 'Normal' | 'Stooped' | 'Erect';
+import {
+  EASE_OFFSETS,
+  POM_SCHEMAS,
+  GARMENT_GENDER,
+  MENS_GARMENTS,
+  WOMENS_GARMENTS,
+  fittingDeltas,
+  type Gender,
+  type GarmentType,
+  type FitPref,
+  type UnitSys,
+  type ViewMode,
+  type ShoulderSlope,
+  type ChestStance,
+  type BackPosture,
+  type PomField,
+  type VersionSnapshot,
+  type FittingDelta
+} from '@/lib/cad-schemas';
 
-const EASE_OFFSETS: Record<string, number> = { 'Skinny': -0.5, 'Slim': 0, 'Regular': 0.5, 'Relaxed': 1.0 };
-
-interface PomField {
-  id: string;
-  code: string;
-  name: string;
-  base: number;
-  min: number;
-  max: number;
-  landmarkY: number; // Y position on SVG for hotspot
-  landmarkX?: number;
-}
-
-interface VersionSnapshot {
-  id: string;
-  version: string;
-  date: string;
-  garment: GarmentType;
-  status: 'current' | 'archived';
-  pomCount: number;
-  fitPref?: string;
-  customerId?: string;
-  customerName?: string;
-  pomData?: Record<string, number>;
-}
-
-interface FittingDelta {
-  pomName: string;
-  original: number;
-  trial1: number;
-  trial2: number;
-  delta1: number;
-  delta2: number;
-}
-
-// ============================================================
-// GARMENT-SPECIFIC POM SCHEMAS
-// ============================================================
-const POM_SCHEMAS: Record<GarmentType, PomField[]> = {
-  Sherwani: [
-    { id: 'sh-01', code: 'SH-01', name: 'Chest Girth', base: 40, min: 32, max: 56, landmarkY: 200 },
-    { id: 'sh-02', code: 'SH-02', name: 'Waist Girth', base: 34, min: 26, max: 50, landmarkY: 280 },
-    { id: 'sh-03', code: 'SH-03', name: 'Shoulder Width', base: 18.5, min: 15, max: 22, landmarkY: 140 },
-    { id: 'sh-04', code: 'SH-04', name: 'Sleeve Length', base: 25, min: 22, max: 28, landmarkY: 300, landmarkX: 120 },
-    { id: 'sh-05', code: 'SH-05', name: 'Sherwani Length', base: 42, min: 36, max: 48, landmarkY: 450 },
-    { id: 'sh-06', code: 'SH-06', name: 'Neck Girth', base: 15.5, min: 13, max: 19, landmarkY: 120 },
-    { id: 'sh-07', code: 'SH-07', name: 'Bicep Girth', base: 13, min: 10, max: 18, landmarkY: 220, landmarkX: 130 },
-    { id: 'sh-08', code: 'SH-08', name: 'Hip Girth', base: 40, min: 34, max: 52, landmarkY: 360 },
-  ],
-  Suit: [
-    { id: 'su-01', code: 'SU-01', name: 'Chest Girth', base: 40, min: 32, max: 56, landmarkY: 200 },
-    { id: 'su-02', code: 'SU-02', name: 'Waist Girth', base: 34, min: 26, max: 50, landmarkY: 280 },
-    { id: 'su-03', code: 'SU-03', name: 'Shoulder Width', base: 18, min: 15, max: 22, landmarkY: 140 },
-    { id: 'su-04', code: 'SU-04', name: 'Sleeve Length', base: 25.5, min: 22, max: 28, landmarkY: 300, landmarkX: 120 },
-    { id: 'su-05', code: 'SU-05', name: 'Jacket Length', base: 30, min: 26, max: 34, landmarkY: 400 },
-    { id: 'su-06', code: 'SU-06', name: 'Neck Girth', base: 15.5, min: 13, max: 19, landmarkY: 120 },
-    { id: 'su-07', code: 'SU-07', name: 'Trouser Waist', base: 34, min: 26, max: 48, landmarkY: 360 },
-    { id: 'su-08', code: 'SU-08', name: 'Trouser Outseam', base: 42, min: 36, max: 48, landmarkY: 550 },
-    { id: 'su-09', code: 'SU-09', name: 'Trouser Inseam', base: 32, min: 28, max: 36, landmarkY: 580, landmarkX: 220 },
-  ],
-  Blouse: [
-    { id: 'bl-01', code: 'BL-01', name: 'Bust Girth', base: 36, min: 28, max: 48, landmarkY: 210 },
-    { id: 'bl-02', code: 'BL-02', name: 'Under-Bust Girth', base: 32, min: 26, max: 42, landmarkY: 240 },
-    { id: 'bl-03', code: 'BL-03', name: 'Waist Girth', base: 30, min: 24, max: 44, landmarkY: 280 },
-    { id: 'bl-04', code: 'BL-04', name: 'Shoulder Width', base: 14, min: 12, max: 17, landmarkY: 140 },
-    { id: 'bl-05', code: 'BL-05', name: 'Bust Apex Distance', base: 7.5, min: 6, max: 10, landmarkY: 200, landmarkX: 170 },
-    { id: 'bl-06', code: 'BL-06', name: 'Front Neck Depth', base: 8, min: 5, max: 12, landmarkY: 135 },
-    { id: 'bl-07', code: 'BL-07', name: 'Back Neck Depth', base: 2, min: 1, max: 4, landmarkY: 125 },
-    { id: 'bl-08', code: 'BL-08', name: 'Sleeve Length', base: 10, min: 4, max: 24, landmarkY: 250, landmarkX: 130 },
-    { id: 'bl-09', code: 'BL-09', name: 'Blouse Length', base: 15, min: 12, max: 20, landmarkY: 330 },
-  ],
-  Lehenga: [
-    { id: 'lh-01', code: 'LH-01', name: 'Waist Girth', base: 30, min: 24, max: 44, landmarkY: 280 },
-    { id: 'lh-02', code: 'LH-02', name: 'Hip Girth', base: 38, min: 32, max: 50, landmarkY: 360 },
-    { id: 'lh-03', code: 'LH-03', name: 'Lehenga Length', base: 42, min: 36, max: 48, landmarkY: 550 },
-    { id: 'lh-04', code: 'LH-04', name: 'Flare Circumference', base: 120, min: 80, max: 200, landmarkY: 650 },
-    { id: 'lh-05', code: 'LH-05', name: 'Kali Panel Count', base: 12, min: 8, max: 24, landmarkY: 500 },
-    { id: 'lh-06', code: 'LH-06', name: 'Cancan Height', base: 6, min: 0, max: 12, landmarkY: 620 },
-  ],
-  Anarkali: [
-    { id: 'an-01', code: 'AN-01', name: 'Bust Girth', base: 36, min: 28, max: 48, landmarkY: 210 },
-    { id: 'an-02', code: 'AN-02', name: 'Waist Girth', base: 30, min: 24, max: 44, landmarkY: 280 },
-    { id: 'an-03', code: 'AN-03', name: 'Hip Girth', base: 38, min: 32, max: 50, landmarkY: 360 },
-    { id: 'an-04', code: 'AN-04', name: 'Shoulder Width', base: 14.5, min: 12, max: 18, landmarkY: 140 },
-    { id: 'an-05', code: 'AN-05', name: 'Sleeve Length', base: 22, min: 14, max: 26, landmarkY: 300, landmarkX: 120 },
-    { id: 'an-06', code: 'AN-06', name: 'Yoke Length', base: 14.5, min: 12, max: 17, landmarkY: 270 },
-    { id: 'an-07', code: 'AN-07', name: 'Total Anarkali Length', base: 54, min: 46, max: 62, landmarkY: 600 },
-  ],
-  Corset: [
-    { id: 'co-01', code: 'CO-01', name: 'Bust Girth', base: 34, min: 28, max: 44, landmarkY: 200 },
-    { id: 'co-02', code: 'CO-02', name: 'Under-Bust Girth', base: 30, min: 24, max: 40, landmarkY: 230 },
-    { id: 'co-03', code: 'CO-03', name: 'Waist (Cinched)', base: 26, min: 20, max: 36, landmarkY: 280 },
-    { id: 'co-04', code: 'CO-04', name: 'High Hip Girth', base: 34, min: 28, max: 44, landmarkY: 340 },
-    { id: 'co-05', code: 'CO-05', name: 'Busks Front Length', base: 13, min: 10, max: 16, landmarkY: 270 },
-    { id: 'co-06', code: 'CO-06', name: 'Side Seam Height', base: 8.5, min: 6, max: 12, landmarkY: 290, landmarkX: 130 },
-    { id: 'co-07', code: 'CO-07', name: 'Boning Channel Count', base: 16, min: 10, max: 24, landmarkY: 260 },
-  ],
-};
-
-const GARMENT_GENDER: Record<GarmentType, Gender> = {
-  Sherwani: 'Men', Suit: 'Men',
-  Blouse: 'Women', Lehenga: 'Women', Anarkali: 'Women', Corset: 'Women',
-};
-
-const MENS_GARMENTS: GarmentType[] = ['Sherwani', 'Suit'];
-const WOMENS_GARMENTS: GarmentType[] = ['Blouse', 'Lehenga', 'Anarkali', 'Corset'];
-
-// Version history mock
-const versionHistory: VersionSnapshot[] = [
-  { id: 'v3', version: 'v3.0', date: 'Aug 5, 2026', garment: 'Sherwani', status: 'current', pomCount: 8 },
-  { id: 'v2', version: 'v2.0', date: 'Jul 20, 2026', garment: 'Sherwani', status: 'archived', pomCount: 8 },
-  { id: 'v1', version: 'v1.0', date: 'Jun 12, 2026', garment: 'Suit', status: 'archived', pomCount: 9 },
-];
-
-// Fitting trial mock data
-const fittingDeltas: FittingDelta[] = [
-  { pomName: 'Chest Girth', original: 42.5, trial1: 42.0, trial2: 42.25, delta1: -0.5, delta2: -0.25 },
-  { pomName: 'Waist Girth', original: 35.0, trial1: 35.5, trial2: 35.25, delta1: +0.5, delta2: +0.25 },
-  { pomName: 'Shoulder Width', original: 18.5, trial1: 18.5, trial2: 18.5, delta1: 0, delta2: 0 },
-  { pomName: 'Sleeve Length', original: 25.0, trial1: 24.5, trial2: 25.0, delta1: -0.5, delta2: 0 },
-  { pomName: 'Sherwani Length', original: 42.0, trial1: 42.0, trial2: 42.0, delta1: 0, delta2: 0 },
-  { pomName: 'Neck Girth', original: 15.75, trial1: 16.0, trial2: 15.75, delta1: +0.25, delta2: 0 },
-];
-
-// ============================================================
-// SVG BODY SILHOUETTE COMPONENT (ENHANCED WITH INTERACTIVE HOTSPOTS)
-// ============================================================
 // ============================================================
 // LUXURY 2D CAD VECTOR DRESS FORM & PATTERN STUDIO CANVAS
 // ============================================================
@@ -178,14 +63,14 @@ function BodySilhouetteSvg({
   onHoverHotspot: (id: string | null) => void;
   onUpdateMeasurement?: (id: string, val: number) => void;
 }) {
-  // CAD Canvas Layer Toggles & Zoom State
+  // CAD Canvas Layer Toggles & Zoom State strictly within 80% to 135% (0.80 to 1.35)
   const [zoomLevel, setZoomLevel] = useState<number>(1.0);
   const [showDrapeOverlay, setShowDrapeOverlay] = useState<boolean>(true);
   const [showDimensions, setShowDimensions] = useState<boolean>(true);
   const [showDatumLasers, setShowDatumLasers] = useState<boolean>(true);
   const [showGridScales, setShowGridScales] = useState<boolean>(true);
 
-  // Dynamic posture modifier offsets
+  // Dynamic 4-axis posture modifier offsets
   const shoulderOffsetY = shoulderSlope === 'Sloped' ? 8 : shoulderSlope === 'Square' ? -8 : 0;
   const chestCurveD = chestStance === 'Forward'
     ? 'M 160 170 C 170 200, 205 210, 210 210 C 215 210, 250 200, 260 170'
@@ -199,20 +84,21 @@ function BodySilhouetteSvg({
   const unitLabel = unitSystem === 'cm' ? 'cm' : 'in';
   const formatVal = (v: number) => unitSystem === 'cm' ? (v * 2.54).toFixed(1) : v.toString();
 
+  // Zoom level clamp formula strictly between 80% and 135%
   const handleZoom = (delta: number) => {
     setZoomLevel(prev => Math.min(Math.max(Number((prev + delta).toFixed(2)), 0.8), 1.35));
   };
 
   return (
-    <div className="relative flex flex-col items-center bg-[#070A12] rounded-3xl border border-slate-800/80 shadow-2xl overflow-hidden group/canvas">
+    <div className="relative flex flex-col items-center bg-[#07090E] rounded-3xl border border-white/10 shadow-2xl overflow-hidden group/canvas">
       {/* CAD Toolbar / Layer Control HUD Bar */}
-      <div className="w-full px-4 py-2.5 bg-slate-950/90 border-b border-slate-800/90 flex flex-wrap items-center justify-between gap-2 z-20 text-xs backdrop-blur-md">
+      <div className="w-full px-4 py-2.5 bg-slate-950/80 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 z-20 text-xs backdrop-blur-2xl">
         {/* Layer Toggles */}
         <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5">
           <button
             onClick={() => setShowDrapeOverlay(!showDrapeOverlay)}
-            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
-              showDrapeOverlay ? 'bg-amber-400/15 text-amber-300 border border-amber-400/30' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+            className={`px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+              showDrapeOverlay ? 'bg-[#D4AF37]/20 text-amber-300 border border-[#D4AF37]/40 shadow-sm' : 'text-slate-400 hover:text-white bg-slate-900/60 border border-white/5'
             }`}
             title="Toggle Garment Drape Overlay Silhouette"
           >
@@ -222,8 +108,8 @@ function BodySilhouetteSvg({
 
           <button
             onClick={() => setShowDimensions(!showDimensions)}
-            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
-              showDimensions ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+            className={`px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+              showDimensions ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm' : 'text-slate-400 hover:text-white bg-slate-900/60 border border-white/5'
             }`}
             title="Toggle Caliper Dimension Callouts"
           >
@@ -233,8 +119,8 @@ function BodySilhouetteSvg({
 
           <button
             onClick={() => setShowDatumLasers(!showDatumLasers)}
-            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
-              showDatumLasers ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+            className={`px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+              showDatumLasers ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm' : 'text-slate-400 hover:text-white bg-slate-900/60 border border-white/5'
             }`}
             title="Toggle Horizontal Laser Datum Lines"
           >
@@ -244,8 +130,8 @@ function BodySilhouetteSvg({
 
           <button
             onClick={() => setShowGridScales(!showGridScales)}
-            className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
-              showGridScales ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+            className={`px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 transition-all text-[11px] ${
+              showGridScales ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm' : 'text-slate-400 hover:text-white bg-slate-900/60 border border-white/5'
             }`}
             title="Toggle CAD Blueprint Grid & Rulers"
           >
@@ -255,20 +141,20 @@ function BodySilhouetteSvg({
         </div>
 
         {/* Zoom & Reset Controls */}
-        <div className="flex items-center space-x-1 bg-slate-900/90 p-0.5 rounded-xl border border-slate-800">
+        <div className="flex items-center space-x-1 bg-slate-900/90 p-1 rounded-full border border-white/10">
           <button
             onClick={() => handleZoom(-0.1)}
-            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
             title="Zoom Out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[10px] font-mono font-bold text-amber-400 px-1.5 select-none min-w-[42px] text-center">
+          <span className="text-[10px] font-mono font-bold text-amber-300 px-2 select-none min-w-[42px] text-center">
             {Math.round(zoomLevel * 100)}%
           </span>
           <button
             onClick={() => handleZoom(0.1)}
-            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
             title="Zoom In"
           >
             <ZoomIn className="w-3.5 h-3.5" />
@@ -276,7 +162,7 @@ function BodySilhouetteSvg({
           {zoomLevel !== 1.0 && (
             <button
               onClick={() => setZoomLevel(1.0)}
-              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors ml-1 text-[10px] font-semibold"
+              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors ml-1 text-[10px] font-semibold"
               title="Reset Zoom"
             >
               <RotateCcw className="w-3 h-3" />
@@ -285,7 +171,7 @@ function BodySilhouetteSvg({
         </div>
       </div>
 
-      {/* Main Vector Drawing Viewport */}
+      {/* Main Vector Drawing Viewport with Exact viewBox="0 0 420 840" */}
       <div className="relative w-full flex items-center justify-center p-2 sm:p-4 overflow-hidden min-h-[560px]">
         {/* Ambient Backlight Glows */}
         <div className="absolute top-1/4 -left-12 w-48 h-48 bg-cyan-500/10 blur-[50px] pointer-events-none" />
@@ -476,7 +362,7 @@ function BodySilhouetteSvg({
             )}
 
             {/* ============================================================ */}
-            {/* GARMENT-SPECIFIC VECTOR DRAPE OVERLAYS                       */}
+            {/* GARMENT-SPECIFIC VECTOR DRAPE OVERLAYS (6 GARMENTS)          */}
             {/* ============================================================ */}
             {showDrapeOverlay && (
               <g className="transition-all duration-300">
@@ -620,27 +506,31 @@ function BodySilhouetteSvg({
             )}
 
             {/* ============================================================ */}
-            {/* REAL-TIME DIMENSION CALIPER RIBBONS (HORIZONTAL & VERTICAL)  */}
+            {/* REAL-TIME DIMENSION CALIPER RIBBONS (↔ 42.5 in)             */}
             {/* ============================================================ */}
             {showDimensions && (
               <g className="select-none pointer-events-none">
-                {/* Horizontal Caliper Across Active / Focused Landmark */}
                 {activePoms.map((pom) => {
                   const isFocused = focusedId === pom.id;
                   if (!isFocused && !['SH-01', 'SU-01', 'BL-01', 'SH-02', 'SU-02', 'BL-03'].includes(pom.code)) return null;
 
                   const y = pom.landmarkY + (shoulderOffsetY !== 0 && (pom.code.includes('SH-03') || pom.code.includes('SU-03')) ? shoulderOffsetY : 0);
                   const rawVal = measurements[pom.id] ?? pom.base;
-                  const displayStr = `${formatVal(rawVal)} ${unitLabel}`;
+                  const displayStr = `↔ ${formatVal(rawVal)} ${unitLabel}`;
 
                   return (
                     <g key={`caliper-${pom.id}`} className="transition-all duration-300">
                       {/* Left & Right Caliper Wings */}
-                      <line x1="80" y1={y} x2="135" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '1.8' : '1'} />
-                      <line x1="285" y1={y} x2="340" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '1.8' : '1'} />
+                      <line x1="75" y1={y} x2="135" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '1.8' : '1'} />
+                      <line x1="285" y1={y} x2="345" y2={y} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth={isFocused ? '1.8' : '1'} />
                       {/* End Ticks */}
-                      <line x1="80" y1={y - 5} x2="80" y2={y + 5} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.5" />
-                      <line x1="340" y1={y - 5} x2="340" y2={y + 5} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.5" />
+                      <line x1="75" y1={y - 5} x2="75" y2={y + 5} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.5" />
+                      <line x1="345" y1={y - 5} x2="345" y2={y + 5} stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="1.5" />
+                      {/* Dimension Ribbon Tag */}
+                      <rect x="165" y={y - 8} width="90" height="16" rx="4" fill="#0F172A" stroke={isFocused ? '#FACC15' : '#38BDF8'} strokeWidth="0.8" opacity="0.85" />
+                      <text x="210" y={y + 4} textAnchor="middle" className={`text-[9px] font-mono font-bold ${isFocused ? 'fill-yellow-400' : 'fill-sky-300'}`}>
+                        {displayStr}
+                      </text>
                     </g>
                   );
                 })}
@@ -725,7 +615,7 @@ function BodySilhouetteSvg({
                   {/* POM Code & Value Badge Tag */}
                   <g transform={`translate(${x + 14}, ${y - 8})`}>
                     <rect
-                      x="0" y="0" width={isFocused ? 84 : 46} height="18" rx="5"
+                      x="0" y="0" width={isFocused ? 88 : 48} height="18" rx="5"
                       fill={isFocused ? '#1E293B' : '#0F172A'}
                       stroke={isFocused ? '#FACC15' : '#334155'}
                       strokeWidth={isFocused ? '1.2' : '0.8'}
@@ -741,7 +631,7 @@ function BodySilhouetteSvg({
                       {pom.code}
                     </text>
                     {isFocused && (
-                      <text x="44" y="12" className="text-[9px] font-mono font-bold fill-white">
+                      <text x="46" y="12" className="text-[9px] font-mono font-bold fill-white">
                         {formatVal(rawVal)}{unitLabel}
                       </text>
                     )}
@@ -752,7 +642,7 @@ function BodySilhouetteSvg({
           </svg>
         </div>
 
-        {/* Floating Quick-Adjust HUD Overlay for Selected Hotspot */}
+        {/* Floating Quick-Adjust HUD Overlay for Selected Hotspot with Dynamic Caliper Steppers */}
         {focusedId && (() => {
           const pom = activePoms.find(p => p.id === focusedId);
           if (!pom) return null;
@@ -760,18 +650,18 @@ function BodySilhouetteSvg({
           const hasError = !!validationErrors[pom.id];
 
           return (
-            <div className="absolute bottom-4 right-4 glass-card-gold rounded-2xl p-4 shadow-[0_12px_40px_rgba(245,158,11,0.25)] backdrop-blur-xl flex flex-col min-w-[200px] z-30 animate-fade-in border border-amber-400/40">
-              <div className="flex items-center justify-between space-x-2 mb-2 pb-1.5 border-b border-slate-700/60">
+            <div className="absolute bottom-4 right-4 glass-card-gold rounded-3xl p-4 shadow-[0_16px_40px_rgba(245,158,11,0.25)] backdrop-blur-2xl flex flex-col min-w-[210px] z-30 animate-fade-in border border-[#D4AF37]/50">
+              <div className="flex items-center justify-between space-x-2 mb-2 pb-1.5 border-b border-white/10">
                 <div className="flex items-center space-x-2">
                   <div className={`w-2.5 h-2.5 rounded-full ${hasError ? 'bg-rose-500' : 'bg-amber-400'} animate-pulse`} />
-                  <span className="font-mono font-extrabold text-amber-400 text-xs uppercase tracking-wider">{pom.code}</span>
+                  <span className="font-mono font-extrabold text-amber-300 text-xs uppercase tracking-wider">{pom.code}</span>
                 </div>
                 <span className="text-[10px] font-mono text-slate-400 font-semibold">{pom.min}"–{pom.max}" range</span>
               </div>
               
-              <span className="font-bold text-white text-xs mb-1">{pom.name}</span>
+              <span className="font-bold text-white text-xs mb-1 font-display">{pom.name}</span>
               
-              <div className="flex items-baseline justify-between mt-2 pt-2 border-t border-slate-800">
+              <div className="flex items-baseline justify-between mt-2 pt-2 border-t border-white/10">
                 <span className="text-[11px] text-slate-400">Target Value:</span>
                 <div className="flex items-baseline space-x-1">
                   <span className="font-mono font-black text-2xl text-amber-300">{formatVal(rawVal)}</span>
@@ -779,30 +669,30 @@ function BodySilhouetteSvg({
                 </div>
               </div>
 
-              {/* Quick Increment Steppers */}
+              {/* Dynamic Caliper Steppers (-0.5", -0.25", +0.25", +0.5") strictly clamped */}
               {onUpdateMeasurement && (
-                <div className="grid grid-cols-4 gap-1.5 mt-3 pt-2 border-t border-slate-800">
+                <div className="grid grid-cols-4 gap-1.5 mt-3 pt-2 border-t border-white/10">
                   <button
                     onClick={() => onUpdateMeasurement(pom.id, Math.max(pom.min, Number((rawVal - 0.5).toFixed(2))))}
-                    className="py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors"
+                    className="py-1 rounded-full bg-slate-900 border border-white/15 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors active:scale-95"
                   >
                     -0.5"
                   </button>
                   <button
                     onClick={() => onUpdateMeasurement(pom.id, Math.max(pom.min, Number((rawVal - 0.25).toFixed(2))))}
-                    className="py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors"
+                    className="py-1 rounded-full bg-slate-900 border border-white/15 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors active:scale-95"
                   >
                     -0.25"
                   </button>
                   <button
                     onClick={() => onUpdateMeasurement(pom.id, Math.min(pom.max, Number((rawVal + 0.25).toFixed(2))))}
-                    className="py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors"
+                    className="py-1 rounded-full bg-slate-900 border border-white/15 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors active:scale-95"
                   >
                     +0.25"
                   </button>
                   <button
                     onClick={() => onUpdateMeasurement(pom.id, Math.min(pom.max, Number((rawVal + 0.5).toFixed(2))))}
-                    className="py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors"
+                    className="py-1 rounded-full bg-slate-900 border border-white/15 text-slate-300 hover:text-white hover:border-amber-400 text-[10px] font-mono font-bold transition-colors active:scale-95"
                   >
                     +0.5"
                   </button>
@@ -846,7 +736,7 @@ function MeasurementsContent() {
     }
   }, [customerId]);
 
-  // Posture state
+  // 4-Axis Posture profile state
   const [shoulderSlope, setShoulderSlope] = useState<ShoulderSlope>('Normal');
   const [chestStance, setChestStance] = useState<ChestStance>('Normal');
   const [backPosture, setBackPosture] = useState<BackPosture>('Normal');
@@ -862,7 +752,7 @@ function MeasurementsContent() {
     return init;
   });
 
-  // Sync state with localStorage on mount
+  // Sync state with localStorage on mount (yh_measurements_current, yh_measurement_snapshots)
   React.useEffect(() => {
     const stored = getLocalStorage<Record<string, number> | null>('yh_measurements_current', null);
     if (stored) {
@@ -926,7 +816,7 @@ function MeasurementsContent() {
     }
   }, []);
 
-  // Save changes to localStorage
+  // Save changes to localStorage (yh_measurements_current)
   React.useEffect(() => {
     setLocalStorage('yh_measurements_current', measurements);
     setLocalStorage('yh_measurements_gender', selectedGender);
@@ -958,6 +848,15 @@ function MeasurementsContent() {
     setMeasurements(prev => ({ ...prev, [pomId]: inVal }));
   };
 
+  const applyStepper = (pomId: string, delta: number) => {
+    const pom = activePoms.find(p => p.id === pomId);
+    if (!pom) return;
+    const current = measurements[pom.id] ?? pom.base;
+    const next = Number((current + delta).toFixed(2));
+    const clamped = Math.min(Math.max(next, pom.min), pom.max);
+    handleMeasurementChange(pom.id, clamped);
+  };
+
   const handleSaveSnapshot = () => {
     const nextVer = `v${(snapshots.length + 1).toFixed(1)}`;
     const newSnapshot: VersionSnapshot = {
@@ -968,6 +867,7 @@ function MeasurementsContent() {
       status: 'current',
       pomCount: activePoms.length,
       fitPref,
+      pomData: { ...measurements },
       ...(customerId ? { customerId, customerName: customerName || 'Unknown Customer' } : {})
     };
 
@@ -978,7 +878,7 @@ function MeasurementsContent() {
 
     setSnapshots(updated);
     setLocalStorage('yh_measurement_snapshots', updated);
-    setToastMessage(`Snapshot ${nextVer} saved successfully!`);
+    setToastMessage(`Snapshot ${nextVer} saved to version history!`);
     setTimeout(() => {
       setToastMessage(null);
     }, 4000);
@@ -998,179 +898,206 @@ function MeasurementsContent() {
   const isValid = Object.keys(validationErrors).length === 0;
 
   return (
-    <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-6 animate-fade-in relative">
+    <div className="max-w-7xl xl:max-w-[1540px] mx-auto w-full space-y-8 animate-fade-in relative pb-16 font-sans">
+      {/* Strict Isolated @media print CSS for Measurement Card Chart printing */}
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
           .measurement-card-print, .measurement-card-print * { visibility: visible !important; }
-          .measurement-card-print { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; display: block !important; }
+          .measurement-card-print {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            display: block !important;
+            padding: 24px !important;
+            background: white !important;
+            color: black !important;
+          }
         }
       `}</style>
+
       {/* Glassmorphic Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-slate-900/90 border border-yellow-500/40 backdrop-blur-xl px-5 py-3.5 rounded-2xl shadow-2xl shadow-yellow-500/10 text-yellow-400 text-sm font-semibold animate-fade-in">
-          <CheckCircle2 className="w-5 h-5 text-yellow-400 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-3 bg-slate-900/95 border border-[#D4AF37]/50 backdrop-blur-2xl px-5 py-3.5 rounded-2xl shadow-2xl shadow-yellow-500/10 text-amber-300 text-sm font-semibold animate-fade-in">
+          <CheckCircle2 className="w-5 h-5 text-[#D4AF37] shrink-0" />
           <span>{toastMessage}</span>
-          <button onClick={() => setToastMessage(null)} className="ml-2 text-slate-400 hover:text-white">
+          <button onClick={() => setToastMessage(null)} className="ml-2 text-slate-400 hover:text-white p-1 rounded-full hover:bg-white/10">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
+
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center space-x-3">
-            <Ruler className="w-6 h-6 text-gold-400" />
-            <span>Interactive CAD Measurement Engine</span>
-            {customerName && (
-              <span className="text-sm font-semibold text-slate-300 bg-slate-800/50 px-3 py-1 rounded-full ml-3 border border-slate-700/50 flex items-center">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
-                {customerName}
-              </span>
-            )}
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">2D landmark SVG vector engine with live CAD laser alignment & posture profiling</p>
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+              <Ruler className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-extrabold text-white tracking-tight font-display flex items-center gap-3">
+                <span>2D CAD Mannequin & Caliper Studio</span>
+                {customerName && (
+                  <Badge variant="gold" size="sm">
+                    {customerName}
+                  </Badge>
+                )}
+              </h1>
+              <p className="text-sm text-slate-400 mt-0.5">
+                420x840 pure SVG viewport, 4-axis anatomical posture morphs, dynamic caliper steppers, and snapshot versioning.
+              </p>
+            </div>
+          </div>
         </div>
+
         <div className="flex items-center space-x-2">
           <Tooltip content="Print current CAD anatomical measurement specification sheet">
-            <button
+            <Button
+              variant="secondary"
+              size="md"
               onClick={() => window.print()}
-              className="btn-ghost px-4 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 border-slate-700 text-slate-300 hover:text-white cursor-pointer"
+              leftIcon={<Printer className="w-4 h-4 text-[#D4AF37]" />}
             >
-              <Printer className="w-3.5 h-3.5 text-yellow-400" />
-              <span>Print Chart</span>
-            </button>
+              Print Chart
+            </Button>
           </Tooltip>
 
           <Tooltip content="Inspect past CAD measurement snapshots and version logs">
-            <button
+            <Button
+              variant={showHistory ? 'gold' : 'secondary'}
+              size="md"
               onClick={() => setShowHistory(!showHistory)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold border flex items-center space-x-2 transition-all ${
-                showHistory ? 'bg-gold-500/10 border-gold-500/30 text-gold-400' : 'btn-ghost'
-              }`}
+              leftIcon={<History className="w-4 h-4" />}
             >
-              <History className="w-3.5 h-3.5" />
-              <span>Version History</span>
-            </button>
+              Version History ({snapshots.length})
+            </Button>
           </Tooltip>
 
           <Tooltip content="Compare baseline measurements against fitting trial deltas">
-            <button
+            <Button
+              variant={showTrials ? 'primary' : 'secondary'}
+              size="md"
               onClick={() => setShowTrials(!showTrials)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold border flex items-center space-x-2 transition-all ${
-                showTrials ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'btn-ghost'
-              }`}
+              leftIcon={<GitCompare className="w-4 h-4 text-blue-400" />}
             >
-              <GitCompare className="w-3.5 h-3.5" />
-              <span>Fitting Trials</span>
-            </button>
+              Fitting Trials
+            </Button>
           </Tooltip>
         </div>
       </div>
 
-      {/* Control Bar */}
-      <div className="glass-card rounded-2xl border border-slate-800/60 p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Gender Toggle */}
-          <div className="flex items-center bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 text-xs">
-            {(['Men', 'Women'] as Gender[]).map((g) => (
-              <button
-                key={g}
-                onClick={() => handleGenderChange(g)}
-                className={`px-4 py-1.5 rounded-lg font-semibold transition-all ${
-                  selectedGender === g ? 'btn-gold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {g}
-              </button>
-            ))}
+      {/* Control Bar - Apple Frosted Glass with Segmented Controls */}
+      <Card variant="glass" padding="sm" className="border-white/10">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Gender Toggle */}
+            <div className="flex items-center bg-slate-900/80 p-1 rounded-full border border-white/10 text-xs">
+              {(['Men', 'Women'] as Gender[]).map((g) => (
+                <button
+                  key={g}
+                  onClick={() => handleGenderChange(g)}
+                  className={`px-4 py-1.5 rounded-full font-semibold transition-all ${
+                    selectedGender === g 
+                      ? 'bg-gradient-to-r from-[#D4AF37] to-[#C59B27] text-slate-950 shadow-sm' 
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+
+            {/* Garment Drape Overlays Selector */}
+            <div className="flex flex-wrap gap-1.5">
+              {(selectedGender === 'Men' ? MENS_GARMENTS : WOMENS_GARMENTS).map((g) => (
+                <button
+                  key={g}
+                  onClick={() => handleGarmentChange(g)}
+                  className={`px-3.5 py-1.5 text-xs rounded-full border font-semibold transition-all ${
+                    selectedGarment === g
+                      ? 'bg-amber-400/20 text-amber-300 border-[#D4AF37]/50 shadow-sm'
+                      : 'bg-slate-900/60 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+
+            <div className="h-6 w-px bg-white/10 hidden md:block" />
+
+            {/* Fit Preference */}
+            <div className="flex items-center bg-slate-900/80 p-1 rounded-full border border-white/10 text-xs">
+              {(['Skinny', 'Slim', 'Regular', 'Relaxed'] as FitPref[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFitPref(f)}
+                  className={`px-3 py-1 rounded-full font-semibold transition-all ${
+                    fitPref === f 
+                      ? 'bg-slate-100 text-slate-950 shadow-sm' 
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Garment Type */}
-          <div className="flex flex-wrap gap-1.5">
-            {(selectedGender === 'Men' ? MENS_GARMENTS : WOMENS_GARMENTS).map((g) => (
-              <button
-                key={g}
-                onClick={() => handleGarmentChange(g)}
-                className={`px-3.5 py-1.5 text-xs rounded-xl border font-semibold transition-all ${
-                  selectedGarment === g
-                    ? 'btn-gold border-gold-400'
-                    : 'btn-ghost'
-                }`}
-              >
-                {g}
-              </button>
-            ))}
-          </div>
-
-          <div className="h-6 w-px bg-slate-800 hidden md:block" />
-
-          {/* Fit Preference */}
-          <div className="flex items-center bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 text-xs">
-            {(['Skinny', 'Slim', 'Regular', 'Relaxed'] as FitPref[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFitPref(f)}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                  fitPref === f ? 'btn-gold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-
-          {/* Quick Access Version History & Fitting Trials Tabs */}
-          <div className="flex items-center space-x-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs ml-auto">
+          {/* Unit Switcher */}
+          <div className="flex items-center space-x-1.5 bg-slate-900/80 p-1 rounded-full border border-white/10 text-xs">
             <button
-              onClick={() => setShowHistory(!showHistory)}
-              className={`px-3.5 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all ${
-                showHistory ? 'bg-amber-400 text-slate-950 shadow-md' : 'text-amber-300 hover:text-white hover:bg-slate-800'
+              onClick={() => setUnitSystem('in')}
+              className={`px-3 py-1 rounded-full font-mono font-bold transition-all ${
+                unitSystem === 'in' ? 'bg-[#D4AF37] text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
             >
-              <History className="w-3.5 h-3.5" />
-              <span>Version History ({snapshots.length})</span>
+              IN (↔ in)
             </button>
-
             <button
-              onClick={() => setShowTrials(!showTrials)}
-              className={`px-3.5 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition-all ${
-                showTrials ? 'bg-blue-500 text-white shadow-md' : 'text-blue-400 hover:text-white hover:bg-slate-800'
+              onClick={() => setUnitSystem('cm')}
+              className={`px-3 py-1 rounded-full font-mono font-bold transition-all ${
+                unitSystem === 'cm' ? 'bg-[#D4AF37] text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
             >
-              <GitCompare className="w-3.5 h-3.5" />
-              <span>Fitting Trials (2 Runs)</span>
+              CM (cm)
             </button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Main Workspace Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        {/* LEFT: SVG Body Diagram (5 cols) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        {/* LEFT: 2D CAD SVG Dress Form (5 cols) */}
         <div className="xl:col-span-5 space-y-4">
-          {/* View Toggle */}
-          <div className="glass-card rounded-2xl border border-slate-800/60 p-4 space-y-4">
-            <div className="flex items-center justify-between">
+          <Card variant="glass" padding="md" className="border-white/10 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/5">
               <div>
-                <h3 className="font-bold text-sm text-white flex items-center space-x-2">
-                  <Eye className="w-4 h-4 text-gold-400" />
+                <h3 className="font-bold text-sm text-white flex items-center space-x-2 font-display">
+                  <Eye className="w-4 h-4 text-[#D4AF37]" />
                   <span>2D CAD Interactive Vector Canvas</span>
                 </h3>
-                <p className="text-[10px] text-slate-400 capitalize mt-0.5">
+                <p className="text-[11px] text-slate-400 capitalize mt-0.5">
                   {selectedGender} Silhouette — {selectedGarment} ({viewMode} view)
                 </p>
               </div>
-              <div className="flex items-center bg-slate-900/60 p-1 rounded-xl border border-slate-800/80 text-xs">
+
+              {/* View Toggle */}
+              <div className="flex items-center bg-slate-900/80 p-1 rounded-full border border-white/10 text-xs">
                 <button
                   onClick={() => setViewMode('front')}
-                  className={`px-3 py-1 rounded-lg font-semibold transition-all ${viewMode === 'front' ? 'btn-gold' : 'text-slate-400 hover:text-white'}`}
+                  className={`px-3.5 py-1 rounded-full font-semibold transition-all ${
+                    viewMode === 'front' ? 'bg-[#D4AF37] text-slate-950' : 'text-slate-400 hover:text-white'
+                  }`}
                 >
                   Front
                 </button>
                 <button
                   onClick={() => setViewMode('back')}
-                  className={`px-3 py-1 rounded-lg font-semibold transition-all ${viewMode === 'back' ? 'btn-gold' : 'text-slate-400 hover:text-white'}`}
+                  className={`px-3.5 py-1 rounded-full font-semibold transition-all ${
+                    viewMode === 'back' ? 'bg-[#D4AF37] text-slate-950' : 'text-slate-400 hover:text-white'
+                  }`}
                 >
                   Back
                 </button>
@@ -1196,38 +1123,38 @@ function MeasurementsContent() {
               onUpdateMeasurement={handleMeasurementChange}
             />
 
-            {/* Legend */}
-            <div className="flex items-center justify-between text-[10px] pt-2 border-t border-slate-800/60">
+            {/* Viewport Legend */}
+            <div className="flex items-center justify-between text-[11px] pt-3 border-t border-white/5">
               <div className="flex items-center space-x-3">
                 <div className="flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_4px_#10B981]" />
-                  <span className="text-slate-400">Valid Target</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10B981]" />
+                  <span className="text-slate-400">Valid</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-gold-400 shadow-[0_0_4px_#FACC15]" />
-                  <span className="text-slate-400">Active Hotspot</span>
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#FACC15]" />
+                  <span className="text-slate-400">Selected Hotspot</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_4px_#EF4444]" />
+                  <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_6px_#EF4444]" />
                   <span className="text-slate-400">Out-of-Range</span>
                 </div>
               </div>
-              <span className="text-slate-500 font-mono">CAD Vector 400x800</span>
+              <span className="text-slate-500 font-mono text-[10px]">Pure SVG 420x840</span>
             </div>
-          </div>
+          </Card>
         </div>
 
-        {/* RIGHT: POM Form + Posture (7 cols) */}
+        {/* RIGHT: POM Form + 4-Axis Posture Controls (7 cols) */}
         <div className="xl:col-span-7 space-y-6">
-          {/* POM Input Form */}
-          <div className="glass-card rounded-2xl border border-slate-800/60 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
+          {/* POM Input Form with Dynamic Caliper Steppers */}
+          <Card variant="glass" padding="md" className="border-white/10 space-y-5">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <div>
-                <h3 className="font-bold text-sm text-white flex items-center space-x-2">
-                  <Ruler className="w-4 h-4 text-gold-400" />
+                <h3 className="font-bold text-base text-white flex items-center space-x-2 font-display">
+                  <Ruler className="w-4 h-4 text-[#D4AF37]" />
                   <span>POM Technical Specification — {selectedGarment}</span>
                 </h3>
-                <p className="text-[10px] text-slate-500 mt-0.5">{activePoms.length} measurement points • {unitLabel} units</p>
+                <p className="text-xs text-slate-400 mt-0.5">{activePoms.length} measurement points &bull; {unitLabel} units</p>
               </div>
               <Tooltip content="Reset all POM fields to standard base defaults">
                 <button
@@ -1236,14 +1163,14 @@ function MeasurementsContent() {
                     activePoms.forEach(p => { reset[p.id] = p.base; });
                     setMeasurements(prev => ({ ...prev, ...reset }));
                   }}
-                  className="p-2 bg-slate-900/60 border border-slate-800 rounded-xl text-slate-400 hover:text-white hover:border-slate-700 transition-all"
+                  className="p-2 bg-slate-900/60 border border-white/10 rounded-full text-slate-400 hover:text-white hover:border-white/20 transition-all"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
               </Tooltip>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {activePoms.map((pom) => {
                 const rawVal = measurements[pom.id] ?? pom.base;
                 const displayVal = convertVal(rawVal);
@@ -1256,36 +1183,37 @@ function MeasurementsContent() {
                 return (
                   <div
                     key={pom.id}
-                    className={`p-3.5 rounded-xl border transition-all duration-300 ${
+                    className={`p-3.5 rounded-2xl border transition-all duration-300 ${
                       isFocused
-                        ? 'bg-gold-500/10 border-gold-400 ring-2 ring-gold-400/40 shadow-lg shadow-gold-500/10'
+                        ? 'bg-amber-950/20 border-[#D4AF37] ring-2 ring-[#D4AF37]/30 shadow-lg shadow-yellow-500/5'
                         : hasError
-                        ? 'bg-rose-500/5 border-rose-500/60'
-                        : 'bg-slate-900/50 border-slate-800/60 hover:border-slate-700'
+                        ? 'bg-rose-950/20 border-rose-500/60'
+                        : 'bg-slate-900/60 border-white/10 hover:border-white/20'
                     }`}
                     onMouseEnter={() => setFocusedId(pom.id)}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-mono text-gold-400 font-extrabold px-1.5 py-0.5 rounded bg-gold-500/10 border border-gold-500/20">
+                        <span className="text-[10px] font-mono text-amber-300 font-extrabold px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30">
                           {pom.code}
                         </span>
                         <span className="text-xs font-semibold text-slate-200">{pom.name}</span>
                         {isAffected && easeOffset !== 0 && (
-                          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${easeOffset > 0 ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'}`}>
+                          <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${easeOffset > 0 ? 'bg-blue-500/10 border-blue-500/30 text-blue-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'}`}>
                             {easeOffset > 0 ? '+' : ''}{easeOffset} ease
                           </span>
                         )}
                       </div>
                       {hasError ? (
                         <Tooltip content={validationErrors[pom.id]}>
-                          <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                          <AlertCircle className="w-4 h-4 text-rose-400" />
                         </Tooltip>
                       ) : (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/50" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400/80" />
                       )}
                     </div>
 
+                    {/* Caliper Stepper Row */}
                     <div className="flex items-center space-x-2">
                       <input
                         type="number"
@@ -1293,11 +1221,39 @@ function MeasurementsContent() {
                         value={displayVal}
                         onFocus={() => setFocusedId(pom.id)}
                         onChange={(e) => handleMeasurementChange(pom.id, parseFloat(e.target.value) || 0)}
-                        className={`flex-1 pom-input ${
-                          hasError ? 'border-rose-500 focus:border-rose-400' : 'border-slate-800 focus:border-gold-500'
+                        className={`flex-1 pom-input rounded-xl ${
+                          hasError ? 'border-rose-500 focus:border-rose-400' : 'border-white/10 focus:border-[#D4AF37]'
                         }`}
                       />
-                      <span className="text-[10px] text-slate-500 font-mono w-6">{unitLabel}</span>
+                      <span className="text-xs text-slate-400 font-mono w-6 text-center">{unitLabel}</span>
+                    </div>
+
+                    {/* Stepper buttons -0.5", -0.25", +0.25", +0.5" strictly clamped */}
+                    <div className="grid grid-cols-4 gap-1 mt-2 pt-2 border-t border-white/5">
+                      <button
+                        onClick={() => applyStepper(pom.id, -0.5)}
+                        className="py-1 rounded-lg bg-slate-950/60 border border-white/10 text-slate-300 hover:text-white hover:border-[#D4AF37] text-[10px] font-mono font-bold transition-colors active:scale-95"
+                      >
+                        -0.5"
+                      </button>
+                      <button
+                        onClick={() => applyStepper(pom.id, -0.25)}
+                        className="py-1 rounded-lg bg-slate-950/60 border border-white/10 text-slate-300 hover:text-white hover:border-[#D4AF37] text-[10px] font-mono font-bold transition-colors active:scale-95"
+                      >
+                        -0.25"
+                      </button>
+                      <button
+                        onClick={() => applyStepper(pom.id, 0.25)}
+                        className="py-1 rounded-lg bg-slate-950/60 border border-white/10 text-slate-300 hover:text-white hover:border-[#D4AF37] text-[10px] font-mono font-bold transition-colors active:scale-95"
+                      >
+                        +0.25"
+                      </button>
+                      <button
+                        onClick={() => applyStepper(pom.id, 0.5)}
+                        className="py-1 rounded-lg bg-slate-950/60 border border-white/10 text-slate-300 hover:text-white hover:border-[#D4AF37] text-[10px] font-mono font-bold transition-colors active:scale-95"
+                      >
+                        +0.5"
+                      </button>
                     </div>
 
                     {hasError && (
@@ -1306,7 +1262,7 @@ function MeasurementsContent() {
                         {validationErrors[pom.id]}
                       </p>
                     )}
-                    <p className="text-[9px] text-slate-500 mt-1">
+                    <p className="text-[10px] text-slate-500 mt-1 font-mono">
                       Range: {convertVal(pom.min)} – {convertVal(pom.max)} {unitLabel}
                     </p>
                   </div>
@@ -1315,58 +1271,67 @@ function MeasurementsContent() {
             </div>
 
             {/* Save Button */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800/60">
+            <div className="flex items-center justify-between pt-4 border-t border-white/5">
               <div className="flex items-center space-x-2 text-xs">
                 {isValid ? (
                   <span className="text-emerald-400 flex items-center font-medium">
-                    <CheckCircle2 className="w-4 h-4 mr-1" /> All values within tolerance
+                    <CheckCircle2 className="w-4 h-4 mr-1.5" /> All POM values within anatomical tolerance
                   </span>
                 ) : (
                   <span className="text-rose-400 flex items-center font-medium">
-                    <AlertCircle className="w-4 h-4 mr-1" /> {Object.keys(validationErrors).length} errors
+                    <AlertCircle className="w-4 h-4 mr-1.5" /> {Object.keys(validationErrors).length} errors to rectify
                   </span>
                 )}
               </div>
               <Tooltip content={isValid ? "Save current measurements to version history" : "Fix validation errors to save"}>
-                <button
+                <Button
+                  variant="gold"
+                  size="md"
                   disabled={!isValid}
                   onClick={handleSaveSnapshot}
-                  className={`btn-gold ${!isValid ? 'opacity-50 cursor-not-allowed filter-none' : ''}`}
+                  leftIcon={<Save className="w-4 h-4" />}
                 >
-                  <Save className="w-4 h-4 mr-2" />
-                  <span>Save Snapshot</span>
-                </button>
+                  Save Snapshot
+                </Button>
               </Tooltip>
             </div>
-          </div>
+          </Card>
 
-          {/* Posture Profile Panel */}
-          <div className="glass-card rounded-2xl border border-slate-800/60 p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
-              <div className="flex items-center space-x-2">
-                <Activity className="w-4 h-4 text-gold-400" />
-                <h3 className="font-bold text-sm text-white">Posture Profile Modifiers</h3>
+          {/* 4-Axis Posture Profile Panel */}
+          <Card variant="glass" padding="md" className="border-white/10 space-y-5">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  <Activity className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white font-display">4-Axis Posture Profile Morphs</h3>
+                  <p className="text-xs text-slate-400">Anatomical stance modifiers dynamically adjusting CAD draft lines</p>
+                </div>
               </div>
               {(shoulderSlope !== 'Normal' || chestStance !== 'Normal' || backPosture !== 'Normal' || heelHeight > 0) && (
-                <span className="badge badge-gold flex items-center">
-                  <Sparkles className="w-3 h-3 mr-1" /> Active Modifiers
-                </span>
+                <Badge variant="gold" size="sm">
+                  Active Morphs
+                </Badge>
               )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Shoulder Slope */}
-              <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Shoulder Slope</label>
+              {/* 1. Shoulder Slope */}
+              <div className="bg-slate-900/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                <label className="text-xs font-semibold text-slate-300 flex justify-between">
+                  <span>Shoulder Slope</span>
+                  <span className="text-[#D4AF37] font-mono text-[11px]">{shoulderSlope === 'Sloped' ? '+8px' : shoulderSlope === 'Square' ? '-8px' : '0px'}</span>
+                </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {(['Normal', 'Sloped', 'Square'] as const).map((opt) => (
                     <button
                       key={opt}
                       onClick={() => setShoulderSlope(opt)}
-                      className={`p-2 rounded-lg text-[10px] font-semibold border transition-all ${
+                      className={`p-2 rounded-xl text-[11px] font-semibold border transition-all ${
                         shoulderSlope === opt
-                          ? 'btn-gold'
-                          : 'btn-ghost'
+                          ? 'bg-amber-400/20 text-amber-300 border-[#D4AF37]/50 shadow-sm'
+                          : 'bg-slate-950/40 text-slate-400 border-white/5 hover:text-white hover:border-white/10'
                       }`}
                     >
                       {opt}
@@ -1375,18 +1340,21 @@ function MeasurementsContent() {
                 </div>
               </div>
 
-              {/* Chest Stance */}
-              <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Chest Stance</label>
+              {/* 2. Chest Stance */}
+              <div className="bg-slate-900/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                <label className="text-xs font-semibold text-slate-300 flex justify-between">
+                  <span>Chest Stance</span>
+                  <span className="text-[#D4AF37] font-mono text-[11px]">Apex {chestStance === 'Forward' ? 'Y:210' : chestStance === 'Barrel' ? 'Y:222' : 'Y:192'}</span>
+                </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {(['Normal', 'Forward', 'Barrel'] as const).map((opt) => (
                     <button
                       key={opt}
                       onClick={() => setChestStance(opt)}
-                      className={`p-2 rounded-lg text-[10px] font-semibold border transition-all ${
+                      className={`p-2 rounded-xl text-[11px] font-semibold border transition-all ${
                         chestStance === opt
-                          ? 'btn-gold'
-                          : 'btn-ghost'
+                          ? 'bg-amber-400/20 text-amber-300 border-[#D4AF37]/50 shadow-sm'
+                          : 'bg-slate-950/40 text-slate-400 border-white/5 hover:text-white hover:border-white/10'
                       }`}
                     >
                       {opt}
@@ -1395,18 +1363,21 @@ function MeasurementsContent() {
                 </div>
               </div>
 
-              {/* Back Posture */}
-              <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
-                <label className="text-xs font-semibold text-slate-300">Back Posture</label>
+              {/* 3. Back Posture */}
+              <div className="bg-slate-900/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                <label className="text-xs font-semibold text-slate-300 flex justify-between">
+                  <span>Spine Curvature</span>
+                  <span className="text-[#D4AF37] font-mono text-[11px]">Dash {backPosture === 'Stooped' ? '3 3' : backPosture === 'Erect' ? '10 2' : '5 5'}</span>
+                </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {(['Normal', 'Stooped', 'Erect'] as const).map((opt) => (
                     <button
                       key={opt}
                       onClick={() => setBackPosture(opt)}
-                      className={`p-2 rounded-lg text-[10px] font-semibold border transition-all ${
+                      className={`p-2 rounded-xl text-[11px] font-semibold border transition-all ${
                         backPosture === opt
-                          ? 'btn-gold'
-                          : 'btn-ghost'
+                          ? 'bg-amber-400/20 text-amber-300 border-[#D4AF37]/50 shadow-sm'
+                          : 'bg-slate-950/40 text-slate-400 border-white/5 hover:text-white hover:border-white/10'
                       }`}
                     >
                       {opt}
@@ -1415,10 +1386,11 @@ function MeasurementsContent() {
                 </div>
               </div>
 
-              {/* Heel Height (Women only) */}
-              <div className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
-                <label className="text-xs font-semibold text-slate-300">
-                  Heel Height {selectedGender === 'Women' ? '' : '(N/A)'}
+              {/* 4. Heel Height (Women only, 5px per inch) */}
+              <div className="bg-slate-900/60 p-4 rounded-2xl border border-white/5 space-y-2">
+                <label className="text-xs font-semibold text-slate-300 flex justify-between">
+                  <span>Heel Height {selectedGender === 'Women' ? '' : '(Women Only)'}</span>
+                  <span className="text-[#D4AF37] font-mono text-[11px]">{selectedGender === 'Women' ? `${heelHeight * 5}px hem lift` : '0px'}</span>
                 </label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {[0, 1, 2, 3].map((h) => (
@@ -1426,12 +1398,12 @@ function MeasurementsContent() {
                       key={h}
                       onClick={() => setHeelHeight(h)}
                       disabled={selectedGender === 'Men'}
-                      className={`p-2 rounded-lg text-[10px] font-semibold border transition-all ${
+                      className={`p-2 rounded-xl text-[11px] font-semibold border transition-all ${
                         selectedGender === 'Men'
-                          ? 'bg-slate-950/30 text-slate-700 border-slate-800/40 cursor-not-allowed'
+                          ? 'bg-slate-950/20 text-slate-700 border-white/5 cursor-not-allowed'
                           : heelHeight === h
-                          ? 'btn-gold'
-                          : 'btn-ghost'
+                          ? 'bg-amber-400/20 text-amber-300 border-[#D4AF37]/50 shadow-sm'
+                          : 'bg-slate-950/40 text-slate-400 border-white/5 hover:text-white hover:border-white/10'
                       }`}
                     >
                       {h}"
@@ -1440,26 +1412,30 @@ function MeasurementsContent() {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
 
-      {/* Version History Panel */}
+      {/* Snapshot Version History Panel (yh_measurement_snapshots) */}
       {showHistory && (
-        <div className="glass-card rounded-2xl border border-amber-500/30 p-6 animate-fade-in space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center space-x-2.5">
-              <div className="p-2 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-300">
-                <History className="w-4 h-4" />
+        <Card variant="glass" padding="md" className="border-amber-500/30 space-y-5 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                <History className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-base text-white">CAD Measurement Version History & Snapshots</h3>
+                <h3 className="font-bold text-base text-white font-display">CAD Measurement Version History & Snapshots</h3>
                 <p className="text-xs text-slate-400">Track historical body fitting revisions, baseline versions, and cutter adjustments.</p>
               </div>
             </div>
-            <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 transition-colors">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHistory(false)}
+            >
               Hide History
-            </button>
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1471,36 +1447,38 @@ function MeasurementsContent() {
                   <div
                     key={v.id}
                     onClick={() => setSelectedVersionSnapshot(v)}
-                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer group ${
+                    className={`p-4 rounded-3xl border transition-all flex flex-col justify-between cursor-pointer group ${
                       isSelected
-                        ? 'bg-amber-400/20 border-amber-400 shadow-lg shadow-amber-500/10 ring-2 ring-amber-400/50'
+                        ? 'bg-amber-950/30 border-[#D4AF37] shadow-lg shadow-yellow-500/10 ring-2 ring-[#D4AF37]/40'
                         : v.status === 'current'
-                        ? 'bg-amber-400/10 border-amber-400/40 hover:border-amber-400'
-                        : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                        ? 'bg-amber-950/15 border-amber-400/40 hover:border-amber-400'
+                        : 'bg-slate-900/60 border-white/10 hover:border-white/20'
                     }`}
                   >
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs font-mono font-extrabold px-3 py-1 rounded-full ${
-                          v.status === 'current' ? 'bg-amber-400 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300 border border-slate-700'
-                        }`}>
+                        <Badge variant={v.status === 'current' ? 'gold' : 'neutral'} size="sm">
                           {v.version}
-                        </span>
+                        </Badge>
                         <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
-                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                          <Clock className="w-3.5 h-3.5 text-[#D4AF37]" />
                           {v.date}
                         </span>
                       </div>
 
                       <div>
-                        <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">{v.garment} Baseline</h4>
-                        <p className="text-xs text-slate-400 mt-0.5">Fit Profile: <strong className="text-slate-200">{v.fitPref || 'Regular'}</strong> &bull; {v.pomCount} POM Landmarks</p>
+                        <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors font-display">
+                          {v.garment} Baseline
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Fit Profile: <strong className="text-slate-200">{v.fitPref || 'Regular'}</strong> &bull; {v.pomCount} POM Landmarks
+                        </p>
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between mt-3">
-                      <span className="text-xs font-semibold text-amber-400 flex items-center gap-1">
-                        <Eye className="w-3.5 h-3.5" /> Click to Inspect Breakdown
+                    <div className="pt-3 border-t border-white/5 flex items-center justify-between mt-4">
+                      <span className="text-xs font-semibold text-[#D4AF37] flex items-center gap-1">
+                        <Eye className="w-3.5 h-3.5" /> Inspect Breakdown
                       </span>
                       {v.status !== 'current' && (
                         <button
@@ -1523,15 +1501,15 @@ function MeasurementsContent() {
               })}
           </div>
 
-          {/* DISPLAY BELOW: Interactive Historical Snapshot Detail Table */}
+          {/* Detailed Snapshot Inspection Breakdown */}
           {selectedVersionSnapshot && (
-            <div className="mt-6 p-5 rounded-2xl bg-slate-950/90 border border-amber-500/40 space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="mt-6 p-5 rounded-3xl bg-slate-950/90 border border-amber-500/30 space-y-4 animate-fade-in">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-mono font-bold">
+                  <Badge variant="gold" size="sm">
                     {selectedVersionSnapshot.version} Snapshot Breakdown
-                  </span>
-                  <span className="text-xs text-slate-300 font-bold">
+                  </Badge>
+                  <span className="text-xs text-slate-300 font-semibold">
                     {selectedVersionSnapshot.garment} &bull; Recorded on {selectedVersionSnapshot.date}
                   </span>
                 </div>
@@ -1547,7 +1525,6 @@ function MeasurementsContent() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {selectedVersionSnapshot.pomData ? (
                   Object.entries(selectedVersionSnapshot.pomData).map(([pomKey, pomValue]) => {
-                    // Match pomKey to activePoms or schemas
                     const pomNameMap: Record<string, string> = {
                       'sh-01': 'Chest Girth',
                       'sh-02': 'Waist Girth',
@@ -1570,7 +1547,7 @@ function MeasurementsContent() {
                     const title = pomNameMap[pomKey] || pomKey.toUpperCase();
 
                     return (
-                      <div key={pomKey} className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                      <div key={pomKey} className="p-3.5 rounded-2xl bg-slate-900/80 border border-white/5 space-y-1">
                         <span className="text-[10px] text-slate-400 font-semibold uppercase block tracking-wider">{title}</span>
                         <div className="flex items-baseline justify-between">
                           <span className="text-xl font-bold text-amber-300 font-mono">{pomValue}</span>
@@ -1590,7 +1567,9 @@ function MeasurementsContent() {
                 <span className="text-slate-400">
                   Fit Profile: <strong className="text-white">{selectedVersionSnapshot.fitPref || 'Slim Bespoke'}</strong>
                 </span>
-                <button
+                <Button
+                  variant="gold"
+                  size="sm"
                   onClick={() => {
                     if (selectedVersionSnapshot.pomData) {
                       setMeasurements(prev => ({ ...prev, ...selectedVersionSnapshot.pomData }));
@@ -1598,44 +1577,45 @@ function MeasurementsContent() {
                     setToastMessage(`Loaded version ${selectedVersionSnapshot.version} values into active workbench!`);
                     setTimeout(() => setToastMessage(null), 3000);
                   }}
-                  className="btn-gold py-1.5 px-4 text-xs flex items-center space-x-1.5"
+                  leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Load {selectedVersionSnapshot.version} into Cutting Workbench</span>
-                </button>
+                  Load {selectedVersionSnapshot.version} into Cutting Workbench
+                </Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       )}
 
-      {/* Fitting Trial Delta Comparison (Conditional) */}
+      {/* Fitting Trial Delta Comparison */}
       {showTrials && (
-        <div className="glass-card rounded-2xl border border-slate-800/60 p-6 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-slate-800/60 pb-3 mb-4">
-            <div className="flex items-center space-x-2">
-              <GitCompare className="w-4 h-4 text-blue-400" />
-              <h3 className="font-bold text-sm text-white">Fitting Trial Delta Comparison</h3>
+        <Card variant="glass" padding="md" className="border-white/10 space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-white/5 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <GitCompare className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-base text-white font-display">Fitting Trial Delta Comparison</h3>
             </div>
-            <button onClick={() => setShowTrials(false)} className="text-slate-500 hover:text-white text-xs transition-colors">
+            <button onClick={() => setShowTrials(false)} className="text-slate-400 hover:text-white text-xs transition-colors">
               Close
             </button>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-slate-800/60 text-slate-400">
-                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider">POM</th>
-                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-gold-400 uppercase tracking-wider">Original</th>
-                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Trial 1</th>
-                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Trial 2</th>
-                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider">Δ1</th>
-                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider">Δ2</th>
-                  <th className="text-center px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider">Status</th>
+                <tr className="border-b border-white/5 text-slate-400 bg-slate-950/30">
+                  <th className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-wider">POM Landmark</th>
+                  <th className="text-center px-4 py-3 text-[10px] font-semibold text-amber-300 uppercase tracking-wider">Original</th>
+                  <th className="text-center px-4 py-3 text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Trial 1</th>
+                  <th className="text-center px-4 py-3 text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Trial 2</th>
+                  <th className="text-center px-4 py-3 text-[10px] font-semibold uppercase tracking-wider">Δ1</th>
+                  <th className="text-center px-4 py-3 text-[10px] font-semibold uppercase tracking-wider">Δ2</th>
+                  <th className="text-center px-4 py-3 text-[10px] font-semibold uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {fittingDeltas.map((fd, i) => {
                   const getDeltaColor = (d: number) => {
                     if (d === 0) return 'text-emerald-400';
@@ -1647,37 +1627,32 @@ function MeasurementsContent() {
                     if (d > 0) return <ArrowUpRight className="w-3 h-3" />;
                     return <ArrowDownRight className="w-3 h-3" />;
                   };
-                  const getStatus = (d: number) => {
-                    if (Math.abs(d) === 0) return { text: 'Perfect', color: 'badge badge-emerald' };
-                    if (Math.abs(d) <= 0.25) return { text: 'Tolerance', color: 'badge badge-amber' };
-                    return { text: 'Alteration', color: 'badge badge-rose' };
+                  const getStatusBadge = (d: number) => {
+                    if (Math.abs(d) === 0) return <Badge variant="success" size="sm">Perfect</Badge>;
+                    if (Math.abs(d) <= 0.25) return <Badge variant="warning" size="sm">Tolerance</Badge>;
+                    return <Badge variant="danger" size="sm">Alteration</Badge>;
                   };
-                  const status = getStatus(fd.delta2);
 
                   return (
-                    <tr key={i} className="border-b border-slate-800/30 last:border-0 hover:bg-slate-800/40 transition-colors">
-                      <td className="px-4 py-3 text-xs font-semibold text-slate-300">{fd.pomName}</td>
-                      <td className="px-4 py-3 text-center font-mono text-xs text-gold-400 font-bold">{fd.original}"</td>
-                      <td className="px-4 py-3 text-center font-mono text-xs text-blue-400">{fd.trial1}"</td>
-                      <td className="px-4 py-3 text-center font-mono text-xs text-purple-400">{fd.trial2}"</td>
-                      <td className="px-4 py-3 text-center">
+                    <tr key={i} className="hover:bg-white/[0.03] transition-colors">
+                      <td className="px-4 py-3.5 text-xs font-semibold text-slate-200">{fd.pomName}</td>
+                      <td className="px-4 py-3.5 text-center font-mono text-xs text-amber-300 font-bold">{fd.original}"</td>
+                      <td className="px-4 py-3.5 text-center font-mono text-xs text-blue-400">{fd.trial1}"</td>
+                      <td className="px-4 py-3.5 text-center font-mono text-xs text-purple-400">{fd.trial2}"</td>
+                      <td className="px-4 py-3.5 text-center">
                         <span className={`font-mono text-xs font-semibold flex items-center justify-center space-x-1 ${getDeltaColor(fd.delta1)}`}>
                           {getDeltaIcon(fd.delta1)}
                           <span>{fd.delta1 > 0 ? '+' : ''}{fd.delta1}"</span>
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3.5 text-center">
                         <span className={`font-mono text-xs font-semibold flex items-center justify-center space-x-1 ${getDeltaColor(fd.delta2)}`}>
                           {getDeltaIcon(fd.delta2)}
                           <span>{fd.delta2 > 0 ? '+' : ''}{fd.delta2}"</span>
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <Tooltip content={`Fitting deviation: ${fd.delta2 > 0 ? '+' : ''}${fd.delta2}" relative to baseline`}>
-                          <span className={status.color}>
-                            {status.text}
-                          </span>
-                        </Tooltip>
+                      <td className="px-4 py-3.5 text-center">
+                        {getStatusBadge(fd.delta2)}
                       </td>
                     </tr>
                   );
@@ -1685,10 +1660,26 @@ function MeasurementsContent() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Printable Measurement Card Chart (Hidden on screen, rendered on Print) */}
+      {/* Printable Measurement Card Chart with isolated @media print styling */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          .measurement-card-print, .measurement-card-print * {
+            visibility: visible !important;
+          }
+          .measurement-card-print {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+          }
+        }
+      `}} />
       <div className="measurement-card-print font-sans">
         <MeasurementCard 
           customerName={customerName || 'Bespoke Client'}
@@ -1706,9 +1697,8 @@ function MeasurementsContent() {
 
 export default function MeasurementsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gold-400">Loading Measurements Workspace...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-[#D4AF37] font-semibold">Loading Measurements Workspace...</div>}>
       <MeasurementsContent />
     </Suspense>
   );
 }
-

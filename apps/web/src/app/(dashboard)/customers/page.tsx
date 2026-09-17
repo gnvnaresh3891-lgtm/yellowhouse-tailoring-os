@@ -15,6 +15,7 @@ import {
   MoreVertical,
   X,
   ChevronDown,
+  ChevronRight,
   Sparkles,
   Check,
   Users,
@@ -23,750 +24,955 @@ import {
   Clock,
   Trash2,
   ShoppingBag,
-  Printer
+  Printer,
+  DollarSign,
+  ArrowUpRight,
+  ShieldCheck,
+  Tag as TagIcon,
+  Crown,
+  HeartHandshake,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
-import { Tooltip } from '@/components/Tooltip';
-import { useToast } from '@/components/toast-context';
-import { ConfirmDialog } from '@/components/confirm-dialog';
-import { CustomerListPrint } from '@/components/print-layouts';
 import { logActivity } from '@/lib/state-sync-utils';
-
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  gender: 'Men' | 'Women';
-  preferredFit: string;
-  isVip: boolean;
-  measurementsCount: number;
-  lastVisit: string;
-  initials: string;
-  email?: string;
-  notes?: string;
-}
-
-const initialCustomers: Customer[] = [
-  {
-    id: 'CUST-001',
-    name: 'Rajeshwar Malhotra',
-    phone: '+91 98765 43210',
-    gender: 'Men',
-    preferredFit: 'Slim Bespoke',
-    isVip: true,
-    measurementsCount: 3,
-    lastVisit: '2 days ago',
-    initials: 'RM',
-    email: 'rajeshwar.m@example.com',
-    notes: 'Prefers English cut jackets with high armholes.'
-  },
-  {
-    id: 'CUST-002',
-    name: 'Ananya Sharma',
-    phone: '+91 98765 43211',
-    gender: 'Women',
-    preferredFit: 'Regular',
-    isVip: true,
-    measurementsCount: 5,
-    lastVisit: '1 day ago',
-    initials: 'AS',
-    email: 'ananya.s@example.com',
-    notes: 'Silk blouse waistline preference +1.5 inch ease.'
-  },
-  {
-    id: 'CUST-003',
-    name: 'Vikram Singh',
-    phone: '+91 98765 43212',
-    gender: 'Men',
-    preferredFit: 'Regular',
-    isVip: false,
-    measurementsCount: 1,
-    lastVisit: '1 week ago',
-    initials: 'VS',
-    email: 'vikram.singh@example.com',
-    notes: 'Classic two-piece suit fit.'
-  },
-  {
-    id: 'CUST-004',
-    name: 'Priya Patel',
-    phone: '+91 98765 43213',
-    gender: 'Women',
-    preferredFit: 'Slim',
-    isVip: false,
-    measurementsCount: 2,
-    lastVisit: '3 days ago',
-    initials: 'PP',
-    email: 'priya.patel@example.com',
-    notes: 'Contour darts required on all fitted lehengas.'
-  },
-  {
-    id: 'CUST-005',
-    name: 'Mohammed Farooq',
-    phone: '+91 98765 43214',
-    gender: 'Men',
-    preferredFit: 'Relaxed',
-    isVip: false,
-    measurementsCount: 1,
-    lastVisit: '2 weeks ago',
-    initials: 'MF',
-    email: 'm.farooq@example.com',
-    notes: 'Kurta pajama set specialist fit.'
-  },
-  {
-    id: 'CUST-006',
-    name: 'Deepika Nair',
-    phone: '+91 98765 43215',
-    gender: 'Women',
-    preferredFit: 'Regular',
-    isVip: true,
-    measurementsCount: 4,
-    lastVisit: 'Today',
-    initials: 'DN',
-    email: 'deepika.nair@example.com',
-    notes: 'VIP bridal consultation client.'
-  },
-  {
-    id: 'CUST-007',
-    name: 'Arjun Kapoor',
-    phone: '+91 98765 43216',
-    gender: 'Men',
-    preferredFit: 'Slim Bespoke',
-    isVip: false,
-    measurementsCount: 2,
-    lastVisit: '5 days ago',
-    initials: 'AK',
-    email: 'arjun.k@example.com',
-    notes: 'Double-breasted blazer specifications.'
-  },
-  {
-    id: 'CUST-008',
-    name: 'Meera Reddy',
-    phone: '+91 98765 43217',
-    gender: 'Women',
-    preferredFit: 'Slim',
-    isVip: false,
-    measurementsCount: 1,
-    lastVisit: '1 week ago',
-    initials: 'MR',
-    email: 'meera.reddy@example.com',
-    notes: 'Anarkali flared trial pending.'
-  }
-];
+import { CustomerListPrint } from '@/components/print-layouts';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { Input } from '@/components/ui/input';
+import {
+  Customer,
+  VIPTier,
+  CustomerFilterOptions,
+  INITIAL_CUSTOMERS,
+  AVAILABLE_CUSTOMER_TAGS,
+  filterCustomers,
+  computeCustomerStats,
+  buildCustomerCadLink,
+  filterSnapshotsForCustomer,
+  getVipTierBadgeVariant,
+} from '@/lib/staff-utils';
+import { formatInrCurrency } from '@/lib/production-utils';
 
 export default function CustomerDirectoryPage() {
-  const [customersList, setCustomersList] = useState<Customer[]>(initialCustomers);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [genderFilter, setGenderFilter] = useState<'All' | 'Men' | 'Women'>('All');
-  const [vipOnly, setVipOnly] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const router = useRouter();
-  const toast = useToast();
 
-  // Orders state
-  const [ordersList, setOrdersList] = useState<any[]>([]);
+  // --------------------------------------------------------------------------
+  // State Management
+  // --------------------------------------------------------------------------
+  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedVipTier, setSelectedVipTier] = useState<'ALL' | VIPTier>('ALL');
+  const [selectedGender, setSelectedGender] = useState<'All' | 'Men' | 'Women'>('All');
+  const [selectedBalanceStatus, setSelectedBalanceStatus] = useState<'ALL' | 'OUTSTANDING' | 'SETTLED'>('ALL');
+  const [selectedTag, setSelectedTag] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'RECENT' | 'SPEND_DESC' | 'ORDERS_DESC' | 'NAME_ASC'>('RECENT');
 
-  // Edit State
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [editFormErrors, setEditFormErrors] = useState<{ phone?: string; email?: string }>({});
+  // Drawer & Modals
+  const [activeCustomer, setActiveCustomer] = useState<Customer | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Customer>>({});
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  // Delete State
-  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
-  const [deleteNote, setDeleteNote] = useState<string>('');
+  // CAD Snapshots from LocalStorage
+  const [savedSnapshots, setSavedSnapshots] = useState<any[]>([]);
 
-  // Load yh_customers and yh_orders from localStorage on mount
-  useEffect(() => {
-    const stored = getLocalStorage<Customer[]>('yh_customers', initialCustomers);
-    if (Array.isArray(stored) && stored.length > 0) {
-      setCustomersList(stored);
-    } else {
-      setCustomersList(initialCustomers);
-      setLocalStorage('yh_customers', initialCustomers);
-    }
-    setOrdersList(getLocalStorage<any[]>('yh_orders', []));
-  }, []);
-
-  // Modal State
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({
+  // New Customer Form
+  const [newCustomerForm, setNewCustomerForm] = useState<Partial<Customer>>({
     name: '',
     phone: '',
     email: '',
-    gender: 'Men' as 'Men' | 'Women',
+    gender: 'Men',
     preferredFit: 'Slim Bespoke',
-    isVip: false,
-    notes: ''
+    vipTier: 'Regular',
+    city: 'Main Flagship Atelier',
+    notes: '',
+    tags: [],
   });
-  const [addFormErrors, setAddFormErrors] = useState<{ phone?: string; email?: string }>({});
 
-  // Filtered Customers Calculation
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  // --------------------------------------------------------------------------
+  // Persistence & Storage Sync
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    const stored = getLocalStorage<Customer[]>('yh_customers', INITIAL_CUSTOMERS);
+    setCustomers(stored);
+    const snaps = getLocalStorage<any[]>('yh_measurement_snapshots', []);
+    setSavedSnapshots(snaps);
+  }, []);
+
+  const persistCustomers = (updated: Customer[]) => {
+    setCustomers(updated);
+    setLocalStorage('yh_customers', updated);
+  };
+
+  // --------------------------------------------------------------------------
+  // Computed Statistics & Filtering
+  // --------------------------------------------------------------------------
+  const stats = useMemo(() => computeCustomerStats(customers), [customers]);
+
   const filteredCustomers = useMemo(() => {
-    return customersList.filter((c) => {
-      const matchSearch =
-        searchQuery.trim() === '' ||
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.phone.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchGender = genderFilter === 'All' || c.gender === genderFilter;
-      const matchVip = !vipOnly || c.isVip;
-
-      return matchSearch && matchGender && matchVip;
+    return filterCustomers(customers, {
+      searchQuery,
+      vipTier: selectedVipTier,
+      gender: selectedGender,
+      balanceStatus: selectedBalanceStatus,
+      tag: selectedTag,
+      sortBy,
     });
-  }, [customersList, searchQuery, genderFilter, vipOnly]);
+  }, [customers, searchQuery, selectedVipTier, selectedGender, selectedBalanceStatus, selectedTag, sortBy]);
 
-  // Statistics
-  const stats = useMemo(() => {
-    return {
-      total: customersList.length,
-      vip: customersList.filter((c) => c.isVip).length,
-      men: customersList.filter((c) => c.gender === 'Men').length,
-      women: customersList.filter((c) => c.gender === 'Women').length
-    };
-  }, [customersList]);
+  // Active client snapshots
+  const activeClientSnapshots = useMemo(() => {
+    if (!activeCustomer) return [];
+    return filterSnapshotsForCustomer(savedSnapshots, activeCustomer.id);
+  }, [savedSnapshots, activeCustomer]);
 
-  // Add New Customer Handler
+  // --------------------------------------------------------------------------
+  // Customer Actions
+  // --------------------------------------------------------------------------
   const handleAddCustomer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCustomer.name || !newCustomer.phone) {
-      toast.error('Please fill in required fields');
+    if (!newCustomerForm.name || !newCustomerForm.phone) {
+      showToast('Name and phone number are required.');
       return;
     }
 
-    const phoneRegex = /^\+?[\d\s-]{10,15}$/;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    let errors: { phone?: string; email?: string } = {};
-    if (!phoneRegex.test(newCustomer.phone)) errors.phone = 'Invalid phone format';
-    if (newCustomer.email && !emailRegex.test(newCustomer.email)) errors.email = 'Invalid email format';
-    
-    if (Object.keys(errors).length > 0) {
-      setAddFormErrors(errors);
-      return;
-    }
-    
-    setAddFormErrors({});
-
-    const initials = newCustomer.name
+    const nextId = `CUST-${String(customers.length + 1).padStart(3, '0')}`;
+    const initials = newCustomerForm.name
       .split(' ')
-      .map((n) => n[0])
+      .map((p) => p[0])
       .join('')
       .toUpperCase()
       .slice(0, 2);
 
-    const createdCustomer: Customer = {
-      id: `CUST-${Date.now().toString(36).toUpperCase()}`,
-      name: newCustomer.name,
-      phone: newCustomer.phone,
-      email: newCustomer.email,
-      gender: newCustomer.gender,
-      preferredFit: newCustomer.preferredFit,
-      isVip: newCustomer.isVip,
-      measurementsCount: 1,
+    const isVipTier = newCustomerForm.vipTier && newCustomerForm.vipTier !== 'Regular';
+
+    const newPatron: Customer = {
+      id: nextId,
+      name: newCustomerForm.name,
+      phone: newCustomerForm.phone,
+      email: newCustomerForm.email,
+      gender: (newCustomerForm.gender as any) || 'Men',
+      preferredFit: (newCustomerForm.preferredFit as any) || 'Regular',
+      vipTier: (newCustomerForm.vipTier as any) || 'Regular',
+      isVip: Boolean(isVipTier),
+      totalOrders: 0,
+      totalSpend: 0,
+      outstandingBalance: 0,
+      tags: newCustomerForm.tags || [],
+      measurementsCount: 0,
       lastVisit: 'Today',
-      initials: initials || 'CU',
-      notes: newCustomer.notes || 'New customer profile created.'
+      initials,
+      city: newCustomerForm.city || 'Flagship Atelier',
+      notes: newCustomerForm.notes || '',
+      createdAt: new Date().toISOString(),
     };
 
-    const updatedList = [createdCustomer, ...customersList];
-    setCustomersList(updatedList);
-    setLocalStorage('yh_customers', updatedList);
-    setIsAddModalOpen(false);
-    toast.success('Customer added successfully');
-    logActivity({ type: 'customer_added', message: `Added customer ${createdCustomer.name}`, entityId: createdCustomer.id });
-    setNewCustomer({
+    const updated = [newPatron, ...customers];
+    persistCustomers(updated);
+    logActivity({
+      type: 'customer_added',
+      message: `Enrolled new atelier client: ${newPatron.name} (${newPatron.vipTier})`,
+    });
+
+    setShowAddModal(false);
+    setNewCustomerForm({
       name: '',
       phone: '',
       email: '',
       gender: 'Men',
       preferredFit: 'Slim Bespoke',
-      isVip: false,
-      notes: ''
+      vipTier: 'Regular',
+      city: 'Main Flagship Atelier',
+      notes: '',
+      tags: [],
     });
+    showToast(`Registered patron ${newPatron.name}`);
   };
 
-  const handleSaveCustomerEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCustomer) return;
+  const handleUpdateCustomer = () => {
+    if (!activeCustomer || !editForm) return;
 
-    if (!editingCustomer.name || !editingCustomer.phone) {
-      toast.error('Please fill in required fields');
+    const updatedList = customers.map((c) => {
+      if (c.id === activeCustomer.id) {
+        const isVipTier = editForm.vipTier ? editForm.vipTier !== 'Regular' : c.isVip;
+        return {
+          ...c,
+          ...editForm,
+          isVip: Boolean(isVipTier),
+        };
+      }
+      return c;
+    });
+
+    persistCustomers(updatedList);
+    const updatedActive = updatedList.find((c) => c.id === activeCustomer.id) || null;
+    setActiveCustomer(updatedActive);
+    setIsEditing(false);
+    showToast(`Profile updated for ${activeCustomer.name}`);
+  };
+
+  const handleDeleteCustomer = (customerId: string) => {
+    if (!deleteReason.trim()) {
+      showToast('Audit deletion reason is required.');
       return;
     }
 
-    const phoneRegex = /^\+?[\d\s-]{10,15}$/;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    let errors: { phone?: string; email?: string } = {};
-    if (!phoneRegex.test(editingCustomer.phone)) errors.phone = 'Invalid phone format';
-    if (editingCustomer.email && !emailRegex.test(editingCustomer.email)) errors.email = 'Invalid email format';
-    
-    if (Object.keys(errors).length > 0) {
-      setEditFormErrors(errors);
-      return;
-    }
-    setEditFormErrors({});
+    const patron = customers.find((c) => c.id === customerId);
+    const updated = customers.filter((c) => c.id !== customerId);
+    persistCustomers(updated);
 
-    const updatedList = customersList.map(c => c.id === editingCustomer.id ? editingCustomer : c);
-    setCustomersList(updatedList);
-    setLocalStorage('yh_customers', updatedList);
-    setEditingCustomer(null);
-    toast.success('Customer updated');
-  };
+    const deleteLog = getLocalStorage<any[]>('yh_deleted_customers_log', []);
+    deleteLog.push({
+      customerId,
+      name: patron?.name,
+      reason: deleteReason,
+      deletedAt: new Date().toISOString(),
+    });
+    setLocalStorage('yh_deleted_customers_log', deleteLog);
 
-  const handleDeleteCustomer = () => {
-    if (!deleteTarget || !deleteNote.trim()) return;
-
-    const updatedList = customersList.filter(c => c.id !== deleteTarget.id);
-    setCustomersList(updatedList);
-    setLocalStorage('yh_customers', updatedList);
-    
-    // Log deletion
-    const deletedLog = getLocalStorage<any[]>('yh_deleted_customers_log', []);
-    setLocalStorage('yh_deleted_customers_log', [...deletedLog, {
-      customerId: deleteTarget.id,
-      name: deleteTarget.name,
-      reason: deleteNote,
-      deletedAt: new Date().toISOString()
-    }]);
-
-    setDeleteTarget(null);
-    setDeleteNote('');
-    toast.success('Customer deleted');
-  };
-
-  const handleResetFilters = () => {
-    setSearchQuery('');
-    setGenderFilter('All');
-    setVipOnly(false);
+    setIsDeleting(false);
+    setDeleteReason('');
+    setActiveCustomer(null);
+    showToast(`Client ${customerId} archived from directory.`);
   };
 
   return (
-    <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-6 animate-fade-in">
-      {/* 1. Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 pb-20 font-sans">
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-5 right-5 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="backdrop-blur-2xl bg-slate-900/90 text-amber-300 px-4 py-2.5 rounded-full border border-amber-500/30 shadow-ios-gold text-xs font-semibold flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span>{toastMsg}</span>
+          </div>
+        </div>
+      )}
+
+      {/* PAGE HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400">
-              <Users className="w-6 h-6" />
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+              <Users className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-white tracking-tight">Customer Directory</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-white font-display">Customer CRM Directory</h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                Manage atelier client profiles, fit preferences, and VIP measurement history
+                Atelier Client Profiles • 4-Tier VIP Hierarchy • 2D CAD Measurement Linkage
               </p>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3 self-start sm:self-auto">
-          <Tooltip content="Print complete client roster & fit preferences">
-            <button
-              onClick={() => window.print()}
-              className="btn-ghost flex items-center space-x-2 py-2 px-3 text-xs cursor-pointer border-slate-700 text-slate-300 hover:text-white"
-            >
-              <Printer className="w-4 h-4 text-yellow-400" />
-              <span>Print Roster</span>
-            </button>
-          </Tooltip>
-          <Tooltip content="Create new client profile with fit notes & contact info">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="btn-gold flex items-center space-x-2 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>Add Customer</span>
-            </button>
-          </Tooltip>
+
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => window.print()}
+            leftIcon={<Printer className="w-3.5 h-3.5" />}
+          >
+            Print Register
+          </Button>
+
+          <Button
+            variant="gold"
+            size="sm"
+            onClick={() => setShowAddModal(true)}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          >
+            New Client Intake
+          </Button>
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card rounded-xl p-4 border border-slate-800/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Clients</span>
-            <User className="w-4 h-4 text-slate-400" />
+      {/* KPI STAT TILES */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card variant="glass" padding="sm">
+          <div className="text-[11px] font-medium text-slate-400">Total Atelier Patrons</div>
+          <div className="text-2xl font-bold text-white mt-1 tabular-nums font-display">{stats.total}</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">
+            {stats.men} Men • {stats.women} Women
           </div>
-          <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-2xl font-bold text-white">{stats.total}</span>
-            <span className="text-[11px] text-slate-500">Active</span>
-          </div>
-        </div>
+        </Card>
 
-        <div className="glass-card-gold rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-gold-400 uppercase tracking-wider">VIP Members</span>
-            <Star className="w-4 h-4 text-gold-400 fill-gold-400" />
+        <Card variant="glass" padding="sm">
+          <div className="text-[11px] font-medium text-slate-400">VIP & Couture Segments</div>
+          <div className="text-2xl font-bold text-amber-300 mt-1 tabular-nums font-display">
+            {stats.couture + stats.wedding + stats.vip}
           </div>
-          <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-2xl font-bold text-gold-300">{stats.vip}</span>
-            <span className="text-[11px] text-gold-400/80">Priority Atelier</span>
+          <div className="text-[10px] text-amber-400/80 mt-0.5">
+            {stats.couture} Couture • {stats.wedding} Wedding • {stats.vip} VIP
           </div>
-        </div>
+        </Card>
 
-        <div className="glass-card rounded-xl p-4 border border-slate-800/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">Men Clients</span>
-            <Shirt className="w-4 h-4 text-blue-400" />
+        <Card variant="glass" padding="sm">
+          <div className="text-[11px] font-medium text-slate-400">Outstanding Balances</div>
+          <div className="text-2xl font-bold text-rose-400 mt-1 tabular-nums font-display">
+            {formatInrCurrency(stats.totalOutstandingBalance)}
           </div>
-          <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-2xl font-bold text-white">{stats.men}</span>
-            <span className="text-[11px] text-slate-500">Profiles</span>
-          </div>
-        </div>
+          <div className="text-[10px] text-rose-300/80 mt-0.5">Pending collection upon trial</div>
+        </Card>
 
-        <div className="glass-card rounded-xl p-4 border border-slate-800/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-rose-400 uppercase tracking-wider">Women Clients</span>
-            <UserCheck className="w-4 h-4 text-rose-400" />
+        <Card variant="glass" padding="sm">
+          <div className="text-[11px] font-medium text-slate-400">Lifetime B2B Revenue</div>
+          <div className="text-2xl font-bold text-emerald-400 mt-1 tabular-nums font-display">
+            {formatInrCurrency(stats.totalLifetimeRevenue)}
           </div>
-          <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-2xl font-bold text-white">{stats.women}</span>
-            <span className="text-[11px] text-slate-500">Profiles</span>
-          </div>
-        </div>
+          <div className="text-[10px] text-emerald-400/80 mt-0.5">All invoiced bespoke commissions</div>
+        </Card>
       </div>
 
-      {/* 2. Search & Filter Bar */}
-      <div className="glass-card rounded-2xl p-4 border border-slate-800/80">
-        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
+      {/* FILTER & SEARCH CONTROL BAR */}
+      <Card variant="glass" padding="sm" className="space-y-3">
+        <div className="flex flex-col md:flex-row items-center gap-3">
+          <div className="flex-1 w-full">
+            <Input
+              placeholder="Search by patron name, phone number, email, or client ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by customer name or phone number..."
-              className="input-dark pl-10"
+              leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+              inputSize="sm"
+              shape="squircle"
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Gender Filter Dropdown */}
-            <div className="relative min-w-[140px]">
-              <select
-                value={genderFilter}
-                onChange={(e) => setGenderFilter(e.target.value as 'All' | 'Men' | 'Women')}
-                className="input-dark pr-8 appearance-none cursor-pointer text-xs font-medium"
-              >
-                <option value="All" className="bg-slate-900 text-white">All Genders</option>
-                <option value="Men" className="bg-slate-900 text-white">Men</option>
-                <option value="Women" className="bg-slate-900 text-white">Women</option>
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs w-full md:w-auto">
+            {/* VIP Tier Segmented / Select */}
+            <select
+              value={selectedVipTier}
+              onChange={(e) => setSelectedVipTier(e.target.value as any)}
+              className="bg-slate-800/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-500/50"
+            >
+              <option value="ALL" className="bg-slate-900">All VIP Tiers</option>
+              <option value="Couture" className="bg-slate-900">Couture Tier</option>
+              <option value="Wedding" className="bg-slate-900">Wedding Bridal</option>
+              <option value="VIP" className="bg-slate-900">VIP Bespoke</option>
+              <option value="Regular" className="bg-slate-900">Regular Patrons</option>
+            </select>
 
-            {/* VIP Toggle */}
+            {/* Gender Morphology */}
+            <select
+              value={selectedGender}
+              onChange={(e) => setSelectedGender(e.target.value as any)}
+              className="bg-slate-800/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-500/50"
+            >
+              <option value="All" className="bg-slate-900">All Morphology</option>
+              <option value="Men" className="bg-slate-900">Men</option>
+              <option value="Women" className="bg-slate-900">Women</option>
+            </select>
+
+            {/* Balance Status */}
+            <select
+              value={selectedBalanceStatus}
+              onChange={(e) => setSelectedBalanceStatus(e.target.value as any)}
+              className="bg-slate-800/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-500/50"
+            >
+              <option value="ALL" className="bg-slate-900">All Balances</option>
+              <option value="OUTSTANDING" className="bg-slate-900">Pending Balance Only</option>
+              <option value="SETTLED" className="bg-slate-900">Settled (₹0)</option>
+            </select>
+
+            {/* Sort Criteria */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-slate-800/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-500/50"
+            >
+              <option value="RECENT" className="bg-slate-900">Recently Enrolled</option>
+              <option value="SPEND_DESC" className="bg-slate-900">Highest Spend</option>
+              <option value="ORDERS_DESC" className="bg-slate-900">Most Orders</option>
+              <option value="NAME_ASC" className="bg-slate-900">Name (A-Z)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Tag Filters */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/5">
+          <span className="text-[10px] uppercase font-bold text-slate-500 mr-1 flex items-center gap-1">
+            <TagIcon className="w-3 h-3" /> Tags:
+          </span>
+          <button
+            onClick={() => setSelectedTag('')}
+            className={`text-[10px] px-2.5 py-0.5 rounded-full transition-colors ${
+              !selectedTag ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800/70 text-slate-400 hover:text-white'
+            }`}
+          >
+            All Tags
+          </button>
+          {AVAILABLE_CUSTOMER_TAGS.map((tag) => (
             <button
-              type="button"
-              onClick={() => setVipOnly(!vipOnly)}
-              className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                vipOnly
-                  ? 'badge badge-gold pulse-gold shadow-sm'
-                  : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-white hover:border-slate-700'
+              key={tag}
+              onClick={() => setSelectedTag(selectedTag === tag ? '' : tag)}
+              className={`text-[10px] px-2.5 py-0.5 rounded-full transition-colors ${
+                selectedTag === tag
+                  ? 'bg-amber-500 text-slate-950 font-bold'
+                  : 'bg-slate-800/70 text-slate-400 hover:text-white'
               }`}
             >
-              <Star className={`w-3.5 h-3.5 ${vipOnly ? 'fill-gold-400 text-gold-400' : 'text-slate-400'}`} />
-              <span>VIP Status</span>
-              {vipOnly && <span className="w-2 h-2 rounded-full bg-gold-400 animate-pulse" />}
+              {tag}
             </button>
+          ))}
+        </div>
+      </Card>
 
-            {/* Reset Button (only if filters active) */}
-            {(searchQuery || genderFilter !== 'All' || vipOnly) && (
-              <button
-                type="button"
-                onClick={handleResetFilters}
-                className="btn-ghost text-xs py-2 px-3 flex items-center space-x-1 cursor-pointer"
+      {/* CUSTOMER DIRECTORY CARD GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        {filteredCustomers.map((customer) => {
+          const badgeVariant = getVipTierBadgeVariant(customer.vipTier);
+
+          return (
+            <Card
+              key={customer.id}
+              variant="glass"
+              padding="sm"
+              onClick={() => {
+                setActiveCustomer(customer);
+                setIsEditing(false);
+              }}
+              hoverable
+              className="relative group border-l-4 border-l-amber-500/50 transition-all duration-300 hover:border-l-amber-400"
+            >
+              {/* Header: Initials Avatar + Name & VIP Tier */}
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-700/30 text-amber-300 font-bold flex items-center justify-center text-sm border border-amber-500/30 shadow-inner">
+                    {customer.initials}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white tracking-tight group-hover:text-amber-300 transition-colors">
+                      {customer.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400">{customer.id} • {customer.gender}</p>
+                  </div>
+                </div>
+
+                <Badge variant={badgeVariant as any} size="sm">
+                  {customer.vipTier}
+                </Badge>
+              </div>
+
+              {/* Contact & Demographics */}
+              <div className="space-y-1 text-xs text-slate-300 my-2 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">Phone:</span>
+                  <span className="font-mono text-slate-200">{customer.phone}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">Preferred Fit:</span>
+                  <span className="text-amber-200/90 font-medium">{customer.preferredFit}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">Lifetime Spend:</span>
+                  <span className="font-bold text-white tabular-nums">
+                    {formatInrCurrency(customer.totalSpend || 0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500">Balance Status:</span>
+                  <span
+                    className={`font-semibold tabular-nums ${
+                      (customer.outstandingBalance || 0) > 0 ? 'text-rose-400' : 'text-emerald-400'
+                    }`}
+                  >
+                    {(customer.outstandingBalance || 0) > 0
+                      ? `${formatInrCurrency(customer.outstandingBalance)} Due`
+                      : 'Settled'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Client Tags */}
+              {customer.tags && customer.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 my-2">
+                  {customer.tags.map((t) => (
+                    <span
+                      key={t}
+                      className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-white/5"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Footer Actions: CAD Linking & Profile Drawer */}
+              <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-white/5 mt-2">
+                <div className="text-[10px] text-slate-400">
+                  {customer.measurementsCount} CAD Snapshot{customer.measurementsCount !== 1 ? 's' : ''}
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      router.push(buildCustomerCadLink(customer.id));
+                    }}
+                    className="h-7 px-2 text-[10px] text-amber-300 hover:text-amber-200"
+                    rightIcon={<ArrowUpRight className="w-3 h-3" />}
+                  >
+                    CAD Studio
+                  </Button>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setActiveCustomer(customer);
+                      setIsEditing(false);
+                    }}
+                    className="h-7 px-2 text-[10px]"
+                  >
+                    View Details
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {filteredCustomers.length === 0 && (
+        <Card variant="glass" padding="lg" className="text-center py-16 space-y-3">
+          <Users className="w-8 h-8 text-slate-600 mx-auto" />
+          <h3 className="text-sm font-semibold text-slate-300">No matching atelier clients</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            Try adjusting your search query, VIP tier filter, or clearing selected tags.
+          </p>
+        </Card>
+      )}
+
+      {/* ==================================================================== */}
+      {/* FROSTED GLASS SLIDING DETAIL DRAWER / SHEET */}
+      {/* ==================================================================== */}
+      {activeCustomer && (
+        <>
+          {/* Backdrop Scrim */}
+          <div
+            onClick={() => setActiveCustomer(null)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+          />
+
+          {/* Sliding Drawer Container */}
+          <div className="fixed inset-y-0 right-0 z-50 w-full sm:max-w-xl md:max-w-2xl bg-slate-900/95 backdrop-blur-2xl border-l border-white/10 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] flex flex-col overflow-hidden">
+            {/* Drawer Header */}
+            <div className="p-6 border-b border-white/10 flex items-start justify-between bg-slate-950/40">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-500/20 to-amber-700/30 text-amber-300 font-bold flex items-center justify-center text-lg border-2 border-amber-500/40 shadow-ios-gold">
+                  {activeCustomer.initials}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-white font-display">{activeCustomer.name}</h2>
+                    <Badge variant={getVipTierBadgeVariant(activeCustomer.vipTier) as any} size="sm">
+                      {activeCustomer.vipTier}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {activeCustomer.id} • Enrolled {activeCustomer.createdAt?.slice(0, 10) || '2026'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setActiveCustomer(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Quick Action Navigation Buttons */}
+            <div className="p-4 bg-slate-900/60 border-b border-white/5 flex flex-wrap items-center gap-2">
+              <Button
+                variant="gold"
+                size="sm"
+                onClick={() => router.push(buildCustomerCadLink(activeCustomer.id))}
+                leftIcon={<Ruler className="w-3.5 h-3.5" />}
               >
-                <X className="w-3.5 h-3.5" />
-                <span>Reset</span>
-              </button>
+                Open 2D CAD Studio
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => router.push(`/orders?customerId=${activeCustomer.id}`)}
+                leftIcon={<ShoppingBag className="w-3.5 h-3.5" />}
+              >
+                New Bespoke Order
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEditForm(activeCustomer);
+                  setIsEditing(!isEditing);
+                }}
+                leftIcon={<Edit className="w-3.5 h-3.5" />}
+              >
+                {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+              </Button>
+            </div>
+
+            {/* Drawer Body Scroll Area */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-slate-300">
+              {/* EDIT FORM (TOGGLEABLE) */}
+              {isEditing ? (
+                <div className="p-4 rounded-2xl bg-slate-850/80 border border-white/10 space-y-3">
+                  <h3 className="text-xs font-bold text-amber-300 uppercase">Edit Patron Demographics</h3>
+                  <Input
+                    label="Full Name"
+                    value={editForm.name || ''}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    inputSize="sm"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      label="Phone"
+                      value={editForm.phone || ''}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      inputSize="sm"
+                    />
+                    <Input
+                      label="Email"
+                      value={editForm.email || ''}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      inputSize="sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">VIP Tier</label>
+                      <select
+                        value={editForm.vipTier || 'Regular'}
+                        onChange={(e) => setEditForm({ ...editForm, vipTier: e.target.value as any })}
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-slate-200"
+                      >
+                        <option value="Regular">Regular</option>
+                        <option value="VIP">VIP</option>
+                        <option value="Couture">Couture</option>
+                        <option value="Wedding">Wedding</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Preferred Fit</label>
+                      <select
+                        value={editForm.preferredFit || 'Regular'}
+                        onChange={(e) => setEditForm({ ...editForm, preferredFit: e.target.value as any })}
+                        className="w-full bg-slate-800 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-slate-200"
+                      >
+                        <option value="Slim Bespoke">Slim Bespoke</option>
+                        <option value="Slim">Slim</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Relaxed">Relaxed</option>
+                      </select>
+                    </div>
+                  </div>
+                  <Input
+                    label="Bespoke Tailoring & Posture Observations"
+                    value={editForm.notes || ''}
+                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                    inputSize="sm"
+                  />
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="gold" size="sm" onClick={handleUpdateCustomer}>
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* FINANCIAL & ORDER TELEMETRY TILES */}
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-3 rounded-2xl bg-slate-800/40 border border-white/5">
+                  <div className="text-[10px] text-slate-400">Lifetime Spend</div>
+                  <div className="text-base font-bold text-white mt-1 tabular-nums font-display">
+                    {formatInrCurrency(activeCustomer.totalSpend || 0)}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-800/40 border border-white/5">
+                  <div className="text-[10px] text-slate-400">Total Commissions</div>
+                  <div className="text-base font-bold text-amber-300 mt-1 tabular-nums font-display">
+                    {activeCustomer.totalOrders} Orders
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-800/40 border border-white/5">
+                  <div className="text-[10px] text-slate-400">Outstanding Balance</div>
+                  <div
+                    className={`text-base font-bold mt-1 tabular-nums font-display ${
+                      (activeCustomer.outstandingBalance || 0) > 0 ? 'text-rose-400' : 'text-emerald-400'
+                    }`}
+                  >
+                    {formatInrCurrency(activeCustomer.outstandingBalance || 0)}
+                  </div>
+                </div>
+              </div>
+
+              {/* DEMOGRAPHICS DETAIL */}
+              <div className="space-y-2 p-4 rounded-2xl bg-slate-800/20 border border-white/5">
+                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Contact & Atelier Profile
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">Phone</span>
+                    <span className="font-mono text-white font-medium">{activeCustomer.phone}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">Email</span>
+                    <span className="text-white truncate block">{activeCustomer.email || 'None on file'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">Morphology & Fit</span>
+                    <span className="text-amber-300 font-medium">
+                      {activeCustomer.gender} • {activeCustomer.preferredFit}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">Metropolitan Branch</span>
+                    <span className="text-slate-300">{activeCustomer.city || 'Flagship Salon'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CLIENT TAGS SECTION */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Atelier Tags</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeCustomer.tags && activeCustomer.tags.length > 0 ? (
+                    activeCustomer.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-xs px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-medium"
+                      >
+                        {tag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500 italic">No tags assigned.</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 2D CAD MEASUREMENT SNAPSHOTS CAROUSEL / PREVIEW */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    2D CAD Measurement Version History
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push(buildCustomerCadLink(activeCustomer.id))}
+                    className="h-6 text-[10px] text-amber-300"
+                    rightIcon={<ArrowUpRight className="w-3 h-3" />}
+                  >
+                    Take Measurements
+                  </Button>
+                </div>
+
+                {activeClientSnapshots.length > 0 ? (
+                  <div className="space-y-2">
+                    {activeClientSnapshots.map((snap, idx) => (
+                      <div
+                        key={snap.id || idx}
+                        className="p-3.5 rounded-2xl bg-slate-800/40 border border-white/5 flex items-center justify-between hover:border-amber-500/30 transition-colors"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-white text-xs">{snap.version || `v${idx + 1}.0`}</span>
+                            <Badge variant="gold" size="sm">
+                              {snap.garment || 'Sherwani'}
+                            </Badge>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            Recorded: {snap.timestamp ? new Date(snap.timestamp).toLocaleDateString() : 'Active Version'}
+                          </p>
+                        </div>
+
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => router.push(`${buildCustomerCadLink(activeCustomer.id)}&snapshotId=${snap.id}`)}
+                          className="h-7 text-[10px]"
+                        >
+                          Open Caliper
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-slate-800/20 border border-dashed border-white/10 text-center space-y-2">
+                    <Ruler className="w-5 h-5 text-slate-500 mx-auto" />
+                    <p className="text-xs text-slate-400">Zero saved CAD measurement snapshots for this client.</p>
+                    <Button
+                      variant="gold"
+                      size="sm"
+                      onClick={() => router.push(buildCustomerCadLink(activeCustomer.id))}
+                      className="text-[10px]"
+                    >
+                      Initialize 2D Caliper Workbench
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* BESPOKE TAILORING & POSTURE OBSERVATIONS */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Master Tailor Posture & Seam Notes
+                </div>
+                <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-white/5 text-slate-200 leading-relaxed">
+                  {activeCustomer.notes || 'No anatomical posture offsets or tailor alterations noted.'}
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer Actions */}
+            <div className="p-4 border-t border-white/10 bg-slate-950/60 flex items-center justify-between">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsDeleting(true)}
+                leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+              >
+                Archive Patron
+              </Button>
+
+              <Button variant="secondary" size="sm" onClick={() => setActiveCustomer(null)}>
+                Close Drawer
+              </Button>
+            </div>
+
+            {/* DELETION AUDIT DIALOG */}
+            {isDeleting && (
+              <div className="p-4 bg-rose-950/60 border-t border-rose-500/30 space-y-3">
+                <div className="text-xs font-semibold text-rose-300">
+                  Archive Customer Record {activeCustomer.id}
+                </div>
+                <Input
+                  placeholder="Specify GDPR or audit reason for archiving..."
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  inputSize="sm"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setIsDeleting(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => handleDeleteCustomer(activeCustomer.id)}>
+                    Confirm Archive
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        </>
+      )}
 
-        {/* Filter Summary */}
-        <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
-          <span>
-            Showing <strong className="text-white">{filteredCustomers.length}</strong> of{' '}
-            <strong className="text-white">{customersList.length}</strong> customers
-          </span>
-          {(searchQuery || genderFilter !== 'All' || vipOnly) && (
-            <span className="text-[11px] text-gold-400 font-medium">
-              Filtered by: {[searchQuery && `"${searchQuery}"`, genderFilter !== 'All' && `Gender: ${genderFilter}`, vipOnly && 'VIP Only'].filter(Boolean).join(' • ')}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* 3 & 4. Customer Table Container with glass-card */}
-      <div className="glass-card rounded-2xl overflow-hidden border border-slate-800/80 shadow-2xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800/80 bg-slate-950/40 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
-                <th className="py-4 px-6">Name</th>
-                <th className="py-4 px-4">Phone</th>
-                <th className="py-4 px-4">Gender</th>
-                <th className="py-4 px-4">Preferred Fit</th>
-                <th className="py-4 px-4">VIP Status</th>
-                <th className="py-4 px-4">Measurements</th>
-                <th className="py-4 px-4">Orders</th>
-                <th className="py-4 px-4">Last Visit</th>
-                <th className="py-4 px-6 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50">
-              {filteredCustomers.map((customer) => (
-                <tr
-                  key={customer.id}
-                  className="hover:bg-slate-800/40 transition-colors group cursor-pointer border-l-2 border-transparent hover:border-l-gold-400"
-                  onClick={() => setSelectedCustomer(customer)}
-                >
-                  {/* Name */}
-                  <td className="py-4 px-6">
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-md border ${
-                          customer.gender === 'Men'
-                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                        }`}
-                      >
-                        {customer.initials}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-white group-hover:text-gold-400 transition-colors flex items-center space-x-1.5">
-                          <span>{customer.name}</span>
-                          {customer.isVip && (
-                            <Star className="w-3.5 h-3.5 text-gold-400 fill-gold-400 inline shrink-0" />
-                          )}
-                        </div>
-                        <span className="text-[11px] text-slate-500 font-mono">{customer.id}</span>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Phone */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center space-x-1.5 text-slate-300 font-mono text-xs">
-                      <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span>{customer.phone}</span>
-                    </div>
-                  </td>
-
-                  {/* Gender */}
-                  <td className="py-4 px-4">
-                    {customer.gender === 'Men' ? (
-                      <span className="badge badge-blue">Men</span>
-                    ) : (
-                      <span className="badge badge-rose">Women</span>
-                    )}
-                  </td>
-
-                  {/* Preferred Fit */}
-                  <td className="py-4 px-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-900/80 border border-slate-800 text-slate-300">
-                      {customer.preferredFit}
-                    </span>
-                  </td>
-
-                  {/* VIP Status */}
-                  <td className="py-4 px-4">
-                    {customer.isVip ? (
-                      <span className="badge badge-gold pulse-gold flex items-center space-x-1 w-fit">
-                        <Star className="w-3 h-3 fill-gold-400 text-gold-400" />
-                        <span>VIP</span>
-                      </span>
-                    ) : (
-                      <span className="text-slate-500 text-xs px-2 py-0.5">No</span>
-                    )}
-                  </td>
-
-                  {/* Measurements */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center space-x-1.5 text-slate-300 text-xs font-medium">
-                      <Ruler className="w-3.5 h-3.5 text-gold-400 shrink-0" />
-                      <span>{customer.measurementsCount} {customer.measurementsCount === 1 ? 'version' : 'versions'}</span>
-                    </div>
-                  </td>
-
-                  {/* Orders */}
-                  <td className="py-4 px-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/orders?client=${encodeURIComponent(customer.name)}`);
-                      }}
-                      className="flex items-center space-x-1.5 text-slate-300 text-xs font-medium hover:text-gold-400 transition-colors cursor-pointer"
-                    >
-                      <ShoppingBag className="w-3.5 h-3.5 text-gold-400 shrink-0" />
-                      <span>{ordersList.filter(o => o.clientName?.trim().toLowerCase() === customer.name.trim().toLowerCase()).length} orders</span>
-                    </button>
-                  </td>
-
-                  {/* Last Visit */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center space-x-1.5 text-slate-400 text-xs">
-                      <Clock className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                      <span>{customer.lastVisit}</span>
-                    </div>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end space-x-1">
-                      <Tooltip content="View fit history and CAD snapshots">
-                        <button
-                          onClick={() => setSelectedCustomer(customer)}
-                          className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="Edit customer contact details">
-                        <button
-                          onClick={() => setEditingCustomer(customer)}
-                          className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-gold-400 transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip content="Delete customer">
-                        <button
-                          onClick={() => {
-                            setDeleteTarget(customer);
-                            setDeleteNote('');
-                          }}
-                          className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </Tooltip>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filteredCustomers.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center">
-                    <div className="max-w-xs mx-auto space-y-3">
-                      <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-500">
-                        <User className="w-6 h-6" />
-                      </div>
-                      <p className="text-slate-300 text-sm font-semibold">No matching customers</p>
-                      <p className="text-slate-500 text-xs">
-                        Try adjusting your search keywords or filter criteria to find the profile.
-                      </p>
-                      <button
-                        onClick={handleResetFilters}
-                        className="btn-ghost text-xs py-1.5 px-3"
-                      >
-                        Clear All Filters
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Table Footer */}
-        <div className="px-6 py-4 bg-slate-950/60 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-          <span>Displaying <strong>{filteredCustomers.length}</strong> customer records</span>
-          <span className="font-mono text-slate-500">
-            Directory Page 1 of {Math.ceil(filteredCustomers.length / 10) || 1}
-          </span>
-        </div>
-      </div>
-
-      {/* Modal: Add Customer */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="glass-card-gold rounded-2xl border border-gold-500/30 max-w-lg w-full p-6 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center space-x-2.5">
-                <div className="p-2 rounded-lg bg-gold-500/10 text-gold-400">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">Add New Customer</h2>
-                  <p className="text-xs text-slate-400">Create client profile for tailoring measurements</p>
-                </div>
+      {/* ==================================================================== */}
+      {/* MODAL: NEW PATRON ENROLLMENT */}
+      {/* ==================================================================== */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <Card variant="elevated" padding="none" className="w-full max-w-lg bg-slate-900/95 border-white/15">
+            <div className="p-5 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-white font-display">New Patron Client Intake</h2>
+                <Badge variant="gold" size="sm">
+                  CRM
+                </Badge>
               </div>
-              <button
-                onClick={() => setIsAddModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <Button variant="ghost" size="icon-sm" onClick={() => setShowAddModal(false)}>
+                <X className="w-4 h-4" />
+              </Button>
             </div>
 
-            <form onSubmit={handleAddCustomer} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Customer Full Name <span className="text-rose-500">*</span></label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Rajeshwar Malhotra"
-                  value={newCustomer.name}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-                  className="input-dark"
-                />
-              </div>
+            <form onSubmit={handleAddCustomer} className="p-6 space-y-4 text-xs">
+              <Input
+                label="Patron Full Name"
+                placeholder="e.g. Maharaja Vikramaditya"
+                value={newCustomerForm.name}
+                onChange={(e) => setNewCustomerForm({ ...newCustomerForm, name: e.target.value })}
+                required
+                inputSize="sm"
+              />
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Phone Number <span className="text-rose-500">*</span></label>
-                <input
-                  type="text"
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Contact Phone Number"
+                  placeholder="+91 98765 43210"
+                  value={newCustomerForm.phone}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
                   required
-                  placeholder="e.g. +91 98765 43210"
-                  value={newCustomer.phone}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                  className={`input-dark font-mono ${addFormErrors.phone ? 'border-rose-500 focus:border-rose-500' : ''}`}
+                  inputSize="sm"
                 />
-                {addFormErrors.phone && <p className="text-[10px] text-rose-500 mt-1">{addFormErrors.phone}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Email Address</label>
-                <input
+                <Input
+                  label="Email Address"
                   type="email"
-                  placeholder="e.g. client@example.com"
-                  value={newCustomer.email || ''}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-                  className={`input-dark ${addFormErrors.email ? 'border-rose-500 focus:border-rose-500' : ''}`}
+                  placeholder="patron@domain.com"
+                  value={newCustomerForm.email}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, email: e.target.value })}
+                  inputSize="sm"
                 />
-                {addFormErrors.email && <p className="text-[10px] text-rose-500 mt-1">{addFormErrors.email}</p>}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">Gender *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">VIP Tier</label>
                   <select
-                    value={newCustomer.gender}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, gender: e.target.value as 'Men' | 'Women' })}
-                    className="input-dark cursor-pointer"
+                    value={newCustomerForm.vipTier}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, vipTier: e.target.value as any })}
+                    className="w-full bg-slate-800/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
+                  >
+                    <option value="Regular" className="bg-slate-900">Regular Tier</option>
+                    <option value="VIP" className="bg-slate-900">VIP Bespoke</option>
+                    <option value="Couture" className="bg-slate-900">Haute Couture</option>
+                    <option value="Wedding" className="bg-slate-900">Wedding Bridal</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Body Morphology</label>
+                  <select
+                    value={newCustomerForm.gender}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, gender: e.target.value as any })}
+                    className="w-full bg-slate-800/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
                   >
                     <option value="Men" className="bg-slate-900">Men</option>
                     <option value="Women" className="bg-slate-900">Women</option>
                   </select>
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">Preferred Fit *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Preferred Fit</label>
                   <select
-                    value={newCustomer.preferredFit}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, preferredFit: e.target.value })}
-                    className="input-dark cursor-pointer"
+                    value={newCustomerForm.preferredFit}
+                    onChange={(e) =>
+                      setNewCustomerForm({ ...newCustomerForm, preferredFit: e.target.value as any })
+                    }
+                    className="w-full bg-slate-800/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
                   >
                     <option value="Slim Bespoke" className="bg-slate-900">Slim Bespoke</option>
                     <option value="Slim" className="bg-slate-900">Slim</option>
@@ -774,351 +980,41 @@ export default function CustomerDirectoryPage() {
                     <option value="Relaxed" className="bg-slate-900">Relaxed</option>
                   </select>
                 </div>
-              </div>
 
-              <div className="flex items-center space-x-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="vip-checkbox"
-                  checked={newCustomer.isVip}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, isVip: e.target.checked })}
-                  className="w-4 h-4 rounded accent-gold-500 cursor-pointer"
-                />
-                <label htmlFor="vip-checkbox" className="text-xs font-semibold text-gold-400 cursor-pointer flex items-center space-x-1">
-                  <Star className="w-3.5 h-3.5 fill-gold-400" />
-                  <span>Mark as VIP Client (Priority Atelier Service)</span>
-                </label>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Fit Notes / Preferences</label>
-                <textarea
-                  rows={2}
-                  placeholder="Special tailoring notes, posture adjustments..."
-                  value={newCustomer.notes}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, notes: e.target.value })}
-                  className="input-dark resize-none"
+                <Input
+                  label="Atelier Branch / City"
+                  placeholder="e.g. South Extension, New Delhi"
+                  value={newCustomerForm.city}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, city: e.target.value })}
+                  inputSize="sm"
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="btn-ghost"
-                >
+              <Input
+                label="Bespoke Tailoring & Posture Notes"
+                placeholder="High armholes, sloped shoulders, contour dart preferences..."
+                value={newCustomerForm.notes}
+                onChange={(e) => setNewCustomerForm({ ...newCustomerForm, notes: e.target.value })}
+                inputSize="sm"
+              />
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
+                <Button variant="ghost" size="sm" type="button" onClick={() => setShowAddModal(false)}>
                   Cancel
-                </button>
-                <button type="submit" className="btn-gold flex items-center space-x-2">
-                  <Check className="w-4 h-4" />
-                  <span>Save Customer</span>
-                </button>
+                </Button>
+                <Button variant="gold" size="sm" type="submit">
+                  Enroll Patron
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* Modal: Edit Customer */}
-      {editingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="glass-card-gold rounded-2xl border border-gold-500/30 max-w-lg w-full p-6 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center space-x-2.5">
-                <div className="p-2 rounded-lg bg-gold-500/10 text-gold-400">
-                  <Edit className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">Edit Customer</h2>
-                  <p className="text-xs text-slate-400">Update client profile and fit preferences</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditingCustomer(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCustomerEdit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Customer Full Name <span className="text-rose-500">*</span></label>
-                <input
-                  type="text"
-                  required
-                  value={editingCustomer.name}
-                  onChange={(e) => setEditingCustomer({ ...editingCustomer, name: e.target.value })}
-                  className="input-dark"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Phone Number <span className="text-rose-500">*</span></label>
-                <input
-                  type="text"
-                  required
-                  value={editingCustomer.phone}
-                  onChange={(e) => setEditingCustomer({ ...editingCustomer, phone: e.target.value })}
-                  className={`input-dark font-mono ${editFormErrors.phone ? 'border-rose-500 focus:border-rose-500' : ''}`}
-                />
-                {editFormErrors.phone && <p className="text-[10px] text-rose-500 mt-1">{editFormErrors.phone}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Email Address</label>
-                <input
-                  type="email"
-                  value={editingCustomer.email || ''}
-                  onChange={(e) => setEditingCustomer({ ...editingCustomer, email: e.target.value })}
-                  className={`input-dark ${editFormErrors.email ? 'border-rose-500 focus:border-rose-500' : ''}`}
-                />
-                {editFormErrors.email && <p className="text-[10px] text-rose-500 mt-1">{editFormErrors.email}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">Gender *</label>
-                  <select
-                    value={editingCustomer.gender}
-                    onChange={(e) => setEditingCustomer({ ...editingCustomer, gender: e.target.value as 'Men' | 'Women' })}
-                    className="input-dark cursor-pointer"
-                  >
-                    <option value="Men" className="bg-slate-900">Men</option>
-                    <option value="Women" className="bg-slate-900">Women</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">Preferred Fit *</label>
-                  <select
-                    value={editingCustomer.preferredFit}
-                    onChange={(e) => setEditingCustomer({ ...editingCustomer, preferredFit: e.target.value })}
-                    className="input-dark cursor-pointer"
-                  >
-                    <option value="Slim Bespoke" className="bg-slate-900">Slim Bespoke</option>
-                    <option value="Slim" className="bg-slate-900">Slim</option>
-                    <option value="Regular" className="bg-slate-900">Regular</option>
-                    <option value="Relaxed" className="bg-slate-900">Relaxed</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="edit-vip-checkbox"
-                  checked={editingCustomer.isVip}
-                  onChange={(e) => setEditingCustomer({ ...editingCustomer, isVip: e.target.checked })}
-                  className="w-4 h-4 rounded accent-gold-500 cursor-pointer"
-                />
-                <label htmlFor="edit-vip-checkbox" className="text-xs font-semibold text-gold-400 cursor-pointer flex items-center space-x-1">
-                  <Star className="w-3.5 h-3.5 fill-gold-400" />
-                  <span>VIP Client</span>
-                </label>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Fit Notes / Preferences</label>
-                <textarea
-                  rows={2}
-                  value={editingCustomer.notes || ''}
-                  onChange={(e) => setEditingCustomer({ ...editingCustomer, notes: e.target.value })}
-                  className="input-dark resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setEditingCustomer(null)}
-                  className="btn-ghost"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-gold flex items-center space-x-2">
-                  <Check className="w-4 h-4" />
-                  <span>Save Changes</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Delete Customer */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="glass-card rounded-2xl border border-rose-500/30 max-w-lg w-full p-6 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center space-x-2.5">
-                <div className="p-2 rounded-lg bg-rose-500/10 text-rose-400">
-                  <Trash2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-white">Delete Customer</h2>
-                  <p className="text-xs text-rose-400/80">This action cannot be undone</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl">
-                <p className="text-sm text-rose-200">
-                  Are you sure you want to delete <strong className="text-white">{deleteTarget.name}</strong>?
-                  All associated measurements and fit history will be removed.
-                </p>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-300">Reason for deletion *</label>
-                <textarea
-                  rows={2}
-                  required
-                  placeholder="Please provide a reason..."
-                  value={deleteNote}
-                  onChange={(e) => setDeleteNote(e.target.value)}
-                  className="input-dark resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(null)}
-                  className="btn-ghost"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="button" 
-                  onClick={handleDeleteCustomer} 
-                  disabled={!deleteNote.trim()}
-                  className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete Customer</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Drawer / Details Modal: Selected Customer Details */}
-      {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fade-in">
-          <div className="glass-card rounded-2xl border border-slate-700 max-w-lg w-full p-6 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center space-x-3">
-                <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm border ${
-                    selectedCustomer.gender === 'Men'
-                      ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-                      : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                  }`}
-                >
-                  {selectedCustomer.initials}
-                </div>
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <h3 className="text-lg font-bold text-white">{selectedCustomer.name}</h3>
-                    {selectedCustomer.isVip && (
-                      <span className="badge badge-gold flex items-center space-x-1">
-                        <Star className="w-3 h-3 fill-gold-400 text-gold-400" />
-                        <span>VIP</span>
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-400 font-mono">{selectedCustomer.id}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold">Phone</span>
-                <p className="text-white font-mono font-medium">{selectedCustomer.phone}</p>
-              </div>
-              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold">Gender</span>
-                <p className="text-white font-medium">{selectedCustomer.gender}</p>
-              </div>
-              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold">Preferred Fit</span>
-                <p className="text-gold-400 font-semibold">{selectedCustomer.preferredFit}</p>
-              </div>
-              <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800 space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold">Last Visit</span>
-                <p className="text-white font-medium">{selectedCustomer.lastVisit}</p>
-              </div>
-            </div>
-
-            <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400 font-semibold flex items-center space-x-1.5">
-                  <Ruler className="w-4 h-4 text-gold-400" />
-                  <span>Measurement History</span>
-                </span>
-                <span className="text-gold-400 font-mono font-bold">{selectedCustomer.measurementsCount} Versions Saved</span>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed pt-1">
-                {selectedCustomer.notes || 'No custom tailor notes logged.'}
-              </p>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-2">
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="btn-ghost text-xs"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => router.push(`/orders?newOrder=true&clientName=${encodeURIComponent(selectedCustomer.name)}&clientPhone=${encodeURIComponent(selectedCustomer.phone)}`)}
-                className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors"
-              >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>New Order</span>
-              </button>
-              <button
-                onClick={() => router.push(`/measurements?customerId=${selectedCustomer.id}`)}
-                className="btn-gold text-xs flex items-center space-x-1.5"
-              >
-                <Ruler className="w-3.5 h-3.5" />
-                <span>Open Measurements Engine</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Printable Client Roster (Hidden on screen, rendered on Print) */}
-      <CustomerListPrint customers={filteredCustomers.map(c => ({
-        id: c.id,
-        name: c.name,
-        phone: c.phone,
-        email: c.email,
-        gender: c.gender,
-        preferredFit: c.preferredFit,
-        isVip: c.isVip,
-        measurementsCount: c.measurementsCount,
-        lastVisit: c.lastVisit,
-        notes: c.notes
-      }))} />
+      {/* PRINT-ONLY COMPONENT ISOLATION */}
+      <div className="print-only hidden print:block">
+        <CustomerListPrint customers={filteredCustomers as any} />
+      </div>
     </div>
   );
 }
-

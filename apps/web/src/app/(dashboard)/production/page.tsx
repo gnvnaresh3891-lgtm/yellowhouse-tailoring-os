@@ -1,447 +1,393 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Layers, Scissors, Sparkles, Package, CheckCircle2,
-  Clock, User, Search, Plus, X,
-  ChevronRight, Calendar, AlertTriangle, Flame,
-  Trash2, Edit2, FileText, Printer
+  Layers,
+  Scissors,
+  Sparkles,
+  Package,
+  CheckCircle2,
+  Clock,
+  Play,
+  Pause,
+  RotateCcw,
+  Search,
+  Plus,
+  X,
+  ChevronRight,
+  ChevronLeft,
+  Calendar,
+  AlertTriangle,
+  Flame,
+  Trash2,
+  Edit2,
+  FileText,
+  Printer,
+  Download,
+  DollarSign,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Building,
+  Tag,
+  Zap,
 } from 'lucide-react';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
 import { syncJobToOrdersStorage } from '@/lib/state-sync-utils';
-import { Tooltip } from '@/components/Tooltip';
 import { JobCardPrint, ScheduleListPrint } from '@/components/print-layouts';
+import { QRCodeSVG, BarcodeSVG } from '@/components/id-codes';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { Input } from '@/components/ui/input';
+import {
+  KanbanStage,
+  Priority,
+  JobCardItem,
+  ActiveGarmentTimer,
+  TimesheetLog,
+  WeeklyArtisanRollup,
+  KANBAN_STAGES,
+  STAGE_CONFIG,
+  STAGE_RACK_MAPPING,
+  PIECE_RATE_PER_MINUTE,
+  DEFAULT_KARIGAR_LIST,
+  DEFAULT_GARMENT_FILTER_LIST,
+  INITIAL_JOB_CARDS,
+  INITIAL_TIMESHEET_LOGS,
+  isTransitionAllowed,
+  getNextStage,
+  getPrevStage,
+  getStageIndex,
+  computeKanbanProgress,
+  getDefaultRackForStage,
+  executeStageTransition,
+  calculatePieceRateEarnings,
+  calculateTimesheetEarnings,
+  formatTimerDuration,
+  formatLaborTime,
+  formatInrCurrency,
+  getGarmentBadgeClass,
+  aggregateDailyTimesheet,
+  aggregateWeeklyTimesheet,
+  generateTimesheetCsv,
+} from '@/lib/production-utils';
+import { calculateGarmentSam } from '@/lib/sam-calculator';
+import type { GarmentCategory } from '@/types/measurement';
 
-// ============================================================
-// TYPES & DEFINITIONS
-// ============================================================
-export type KanbanStage =
-  | 'Fabric Inspection'
-  | 'Master Cutting'
-  | 'Zardozi/Aari Embroidery'
-  | 'Stitching Assembly'
-  | 'QC & Ready for Delivery';
-
-export type Priority = 'Urgent' | 'Normal';
-
-export interface JobCardItem {
-  id: string;
-  orderId: string;
-  client: string;
-  garment: string;
-  karigar: string;
-  samMinutesLogged: number;
-  samTotalEstimate: number;
-  priority: Priority;
-  dueDate: string;
-  progress: number;
-  stage: KanbanStage;
-  fabricDetails?: string;
-  notes?: string;
-  rack?: string;
-  barcodeEnabled?: boolean;
-  qrCodeEnabled?: boolean;
-  history?: { action: string; timestamp: string; stage?: string }[];
+function resolveGarmentCategory(name: string): GarmentCategory {
+  const n = (name || '').toLowerCase();
+  if (n.includes('sherwani')) return 'mens-sherwani';
+  if (n.includes('lehenga')) return 'womens-lehenga';
+  if (n.includes('anarkali')) return 'womens-anarkali';
+  if (n.includes('blouse')) return 'womens-blouse';
+  if (n.includes('corset')) return 'womens-corset';
+  if (n.includes('gown')) return 'womens-gown';
+  if (n.includes('shirt')) return 'mens-shirt';
+  if (n.includes('trouser')) return 'mens-trouser';
+  return 'mens-suit';
 }
 
-// Stage Configuration mapping to design system styles
-const STAGE_CONFIG: Record<
-  KanbanStage,
-  {
-    label: string;
-    headerBadgeColor: string;
-    headerTextColor: string;
-    accentBorder: string;
-    dotColor: string;
-    progressGradient: string;
-  }
-> = {
-  'Fabric Inspection': {
-    label: 'Fabric Inspection',
-    headerBadgeColor: 'bg-slate-800 text-slate-300 border border-slate-700',
-    headerTextColor: 'text-slate-300',
-    accentBorder: 'border-t-slate-500',
-    dotColor: 'bg-slate-400',
-    progressGradient: 'bg-slate-400',
-  },
-  'Master Cutting': {
-    label: 'Master Cutting',
-    headerBadgeColor: 'bg-gold-500/10 text-gold-400 border border-gold-500/30',
-    headerTextColor: 'text-gold-400',
-    accentBorder: 'border-t-gold-500',
-    dotColor: 'bg-gold-400',
-    progressGradient: 'bg-gradient-to-r from-gold-600 to-gold-400',
-  },
-  'Zardozi/Aari Embroidery': {
-    label: 'Zardozi/Aari Embroidery',
-    headerBadgeColor: 'bg-amber-500/10 text-amber-400 border border-amber-500/30',
-    headerTextColor: 'text-amber-400',
-    accentBorder: 'border-t-amber-500',
-    dotColor: 'bg-amber-400',
-    progressGradient: 'bg-gradient-to-r from-amber-600 to-amber-400',
-  },
-  'Stitching Assembly': {
-    label: 'Stitching Assembly',
-    headerBadgeColor: 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
-    headerTextColor: 'text-blue-400',
-    accentBorder: 'border-t-blue-500',
-    dotColor: 'bg-blue-400',
-    progressGradient: 'bg-gradient-to-r from-blue-600 to-blue-400',
-  },
-  'QC & Ready for Delivery': {
-    label: 'QC & Ready for Delivery',
-    headerBadgeColor: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30',
-    headerTextColor: 'text-emerald-400',
-    accentBorder: 'border-t-emerald-500',
-    dotColor: 'bg-emerald-400',
-    progressGradient: 'bg-gradient-to-r from-emerald-600 to-emerald-400',
-  },
-};
-
-// Helper for Garment Badges
-const getGarmentBadgeClass = (garment: string): string => {
-  const g = garment.toLowerCase();
-  if (g.includes('sherwani')) return 'badge-gold';
-  if (g.includes('lehenga') || g.includes('anarkali')) return 'badge-amber';
-  if (g.includes('suit') || g.includes('bandhgala')) return 'badge-blue';
-  if (g.includes('blouse') || g.includes('sari')) return 'badge-rose';
-  return 'badge-gold';
-};
-
-const generateBarcode = (text: string): number[] => {
-  const bars: number[] = [];
-  for (let i = 0; i < text.length; i++) {
-    const charCode = text.charCodeAt(i);
-    // Simple logic: charCode mapped to widths 1-3. 
-    // And add a space (0) or 1 unit gap
-    bars.push((charCode % 3) + 1);
-    bars.push(1); // gap
-    bars.push(((charCode >> 1) % 3) + 1);
-    bars.push(1); // gap
-  }
-  return bars;
-};
-
-const INITIAL_JOB_CARDS: JobCardItem[] = [
-  {
-    id: 'JC-9035',
-    orderId: 'JC-9035',
-    client: 'Sunita Verma',
-    garment: 'Lehenga Choli',
-    karigar: 'Karigar Salim',
-    samMinutesLogged: 35,
-    samTotalEstimate: 240,
-    priority: 'Urgent',
-    dueDate: 'Aug 14',
-    progress: 15,
-    stage: 'Fabric Inspection',
-    fabricDetails: 'Pure Raw Silk (Crimson Red) - 6.5 meters',
-    notes: 'Verify zari thread count and silk weight before cutting.',
-  },
-  {
-    id: 'JC-9038',
-    orderId: 'JC-9038',
-    client: 'Kabir Roy',
-    garment: 'Sherwani',
-    karigar: 'Karigar Latif',
-    samMinutesLogged: 20,
-    samTotalEstimate: 180,
-    priority: 'Normal',
-    dueDate: 'Aug 18',
-    progress: 10,
-    stage: 'Fabric Inspection',
-    fabricDetails: 'Ivory Italian Brocade - 4.5 meters',
-    notes: 'Check woven pattern motif alignment.',
-  },
-  {
-    id: 'JC-9021',
-    orderId: 'JC-9021',
-    client: 'Rajeshwar Malhotra',
-    garment: 'Sherwani',
-    karigar: 'Karigar Latif',
-    samMinutesLogged: 65,
-    samTotalEstimate: 180,
-    priority: 'Urgent',
-    dueDate: 'Aug 12',
-    progress: 35,
-    stage: 'Master Cutting',
-    fabricDetails: 'Royal Velvet & Gold Silk Lining',
-    notes: 'Angrakha style overlap cuts, chest ease +2.5 inches.',
-  },
-  {
-    id: 'JC-9025',
-    orderId: 'JC-9025',
-    client: 'Vikram Singh',
-    garment: 'Bandhgala',
-    karigar: 'Karigar Ahmed',
-    samMinutesLogged: 45,
-    samTotalEstimate: 150,
-    priority: 'Normal',
-    dueDate: 'Aug 15',
-    progress: 30,
-    stage: 'Master Cutting',
-    fabricDetails: 'Midnight Navy Wool-Silk Blend',
-    notes: 'Mandarin collar pattern drafted with curved shoulder line.',
-  },
-  {
-    id: 'JC-9028',
-    orderId: 'JC-9028',
-    client: 'Rohan Kapoor',
-    garment: 'Suit',
-    karigar: 'Karigar Ahmed',
-    samMinutesLogged: 50,
-    samTotalEstimate: 140,
-    priority: 'Normal',
-    dueDate: 'Aug 16',
-    progress: 40,
-    stage: 'Master Cutting',
-    fabricDetails: 'Charcoal Super 130s Merino Wool',
-    notes: 'Double breasted jacket pattern cut.',
-  },
-  {
-    id: 'JC-9018',
-    orderId: 'JC-9018',
-    client: 'Ananya Sharma',
-    garment: 'Lehenga Choli',
-    karigar: 'Karigar Salim',
-    samMinutesLogged: 240,
-    samTotalEstimate: 360,
-    priority: 'Urgent',
-    dueDate: 'Aug 13',
-    progress: 65,
-    stage: 'Zardozi/Aari Embroidery',
-    fabricDetails: 'Heritage Maroon Velvet',
-    notes: 'Heavy Dabka, Nakshi, and French Knots embroidery on skirt panels.',
-  },
-  {
-    id: 'JC-9022',
-    orderId: 'JC-9022',
-    client: 'Sanya Mirza',
-    garment: 'Sari Blouse',
-    karigar: 'Karigar Usman',
-    samMinutesLogged: 180,
-    samTotalEstimate: 220,
-    priority: 'Normal',
-    dueDate: 'Aug 17',
-    progress: 55,
-    stage: 'Zardozi/Aari Embroidery',
-    fabricDetails: 'Emerald Green Organza',
-    notes: 'Aari embroidery with pearl & sequins work on back cutout.',
-  },
-  {
-    id: 'JC-8994',
-    orderId: 'JC-8994',
-    client: 'Priya Patel',
-    garment: 'Sari Blouse',
-    karigar: 'Karigar Usman',
-    samMinutesLogged: 85,
-    samTotalEstimate: 120,
-    priority: 'Normal',
-    dueDate: 'Aug 10',
-    progress: 75,
-    stage: 'Stitching Assembly',
-    fabricDetails: 'Deep Rose Silk & Padded Cups',
-    notes: 'Princess cut bodice assembly, back latkan attachment.',
-  },
-  {
-    id: 'JC-9030',
-    orderId: 'JC-9030',
-    client: 'Deepika Nair',
-    garment: 'Anarkali',
-    karigar: 'Karigar Rafi',
-    samMinutesLogged: 110,
-    samTotalEstimate: 160,
-    priority: 'Normal',
-    dueDate: 'Aug 11',
-    progress: 70,
-    stage: 'Stitching Assembly',
-    fabricDetails: 'Dusty Pink Georgette - 24 Kalis',
-    notes: 'Kali join assembly and Gota patti hemline finishing.',
-  },
-  {
-    id: 'JC-8988',
-    orderId: 'JC-8988',
-    client: 'Amitabh Sen',
-    garment: 'Sherwani',
-    karigar: 'Karigar Latif',
-    samMinutesLogged: 145,
-    samTotalEstimate: 180,
-    priority: 'Urgent',
-    dueDate: 'Aug 09',
-    progress: 80,
-    stage: 'Stitching Assembly',
-    fabricDetails: 'Champagne Gold Jacquard',
-    notes: 'Canvas chest piece canvas pad & sleeve setting.',
-  },
-  {
-    id: 'JC-8975',
-    orderId: 'JC-8975',
-    client: 'Karan Johar',
-    garment: 'Suit',
-    karigar: 'Karigar Ahmed',
-    samMinutesLogged: 95,
-    samTotalEstimate: 130,
-    priority: 'Normal',
-    dueDate: 'Aug 12',
-    progress: 72,
-    stage: 'Stitching Assembly',
-    fabricDetails: 'Pinstripe Charcoal Wool',
-    notes: 'Trousers waistband attachment and jacket lining installation.',
-  },
-  {
-    id: 'JC-8960',
-    orderId: 'JC-8960',
-    client: 'Meera Iyer',
-    garment: 'Anarkali',
-    karigar: 'Karigar Rafi',
-    samMinutesLogged: 160,
-    samTotalEstimate: 160,
-    priority: 'Normal',
-    dueDate: 'Aug 08',
-    progress: 95,
-    stage: 'QC & Ready for Delivery',
-    fabricDetails: 'Royal Purple Silk Chiffon',
-    notes: 'Final thread trim complete. Pressing and garment bag hanger ready.',
-  },
-  {
-    id: 'JC-8955',
-    orderId: 'JC-8955',
-    client: 'Arjun Rampal',
-    garment: 'Suit',
-    karigar: 'Karigar Ahmed',
-    samMinutesLogged: 140,
-    samTotalEstimate: 140,
-    priority: 'Normal',
-    dueDate: 'Aug 07',
-    progress: 100,
-    stage: 'QC & Ready for Delivery',
-    fabricDetails: 'Jet Black Tuxedo with Satin Lapel',
-    notes: 'Passed 18-point inspection. Tagged for VIP trial appointment.',
-  },
-  {
-    id: 'JC-8940',
-    orderId: 'JC-8940',
-    client: 'Kavitha Reddy',
-    garment: 'Sari Blouse',
-    karigar: 'Karigar Usman',
-    samMinutesLogged: 110,
-    samTotalEstimate: 110,
-    priority: 'Normal',
-    dueDate: 'Aug 06',
-    progress: 100,
-    stage: 'QC & Ready for Delivery',
-    fabricDetails: 'Gold Zari Tissue Silk',
-    notes: 'Dhook/eye fastenings verified. Packaged in yellow signature box.',
-  },
-];
-
-const KARIGAR_LIST = [
-  'All Karigars',
-  'Karigar Latif',
-  'Karigar Salim',
-  'Karigar Usman',
-  'Karigar Ahmed',
-  'Karigar Rafi',
-];
-
-const GARMENT_TYPES = [
-  'All Garments',
-  'Sherwani',
-  'Lehenga Choli',
-  'Sari Blouse',
-  'Bandhgala',
-  'Anarkali',
-  'Suit',
-];
-
 export default function ProductionKanbanPage() {
+  // --------------------------------------------------------------------------
+  // Core State
+  // --------------------------------------------------------------------------
   const [jobs, setJobs] = useState<JobCardItem[]>(INITIAL_JOB_CARDS);
+  const [timesheets, setTimesheets] = useState<TimesheetLog[]>(INITIAL_TIMESHEET_LOGS);
+  const [activeTab, setActiveTab] = useState<'board' | 'timesheets'>('board');
+
+  // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedKarigar, setSelectedKarigar] = useState('All Karigars');
-  const [selectedGarment, setSelectedGarment] = useState('All Garments');
+  const [selectedKarigar, setSelectedKarigar] = useState<string>('All Karigars');
+  const [selectedGarment, setSelectedGarment] = useState<string>('All Garments');
   const [selectedPriority, setSelectedPriority] = useState<'All' | 'Urgent' | 'Normal'>('All');
+
+  // Active Stopwatch Timer State
+  const [activeTimer, setActiveTimer] = useState<ActiveGarmentTimer | null>(null);
+
+  // Modals and Drawers
   const [selectedCardModal, setSelectedCardModal] = useState<JobCardItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<JobCardItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteNote, setDeleteNote] = useState('');
+  const [showCreateJobModal, setShowCreateJobModal] = useState(false);
   const [showDeliveryNote, setShowDeliveryNote] = useState<JobCardItem | null>(null);
-  const [activeTab, setActiveTab] = useState<'board' | 'timesheets'>('board');
-  const [selectedMonth, setSelectedMonth] = useState<number>(7); // August (7)
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
-  const [selectedSpecificDate, setSelectedSpecificDate] = useState<string>('');
-  const [timesheetViewMode, setTimesheetViewMode] = useState<'calendar' | 'table'>('calendar');
+
+  // Timesheets ledger mode
+  const [timesheetViewMode, setTimesheetViewMode] = useState<'table' | 'weekly' | 'daily'>('table');
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Drag and Drop
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<KanbanStage | null>(null);
 
-  const [showCreateJobModal, setShowCreateJobModal] = useState(false);
+  // Form for New Job Card
   const [newJobForm, setNewJobForm] = useState<Partial<JobCardItem>>({
     client: '',
-    garment: '',
-    karigar: KARIGAR_LIST[1],
-    samTotalEstimate: 0,
+    garment: 'Sherwani',
+    karigar: 'Karigar Latif',
+    samTotalEstimate: 210,
     priority: 'Normal',
     dueDate: '',
-    fabricDetails: ''
+    fabricDetails: '',
+    notes: '',
   });
 
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
+    setTimeout(() => setToastMsg(null), 3500);
   };
 
+  // --------------------------------------------------------------------------
+  // Persistence & Initialization
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    const storedJobs = getLocalStorage<JobCardItem[]>('yh_production_jobs', INITIAL_JOB_CARDS);
+    setJobs(storedJobs);
+    const storedTimesheets = getLocalStorage<TimesheetLog[]>('yh_artisan_timesheets', INITIAL_TIMESHEET_LOGS);
+    setTimesheets(storedTimesheets);
+  }, []);
+
+  const persistJobs = (updatedJobs: JobCardItem[]) => {
+    setJobs(updatedJobs);
+    setLocalStorage('yh_production_jobs', updatedJobs);
+  };
+
+  const persistTimesheets = (updatedLogs: TimesheetLog[]) => {
+    setTimesheets(updatedLogs);
+    setLocalStorage('yh_artisan_timesheets', updatedLogs);
+  };
+
+  // --------------------------------------------------------------------------
+  // Active Garment Timer Interval
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (!activeTimer || !activeTimer.isRunning) return;
+
+    const interval = setInterval(() => {
+      setActiveTimer((prev) => {
+        if (!prev || !prev.isRunning) return prev;
+        return {
+          ...prev,
+          elapsedSeconds: prev.elapsedSeconds + 1,
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeTimer?.isRunning]);
+
+  const handleStartTimerForJob = (job: JobCardItem) => {
+    if (activeTimer && activeTimer.jobId === job.id) {
+      // Toggle run state
+      setActiveTimer((prev) => prev ? { ...prev, isRunning: !prev.isRunning } : null);
+      return;
+    }
+
+    setActiveTimer({
+      jobId: job.id,
+      orderId: job.orderId,
+      client: job.client,
+      garment: job.garment,
+      karigar: job.karigar,
+      stage: job.stage,
+      startedAt: Date.now(),
+      elapsedSeconds: 0,
+      isRunning: true,
+    });
+    showToast(`Active timer started for ${job.id} (${job.karigar})`);
+  };
+
+  const handleToggleTimer = () => {
+    if (!activeTimer) return;
+    setActiveTimer((prev) => prev ? { ...prev, isRunning: !prev.isRunning } : null);
+  };
+
+  const handleResetTimer = () => {
+    if (!activeTimer) return;
+    setActiveTimer((prev) => prev ? { ...prev, elapsedSeconds: 0, isRunning: false } : null);
+  };
+
+  const handleCommitTimerToLedger = () => {
+    if (!activeTimer) return;
+    const loggedMinutes = Math.max(1, Math.round(activeTimer.elapsedSeconds / 60));
+    const targetJobId = activeTimer.jobId;
+
+    // 1. Update Job samMinutesLogged
+    const updatedJobs = jobs.map((j) => {
+      if (j.id === targetJobId) {
+        const updated = {
+          ...j,
+          samMinutesLogged: (j.samMinutesLogged || 0) + loggedMinutes,
+        };
+        syncJobToOrdersStorage(updated);
+        return updated;
+      }
+      return j;
+    });
+    persistJobs(updatedJobs);
+
+    // 2. Create Timesheet Log
+    const newLog: TimesheetLog = {
+      id: `TS-${Date.now().toString().slice(-6)}`,
+      date: new Date().toISOString().split('T')[0],
+      karigar: activeTimer.karigar,
+      jobId: activeTimer.jobId,
+      orderId: activeTimer.orderId,
+      garment: activeTimer.garment,
+      stage: activeTimer.stage,
+      task: `${activeTimer.stage} production session`,
+      sam: loggedMinutes,
+      minutesLogged: loggedMinutes,
+      rate: PIECE_RATE_PER_MINUTE,
+      status: 'Logged',
+    };
+    persistTimesheets([newLog, ...timesheets]);
+
+    const earned = loggedMinutes * PIECE_RATE_PER_MINUTE;
+    showToast(`Logged ${loggedMinutes}m (${formatInrCurrency(earned)}) for ${activeTimer.karigar}`);
+    setActiveTimer(null);
+  };
+
+  // --------------------------------------------------------------------------
+  // Stage Transitions (Buttons & Drag-and-Drop)
+  // --------------------------------------------------------------------------
+  const handleTransition = (jobId: string, toStage: KanbanStage) => {
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) return;
+
+    const result = executeStageTransition(job, toStage);
+    if (!result.success || !result.job) {
+      showToast(result.error || 'Stage transition not allowed.');
+      return;
+    }
+
+    const updatedJob = result.job;
+    const updatedList = jobs.map((j) => (j.id === jobId ? updatedJob : j));
+    persistJobs(updatedList);
+    syncJobToOrdersStorage(updatedJob);
+
+    if (selectedCardModal?.id === jobId) {
+      setSelectedCardModal(updatedJob);
+    }
+    showToast(`Moved ${job.id} to ${toStage}`);
+  };
+
+  const handleDragStart = (jobId: string) => {
+    setDraggedJobId(jobId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, stage: KanbanStage) => {
+    e.preventDefault();
+    setDragOverStage(stage);
+  };
+
+  const handleDrop = (stage: KanbanStage) => {
+    if (!draggedJobId) return;
+    const job = jobs.find((j) => j.id === draggedJobId);
+    if (!job) {
+      setDraggedJobId(null);
+      setDragOverStage(null);
+      return;
+    }
+
+    if (job.stage === stage) {
+      setDraggedJobId(null);
+      setDragOverStage(null);
+      return;
+    }
+
+    if (!isTransitionAllowed(job.stage, stage)) {
+      showToast(`Cannot jump from '${job.stage}' to '${stage}'. Only single-step transitions allowed.`);
+    } else {
+      handleTransition(draggedJobId, stage);
+    }
+    setDraggedJobId(null);
+    setDragOverStage(null);
+  };
+
+  // --------------------------------------------------------------------------
+  // Job Card CRUD
+  // --------------------------------------------------------------------------
   const handleCreateJobSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const newId = `JC-${Math.floor(9040 + Math.random() * 50)}`;
+    const newId = `JC-${Math.floor(9050 + Math.random() * 50)}`;
+    const garment = newJobForm.garment || 'Sherwani';
+
+    // Auto-calculate SAM total estimate if not set
+    let estimatedSam = newJobForm.samTotalEstimate || 0;
+    if (estimatedSam <= 0) {
+      const samCalc = calculateGarmentSam({ garmentCategory: resolveGarmentCategory(garment) });
+      estimatedSam = samCalc.totalSamMinutes;
+    }
+
     const newCard: JobCardItem = {
       id: newId,
       orderId: newId,
-      client: newJobForm.client || 'Unknown Client',
-      garment: newJobForm.garment || 'Garment',
-      karigar: newJobForm.karigar || KARIGAR_LIST[1],
+      client: newJobForm.client || 'Valued Atelier Patron',
+      garment,
+      karigar: newJobForm.karigar || 'Karigar Latif',
       samMinutesLogged: 0,
-      samTotalEstimate: newJobForm.samTotalEstimate || 0,
+      samTotalEstimate: estimatedSam,
       priority: (newJobForm.priority as Priority) || 'Normal',
-      dueDate: newJobForm.dueDate || '',
-      progress: 15,
+      dueDate: newJobForm.dueDate || new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+      progress: 20,
       stage: 'Fabric Inspection',
-      fabricDetails: newJobForm.fabricDetails,
-      history: [{ action: 'Job created', timestamp: new Date().toISOString(), stage: 'Fabric Inspection' }]
+      fabricDetails: newJobForm.fabricDetails || 'Client-supplied bespoke fabric',
+      notes: newJobForm.notes || '',
+      rack: getDefaultRackForStage('Fabric Inspection'),
+      barcodeEnabled: true,
+      qrCodeEnabled: true,
+      history: [
+        {
+          action: 'Job ticket initialized',
+          timestamp: new Date().toISOString(),
+          stage: 'Fabric Inspection',
+        },
+      ],
     };
-    const updatedJobs = [newCard, ...jobs];
-    setJobs(updatedJobs);
-    setLocalStorage('yh_production_jobs', updatedJobs);
+
+    const updated = [newCard, ...jobs];
+    persistJobs(updated);
+    syncJobToOrdersStorage(newCard);
     setShowCreateJobModal(false);
     setNewJobForm({
-      client: '', garment: '', karigar: KARIGAR_LIST[1], samTotalEstimate: 0, priority: 'Normal', dueDate: '', fabricDetails: ''
+      client: '',
+      garment: 'Sherwani',
+      karigar: 'Karigar Latif',
+      samTotalEstimate: 210,
+      priority: 'Normal',
+      dueDate: '',
+      fabricDetails: '',
+      notes: '',
     });
-    showToast('New Job Card created successfully.');
-  };
-
-  const handleStartEdit = (job: JobCardItem) => {
-    setEditForm({ ...job });
-    setIsEditing(true);
+    showToast(`Created Job Card ${newId}`);
   };
 
   const handleSaveEdit = () => {
     if (!editForm) return;
-    const historyEntry = { action: 'Details edited', timestamp: new Date().toISOString() };
+    const historyEntry = { action: 'Ticket details updated', timestamp: new Date().toISOString() };
     const history = editForm.history ? [...editForm.history, historyEntry] : [historyEntry];
-    const finalEditForm = { ...editForm, history };
-    const updatedJobs = jobs.map((j) => (j.id === finalEditForm.id ? finalEditForm : j));
-    setJobs(updatedJobs);
-    setLocalStorage('yh_production_jobs', updatedJobs);
-    setSelectedCardModal(editForm);
+    const finalForm: JobCardItem = { ...editForm, history };
+
+    const updated = jobs.map((j) => (j.id === finalForm.id ? finalForm : j));
+    persistJobs(updated);
+    syncJobToOrdersStorage(finalForm);
+    setSelectedCardModal(finalForm);
     setIsEditing(false);
+    showToast(`Updated ${finalForm.id}`);
   };
 
   const handleDeleteJob = (jobId: string) => {
-    if (!deleteNote.trim()) return;
+    if (!deleteNote.trim()) {
+      showToast('Please specify an audit reason for job deletion.');
+      return;
+    }
     const jobToDelete = jobs.find((j) => j.id === jobId);
-    const updatedJobs = jobs.filter((j) => j.id !== jobId);
-    setJobs(updatedJobs);
-    setLocalStorage('yh_production_jobs', updatedJobs);
+    const updated = jobs.filter((j) => j.id !== jobId);
+    persistJobs(updated);
 
     const logEntry = {
       jobId,
@@ -457,525 +403,466 @@ export default function ProductionKanbanPage() {
     setIsDeleting(false);
     setDeleteNote('');
     setSelectedCardModal(null);
+    showToast(`Deleted ${jobId}`);
   };
 
-  const stages: KanbanStage[] = [
-    'Fabric Inspection',
-    'Master Cutting',
-    'Zardozi/Aari Embroidery',
-    'Stitching Assembly',
-    'QC & Ready for Delivery',
-  ];
+  const handleDisburseLog = (logId: string) => {
+    const updated = timesheets.map((l) => (l.id === logId ? { ...l, status: 'Disbursed' as const } : l));
+    persistTimesheets(updated);
+    showToast(`Payout disbursed for log ${logId}`);
+  };
 
-  // Sync with localStorage on mount
-  useEffect(() => {
-    const storedJobs = getLocalStorage<JobCardItem[]>('yh_production_jobs', INITIAL_JOB_CARDS);
-    setJobs(storedJobs);
-  }, []);
+  const handleExportTimesheetCsv = () => {
+    const csvContent = generateTimesheetCsv(timesheets);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `yellowhouse_timesheets_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Timesheet ledger exported to CSV.');
+  };
 
-  // Filtering logic
-  const filteredJobs = jobs.filter((j) => {
-    const matchesSearch =
-      j.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      j.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      j.garment.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      j.karigar.toLowerCase().includes(searchQuery.toLowerCase());
+  // --------------------------------------------------------------------------
+  // Filtering & Computed Metrics
+  // --------------------------------------------------------------------------
+  const filteredJobs = useMemo(() => {
+    return jobs.filter((j) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        j.id.toLowerCase().includes(q) ||
+        j.orderId.toLowerCase().includes(q) ||
+        j.client.toLowerCase().includes(q) ||
+        j.garment.toLowerCase().includes(q) ||
+        j.karigar.toLowerCase().includes(q);
 
-    const matchesKarigar =
-      selectedKarigar === 'All Karigars' || j.karigar === selectedKarigar;
+      const matchesKarigar = selectedKarigar === 'All Karigars' || j.karigar === selectedKarigar;
+      const matchesGarment =
+        selectedGarment === 'All Garments' || j.garment.toLowerCase().includes(selectedGarment.toLowerCase());
+      const matchesPriority = selectedPriority === 'All' || j.priority === selectedPriority;
 
-    const matchesGarment =
-      selectedGarment === 'All Garments' ||
-      j.garment.toLowerCase().includes(selectedGarment.toLowerCase());
+      return matchesSearch && matchesKarigar && matchesGarment && matchesPriority;
+    });
+  }, [jobs, searchQuery, selectedKarigar, selectedGarment, selectedPriority]);
 
-    const matchesPriority =
-      selectedPriority === 'All' || j.priority === selectedPriority;
-
-    return matchesSearch && matchesKarigar && matchesGarment && matchesPriority;
-  });
-
-  // Calculate Metrics
   const totalJobsCount = jobs.length;
   const urgentCount = jobs.filter((j) => j.priority === 'Urgent').length;
-  const totalSamLogged = jobs.reduce((acc, j) => acc + j.samMinutesLogged, 0);
+  const totalSamLogged = jobs.reduce((acc, j) => acc + (j.samMinutesLogged || 0), 0);
   const readyCount = jobs.filter((j) => j.stage === 'QC & Ready for Delivery').length;
+  const totalPieceRateAccrued = calculatePieceRateEarnings(totalSamLogged);
 
-  const mockTimesheetLogs = [
-    { date: '2026-08-01', karigar: 'Karigar Latif', jobId: 'JC-9038', garment: 'Sherwani', task: 'Pattern Master Drafting', sam: 60, rate: 42, status: 'Disbursed' },
-    { date: '2026-08-02', karigar: 'Karigar Salim', jobId: 'JC-9035', garment: 'Lehenga Choli', task: 'Fabric Align Inspection', sam: 35, rate: 42, status: 'Disbursed' },
-    { date: '2026-08-03', karigar: 'Karigar Latif', jobId: 'JC-9021', garment: 'Sherwani', task: 'Jacket Bodice Cutting', sam: 65, rate: 42, status: 'Disbursed' },
-    { date: '2026-08-03', karigar: 'Karigar Salim', jobId: 'JC-9018', garment: 'Lehenga Choli', task: 'Maroon Velvet Dabka embroidery', sam: 180, rate: 42, status: 'Disbursed' },
-    { date: '2026-08-04', karigar: 'Karigar Ahmed', jobId: 'JC-9025', garment: 'Bandhgala', task: 'Collar Pattern Cut', sam: 45, rate: 42, status: 'Disbursed' },
-    { date: '2026-08-04', karigar: 'Karigar Usman', jobId: 'JC-8994', garment: 'Sari Blouse', task: 'Princess bodice assembly', sam: 85, rate: 42, status: 'Disbursed' },
-    { date: '2026-08-05', karigar: 'Karigar Salim', jobId: 'JC-9018', garment: 'Lehenga Choli', task: 'French Knot panel extensions', sam: 60, rate: 42, status: 'Logged' },
-    { date: '2026-08-05', karigar: 'Karigar Rafi', jobId: 'JC-9030', garment: 'Anarkali', task: 'Kalis seam stitching', sam: 110, rate: 42, status: 'Logged' },
-    { date: '2026-08-06', karigar: 'Karigar Usman', jobId: 'JC-9022', garment: 'Sari Blouse', task: 'Sequins work backend collar', sam: 120, rate: 42, status: 'Logged' },
-    { date: '2026-08-06', karigar: 'Karigar Ahmed', jobId: 'JC-9028', garment: 'Suit', task: 'Double breasted collar cuts', sam: 50, rate: 42, status: 'Logged' },
-    { date: '2026-08-07', karigar: 'Karigar Rafi', jobId: 'JC-8965', garment: 'Anarkali', task: 'Final flare hem stitching', sam: 90, rate: 42, status: 'Logged' },
-  ];
-
-  const filteredTimesheets = mockTimesheetLogs.filter((log) => {
-    const dateObj = new Date(log.date);
-    const logMonth = dateObj.getMonth();
-    const logYear = dateObj.getFullYear();
-
-    const matchesMonth = selectedMonth === -1 || logMonth === selectedMonth;
-    const matchesYear = logYear === selectedYear;
-    const matchesSpecificDate = !selectedSpecificDate || log.date === selectedSpecificDate;
-    const matchesKarigar = selectedKarigar === 'All Karigars' || log.karigar === selectedKarigar;
-
-    return matchesMonth && matchesYear && matchesSpecificDate && matchesKarigar;
-  });
-
-  const timesheetTotalSam = filteredTimesheets.reduce((acc, curr) => acc + curr.sam, 0);
-  const timesheetTotalPayout = filteredTimesheets.reduce((acc, curr) => acc + (curr.sam * curr.rate), 0);
-  const timesheetCompletedCount = filteredTimesheets.length;
-
-  const getCalendarDays = () => {
-    const activeMonth = selectedMonth === -1 ? 7 : selectedMonth;
-    const firstDayIndex = new Date(selectedYear, activeMonth, 1).getDay();
-    const numDays = new Date(selectedYear, activeMonth + 1, 0).getDate();
-    const days: { dateStr: string; dayNum: number; isCurrentMonth: boolean }[] = [];
-
-    const prevMonthYear = activeMonth === 0 ? selectedYear - 1 : selectedYear;
-    const prevMonthVal = activeMonth === 0 ? 11 : activeMonth - 1;
-    const prevNumDays = new Date(prevMonthYear, prevMonthVal + 1, 0).getDate();
-    for (let i = firstDayIndex - 1; i >= 0; i--) {
-      const d = prevNumDays - i;
-      const mStr = String(prevMonthVal + 1).padStart(2, '0');
-      const dStr = String(d).padStart(2, '0');
-      days.push({
-        dateStr: `${prevMonthYear}-${mStr}-${dStr}`,
-        dayNum: d,
-        isCurrentMonth: false
-      });
+  // Weekly Rollup for timesheets
+  const weekDates = useMemo(() => {
+    const dates: string[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86400000);
+      dates.push(d.toISOString().split('T')[0]);
     }
+    return dates;
+  }, []);
 
-    for (let i = 1; i <= numDays; i++) {
-      const mStr = String(activeMonth + 1).padStart(2, '0');
-      const dStr = String(i).padStart(2, '0');
-      days.push({
-        dateStr: `${selectedYear}-${mStr}-${dStr}`,
-        dayNum: i,
-        isCurrentMonth: true
-      });
-    }
+  const weeklyRollup: WeeklyArtisanRollup[] = useMemo(() => {
+    return aggregateWeeklyTimesheet(timesheets, weekDates);
+  }, [timesheets, weekDates]);
 
-    const nextMonthYear = activeMonth === 11 ? selectedYear + 1 : selectedYear;
-    const nextMonthVal = activeMonth === 11 ? 0 : activeMonth + 1;
-    let nextPaddingCount = 1;
-    while (days.length < 42) {
-      const mStr = String(nextMonthVal + 1).padStart(2, '0');
-      const dStr = String(nextPaddingCount).padStart(2, '0');
-      days.push({
-        dateStr: `${nextMonthYear}-${mStr}-${dStr}`,
-        dayNum: nextPaddingCount,
-        isCurrentMonth: false
-      });
-      nextPaddingCount++;
-    }
+  const dailyRollup = useMemo(() => {
+    return aggregateDailyTimesheet(timesheets);
+  }, [timesheets]);
 
-    return days;
-  };
-
-  const moveJobToStage = (jobId: string, newStage: KanbanStage) => {
-    const job = jobs.find(j => j.id === jobId);
-    if (!job) return;
-    const currentIndex = stages.indexOf(job.stage);
-    const newIndex = stages.indexOf(newStage);
-    if (Math.abs(currentIndex - newIndex) > 1) {
-      showToast("You can only move a job one stage at a time.");
-      return;
-    }
-
-    setJobs((prevJobs) => {
-      let updatedJob: JobCardItem | null = null;
-      const updated = prevJobs.map((j) => {
-        if (j.id !== jobId) return j;
-
-        let newProgress = j.progress;
-        if (newStage === 'QC & Ready for Delivery') {
-          newProgress = 100;
-        } else {
-          const stageIndex = stages.indexOf(newStage);
-          newProgress = Math.min(100, Math.max(15, (stageIndex + 1) * 20));
-        }
-
-        const historyEntry = { action: 'Stage moved', timestamp: new Date().toISOString(), stage: newStage };
-        const history = j.history ? [...j.history, historyEntry] : [historyEntry];
-
-        updatedJob = { ...j, stage: newStage, progress: newProgress, history };
-        return updatedJob;
-      });
-
-      setLocalStorage('yh_production_jobs', updated);
-      if (updatedJob) {
-        syncJobToOrdersStorage(updatedJob);
-      }
-      return updated;
-    });
-
-    if (selectedCardModal && selectedCardModal.id === jobId) {
-      setSelectedCardModal((prev) => (prev ? { ...prev, stage: newStage } : null));
-    }
-  };
-
-  const moveStage = (jobId: string, direction: 'next' | 'prev') => {
-    const job = jobs.find((j) => j.id === jobId);
-    if (!job) return;
-    const currentIndex = stages.indexOf(job.stage);
-    let nextIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
-    if (nextIndex < 0) nextIndex = 0;
-    if (nextIndex >= stages.length) nextIndex = stages.length - 1;
-    moveJobToStage(jobId, stages[nextIndex]);
+  // Drag target validity helper
+  const isDropTargetValid = (targetStage: KanbanStage): boolean => {
+    if (!draggedJobId) return false;
+    const dragged = jobs.find((j) => j.id === draggedJobId);
+    if (!dragged) return false;
+    return isTransitionAllowed(dragged.stage, targetStage);
   };
 
   return (
-    <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-6 animate-fade-in pb-12">
-      {/* ---------------------------------------------------- */}
-      {/* PAGE HEADER & CONTROLS */}
-      {/* ---------------------------------------------------- */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="space-y-6 pb-20 font-sans">
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-5 right-5 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="backdrop-blur-2xl bg-slate-900/90 text-amber-300 px-4 py-2.5 rounded-full border border-amber-500/30 shadow-ios-gold text-xs font-semibold flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span>{toastMsg}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ACTIVE GARMENT TIMER STICKY TOP HUD */}
+      {activeTimer && (
+        <div className="sticky top-2 z-40 animate-in fade-in slide-in-from-top-2 duration-300">
+          <Card
+            variant="gold"
+            padding="sm"
+            className="flex flex-wrap items-center justify-between gap-3 shadow-ios-gold-lg border-amber-500/40 bg-gradient-to-r from-amber-950/40 via-slate-900/90 to-slate-950/90"
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative flex items-center justify-center w-9 h-9 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                <Clock className="w-4 h-4 animate-spin [animation-duration:8s]" />
+                {activeTimer.isRunning && (
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-amber-300 tracking-tight">ACTIVE GARMENT SESSION</span>
+                  <Badge variant="gold" size="sm">
+                    {activeTimer.stage}
+                  </Badge>
+                  <span className="text-xs text-slate-400">• {activeTimer.karigar}</span>
+                </div>
+                <div className="text-xs text-slate-300">
+                  <span className="font-semibold text-white">{activeTimer.jobId}</span> ({activeTimer.garment} for {activeTimer.client})
+                </div>
+              </div>
+            </div>
+
+            {/* Stopwatch Counter & Accrued Payout */}
+            <div className="flex items-center gap-6">
+              <div className="text-right">
+                <div className="text-xl font-extrabold tracking-tight font-display text-white tabular-nums">
+                  {formatTimerDuration(activeTimer.elapsedSeconds)}
+                </div>
+                <div className="text-[11px] text-amber-300/80 font-medium tabular-nums">
+                  Accrued: {formatInrCurrency(calculatePieceRateEarnings(Math.round(activeTimer.elapsedSeconds / 60)))} @ ₹42/min
+                </div>
+              </div>
+
+              {/* Timer Controls */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={activeTimer.isRunning ? 'secondary' : 'gold'}
+                  size="sm"
+                  onClick={handleToggleTimer}
+                  leftIcon={activeTimer.isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                >
+                  {activeTimer.isRunning ? 'Pause' : 'Resume'}
+                </Button>
+                <Button variant="ghost" size="icon-sm" onClick={handleResetTimer} title="Reset Timer">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="gold"
+                  size="sm"
+                  onClick={handleCommitTimerToLedger}
+                  leftIcon={<Check className="w-3.5 h-3.5" />}
+                >
+                  Log & Commit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setActiveTimer(null)}
+                  title="Discard Timer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* PAGE HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400 shadow-md">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-                <span>Karigar Workshop Board</span>
-                <span className="badge badge-gold font-mono">
-                  LIVE PIPELINE
-                </span>
+              <h1 className="text-2xl font-bold tracking-tight text-white font-display">
+                Workshop Production Floor
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                Real-time tracking of bespoke job cards from Fabric Inspection through Master Cutting, Zardozi, Assembly & QC
+                5-Stage Karigar Kanban • SAM Efficiency • Piece-Rate Ledger (₹42/min)
               </p>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center space-x-3">
-          <Tooltip content="Print current workshop job cards & production schedule">
-            <button
-              onClick={() => window.print()}
-              className="btn-ghost flex items-center space-x-2 py-2 px-3 text-xs cursor-pointer border-slate-700 text-slate-300 hover:text-white"
-            >
-              <Printer className="w-4 h-4 text-yellow-400" />
-              <span>Print Schedule & Jobs</span>
-            </button>
-          </Tooltip>
+        <div className="flex items-center gap-3">
+          <SegmentedControl
+            options={[
+              { value: 'board', label: 'Kanban Floor', icon: <Layers className="w-3.5 h-3.5 mr-1" /> },
+              { value: 'timesheets', label: 'Piece-Rate Ledger', icon: <DollarSign className="w-3.5 h-3.5 mr-1" /> },
+            ]}
+            value={activeTab}
+            onChange={(val) => setActiveTab(val as 'board' | 'timesheets')}
+            size="sm"
+          />
 
-          <Tooltip content="Dispatch new workshop job card for active client order">
-            <button
-              onClick={() => setShowCreateJobModal(true)}
-              className="btn-gold flex items-center space-x-2 cursor-pointer shadow-lg"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create Job Card</span>
-            </button>
-          </Tooltip>
+          <Button
+            variant="gold"
+            size="sm"
+            onClick={() => setShowCreateJobModal(true)}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          >
+            New Job Ticket
+          </Button>
         </div>
       </div>
 
-      {/* TAB SELECTOR */}
-      <div className="flex items-center space-x-2 border-b border-slate-800/80 pb-0">
-        <button
-          onClick={() => setActiveTab('board')}
-          className={`px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 transition-all ${
-            activeTab === 'board'
-              ? 'border-gold-500 text-gold-400 bg-slate-900/60'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          Workshop Kanban Board
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('timesheets');
-            setSelectedKarigar('All Karigars');
-          }}
-          className={`px-4 py-2 text-xs font-bold rounded-t-xl border-b-2 transition-all ${
-            activeTab === 'timesheets'
-              ? 'border-gold-500 text-gold-400 bg-slate-900/60'
-              : 'border-transparent text-slate-400 hover:text-white'
-          }`}
-        >
-          Artisan Timesheets & Logs
-        </button>
+      {/* KPI TELEMETRY TILES */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card variant="glass" padding="sm" className="relative">
+          <div className="text-[11px] font-medium text-slate-400">Active Workshop Jobs</div>
+          <div className="text-2xl font-bold text-white mt-1 tabular-nums font-display">{totalJobsCount}</div>
+          <div className="text-[10px] text-amber-400/80 mt-0.5">{urgentCount} marked Urgent priority</div>
+        </Card>
+
+        <Card variant="glass" padding="sm" className="relative">
+          <div className="text-[11px] font-medium text-slate-400">Standard Allowed Minutes</div>
+          <div className="text-2xl font-bold text-amber-300 mt-1 tabular-nums font-display">
+            {totalSamLogged} <span className="text-xs font-normal text-slate-400">mins</span>
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5">{formatLaborTime(totalSamLogged).formatted} logged</div>
+        </Card>
+
+        <Card variant="glass" padding="sm" className="relative">
+          <div className="text-[11px] font-medium text-slate-400">Piece-Rate Accrual (₹42/min)</div>
+          <div className="text-2xl font-bold text-emerald-400 mt-1 tabular-nums font-display">
+            {formatInrCurrency(totalPieceRateAccrued)}
+          </div>
+          <div className="text-[10px] text-emerald-500/80 mt-0.5">Fixed atelier standard rate</div>
+        </Card>
+
+        <Card variant="glass" padding="sm" className="relative">
+          <div className="text-[11px] font-medium text-slate-400">Ready for Dispatch</div>
+          <div className="text-2xl font-bold text-blue-400 mt-1 tabular-nums font-display">{readyCount}</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Passed final 18-point QC</div>
+        </Card>
       </div>
 
-      {activeTab === 'board' ? (
-        <>
-          {/* METRIC SUMMARY BAR */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-fade-in">
-            <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Active Job Cards</p>
-                <p className="text-2xl font-extrabold text-white mt-1 font-mono">{totalJobsCount}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Across 5 workshop stages</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-slate-800/80 flex items-center justify-center text-slate-300">
-                <Package className="w-5 h-5 text-gold-400" />
-              </div>
+      {/* ==================================================================== */}
+      {/* TAB 1: 5-STAGE KANBAN BOARD */}
+      {/* ==================================================================== */}
+      {activeTab === 'board' && (
+        <div className="space-y-4">
+          {/* SEARCH & FILTER BAR */}
+          <Card variant="glass" padding="sm" className="flex flex-wrap items-center gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <Input
+                placeholder="Search by Job ID, Order, Client or Karigar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="w-4 h-4 text-slate-400" />}
+                inputSize="sm"
+                shape="squircle"
+              />
             </div>
 
-            <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Urgent Rush Jobs</p>
-                <p className="text-2xl font-extrabold text-rose-400 mt-1 font-mono">{urgentCount}</p>
-                <p className="text-[10px] text-rose-400/80 mt-0.5">High priority wedding orders</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-                <Flame className="w-5 h-5" />
-              </div>
+            <div className="flex items-center gap-2 text-xs">
+              <select
+                value={selectedKarigar}
+                onChange={(e) => setSelectedKarigar(e.target.value)}
+                className="bg-slate-800/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-500/50"
+              >
+                {DEFAULT_KARIGAR_LIST.map((k) => (
+                  <option key={k} value={k} className="bg-slate-900 text-slate-200">
+                    {k}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedGarment}
+                onChange={(e) => setSelectedGarment(e.target.value)}
+                className="bg-slate-800/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-500/50"
+              >
+                {DEFAULT_GARMENT_FILTER_LIST.map((g) => (
+                  <option key={g} value={g} className="bg-slate-900 text-slate-200">
+                    {g}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedPriority}
+                onChange={(e) => setSelectedPriority(e.target.value as any)}
+                className="bg-slate-800/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-500/50"
+              >
+                <option value="All" className="bg-slate-900">All Priorities</option>
+                <option value="Urgent" className="bg-slate-900">Urgent Only</option>
+                <option value="Normal" className="bg-slate-900">Normal Only</option>
+              </select>
             </div>
+          </Card>
 
-            <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">SAM Logged (Minutes)</p>
-                <p className="text-2xl font-extrabold text-amber-400 mt-1 font-mono">{totalSamLogged} <span className="text-xs text-slate-400 font-sans">mins</span></p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Standard Allowed Minutes</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                <Clock className="w-5 h-5" />
-              </div>
-            </div>
-
-            <div className="glass-card rounded-2xl p-4 border border-slate-800/80 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">QC Passed & Ready</p>
-                <p className="text-2xl font-extrabold text-emerald-400 mt-1 font-mono">{readyCount}</p>
-                <p className="text-[10px] text-emerald-400/80 mt-0.5">Ready for client dispatch</p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-            </div>
-          </div>
-
-          {/* FILTERS TOOLBAR */}
-          <div className="glass-card rounded-2xl p-4 border border-slate-800/80 space-y-3 animate-fade-in">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-              {/* Search Input */}
-              <div className="relative w-full md:w-80">
-                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search JC #, Client, Karigar..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="input-dark pl-9 py-2 text-xs"
-                />
-              </div>
-
-              {/* Dropdown Filters */}
-              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                <div className="relative">
-                  <User className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <select
-                    value={selectedKarigar}
-                    onChange={(e) => setSelectedKarigar(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-gold-500/50 appearance-none cursor-pointer"
-                  >
-                    {KARIGAR_LIST.map((k) => (
-                      <option key={k} value={k}>
-                        {k}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
-                </div>
-
-                <div className="relative">
-                  <Scissors className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <select
-                    value={selectedGarment}
-                    onChange={(e) => setSelectedGarment(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 focus:outline-none focus:border-gold-500/50 appearance-none cursor-pointer"
-                  >
-                    {GARMENT_TYPES.map((g) => (
-                      <option key={g} value={g}>
-                        {g}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-500 absolute right-3 top-1/2 -translate-y-1/2 rotate-90 pointer-events-none" />
-                </div>
-
-                <div className="flex items-center rounded-xl bg-slate-900 border border-slate-800 p-0.5">
-                  {(['All', 'Urgent', 'Normal'] as const).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setSelectedPriority(p)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                        selectedPriority === p
-                          ? p === 'Urgent'
-                            ? 'bg-rose-500 text-white'
-                            : 'btn-gold text-slate-950 font-bold'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 5-COLUMN KANBAN BOARD */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 items-start animate-fade-in">
-            {stages.map((stage) => {
-              const config = STAGE_CONFIG[stage];
-              const stageJobs = filteredJobs.filter((j) => j.stage === stage);
-              const stageSamTotal = stageJobs.reduce((sum, j) => sum + j.samMinutesLogged, 0);
+          {/* 5-COLUMN WORKSHOP KANBAN FLOOR */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3.5 items-start">
+            {KANBAN_STAGES.map((stageName, stageIdx) => {
+              const stageConfig = STAGE_CONFIG[stageName];
+              const stageJobs = filteredJobs.filter((j) => j.stage === stageName);
+              const isDragTarget = dragOverStage === stageName;
+              const isValidTarget = isDropTargetValid(stageName);
 
               return (
                 <div
-                  key={stage}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                  }}
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    setDragOverStage(stage);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    setDragOverStage(null);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const jobId = e.dataTransfer.getData('text/plain');
-                    if (jobId) {
-                      moveJobToStage(jobId, stage);
-                    }
-                    setDragOverStage(null);
-                    setDraggedJobId(null);
-                  }}
-                  className={`kanban-column border-t-4 ${config.accentBorder} flex flex-col min-h-[580px] transition-all duration-200 ${
-                    dragOverStage === stage ? 'kanban-column-drag-over bg-gold-500/10 ring-2 ring-gold-500/50 shadow-xl scale-[1.01]' : ''
+                  key={stageName}
+                  onDragOver={(e) => handleDragOver(e, stageName)}
+                  onDrop={() => handleDrop(stageName)}
+                  className={`flex flex-col rounded-2.5xl transition-all duration-200 p-2.5 min-h-[550px] ${
+                    isDragTarget
+                      ? isValidTarget
+                        ? 'ring-2 ring-amber-500/60 bg-amber-500/10'
+                        : 'ring-2 ring-rose-500/40 bg-rose-500/5'
+                      : 'bg-slate-900/40 border border-white/5'
                   }`}
                 >
-                  {/* Column Header */}
-                  <div className="pb-3 border-b border-slate-800/80 space-y-2">
+                  {/* Stage Column Header */}
+                  <div className="pb-2.5 mb-2 border-b border-white/10">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 min-w-0">
-                        <span className={`w-2 h-2 rounded-full ${config.dotColor}`} />
-                        <h3 className={`font-bold text-xs truncate ${config.headerTextColor}`}>
-                          {config.label}
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${stageConfig.dotColor}`} />
+                        <h3 className="text-xs font-bold text-slate-200 tracking-tight truncate">
+                          {stageName}
                         </h3>
                       </div>
-                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${config.headerBadgeColor}`}>
+                      <Badge variant="neutral" size="sm">
                         {stageJobs.length}
-                      </span>
+                      </Badge>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">
-                      <span>Accrued SAM:</span>
-                      <span className="text-slate-300 font-semibold">{stageSamTotal} mins</span>
+
+                    <div className="text-[10px] text-slate-400 mt-1 truncate flex items-center gap-1">
+                      <Building className="w-3 h-3 text-slate-500 shrink-0" />
+                      <span>{STAGE_RACK_MAPPING[stageName]}</span>
                     </div>
                   </div>
 
-                  {/* Card Container */}
-                  <div className="flex-1 py-3 space-y-3 overflow-y-auto max-h-[600px] pr-1">
+                  {/* Stage Job Cards List */}
+                  <div className="space-y-2.5 flex-1">
                     {stageJobs.map((job) => {
-                      const isUrgent = job.priority === 'Urgent';
+                      const nextStg = getNextStage(job.stage);
+                      const prevStg = getPrevStage(job.stage);
+                      const isTiming = activeTimer?.jobId === job.id && activeTimer.isRunning;
+
                       return (
-                        <div
+                        <Card
                           key={job.id}
+                          variant="glass"
+                          padding="sm"
                           draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('text/plain', job.id);
-                            e.dataTransfer.effectAllowed = 'move';
-                            setDraggedJobId(job.id);
-                          }}
-                          onDragEnd={() => {
-                            setDraggedJobId(null);
-                            setDragOverStage(null);
-                          }}
+                          onDragStart={() => handleDragStart(job.id)}
                           onClick={() => setSelectedCardModal(job)}
-                          className={`glass-card hover:border-gold-500/40 rounded-xl p-4 border transition-all duration-300 cursor-pointer relative group space-y-3 shadow-md ${
-                            isUrgent ? 'border-rose-500/20 bg-rose-950/5' : 'border-slate-800/80'
-                          } ${draggedJobId === job.id ? 'opacity-40 border-dashed border-gold-500' : ''}`}
+                          hoverable
+                          className={`border-l-4 ${
+                            job.priority === 'Urgent' ? 'border-l-rose-500' : 'border-l-amber-500/70'
+                          } ${isTiming ? 'ring-2 ring-amber-500/50 shadow-ios-gold' : ''}`}
                         >
-                          {/* Top Row */}
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono text-[10px] font-extrabold text-slate-500 group-hover:text-gold-400 transition-colors">
-                              {job.orderId}
-                            </span>
-                            <span className={`text-[9px] uppercase px-2 py-0.5 rounded-full font-bold ${getGarmentBadgeClass(job.garment)}`}>
-                              {job.garment}
-                            </span>
-                          </div>
-
-                          {/* Client & Karigar */}
-                          <div className="space-y-1">
-                            <h4 className="font-bold text-xs text-white leading-tight">{job.client}</h4>
-                            <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                              <User className="w-3 h-3 text-gold-400" />
-                              <span>{job.karigar}</span>
-                            </p>
-                          </div>
-
-                          {/* Progress bar */}
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[9px] font-mono text-slate-500">
-                              <span>SAM: {job.samMinutesLogged}/{job.samTotalEstimate}m</span>
-                              <span className="text-slate-300 font-bold">{job.progress}%</span>
+                          {/* Card Header: Job ID + Priority */}
+                          <div className="flex items-center justify-between gap-1 mb-1.5">
+                            <span className="text-xs font-bold text-white tracking-tight">{job.id}</span>
+                            <div className="flex items-center gap-1">
+                              {job.priority === 'Urgent' && (
+                                <Badge variant="danger" size="sm">
+                                  Urgent
+                                </Badge>
+                              )}
+                              <Badge variant="neutral" size="sm">
+                                {job.progress}%
+                              </Badge>
                             </div>
-                            <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
+                          </div>
+
+                          {/* Client & Garment */}
+                          <div className="text-xs font-medium text-slate-200 truncate">{job.client}</div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Tag className="w-3 h-3 text-slate-500" />
+                            <span className="text-amber-300 font-medium">{job.garment}</span>
+                            <span>• {job.karigar}</span>
+                          </div>
+
+                          {/* SAM Progress Bar */}
+                          <div className="mt-2.5 pt-2 border-t border-white/5">
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                              <span>SAM Minutes</span>
+                              <span className="tabular-nums font-semibold text-slate-200">
+                                {job.samMinutesLogged} / {job.samTotalEstimate} m
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all duration-500 ${config.progressGradient}`}
-                                style={{ width: `${job.progress}%` }}
+                                className="bg-gradient-to-r from-amber-500 to-yellow-400 h-1.5 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${Math.min(
+                                    100,
+                                    job.samTotalEstimate > 0
+                                      ? (job.samMinutesLogged / job.samTotalEstimate) * 100
+                                      : 0
+                                  )}%`,
+                                }}
                               />
                             </div>
                           </div>
 
-                          {/* Footer details: Due date & stage arrows */}
-                          <div className="flex items-center justify-between pt-2 border-t border-slate-800/40 text-[9px] font-mono text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-slate-500" />
-                              <span className={isUrgent ? 'text-rose-400 font-bold' : ''}>{job.dueDate}</span>
-                            </span>
+                          {/* Interactive Card Action Bar */}
+                          <div className="flex items-center justify-between gap-1 mt-2.5 pt-2 border-t border-white/5">
+                            {/* Step backward (if allowed) */}
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={!prevStg}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (prevStg) handleTransition(job.id, prevStg);
+                              }}
+                              title={prevStg ? `Move to ${prevStg}` : 'First stage'}
+                              className="h-6 w-6 text-slate-400 hover:text-white"
+                            >
+                              <ArrowLeft className="w-3 h-3" />
+                            </Button>
 
-                            <div className="flex items-center space-x-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Tooltip content="Move back to previous stage">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    moveStage(job.id, 'prev');
-                                  }}
-                                  disabled={stages.indexOf(job.stage) === 0}
-                                  className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
-                                >
-                                  {'←'}
-                                </button>
-                              </Tooltip>
-                              <Tooltip content="Move forward to next stage">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    moveStage(job.id, 'next');
-                                  }}
-                                  disabled={stages.indexOf(job.stage) === stages.length - 1}
-                                  className="p-1 rounded bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800/60 transition-colors"
-                                >
-                                  {'→'}
-                                </button>
-                              </Tooltip>
-                            </div>
+                            {/* Stopwatch Start/Pause */}
+                            <Button
+                              variant={isTiming ? 'gold' : 'secondary'}
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartTimerForJob(job);
+                              }}
+                              className="h-6 px-2 text-[10px] gap-1"
+                            >
+                              {isTiming ? (
+                                <>
+                                  <Pause className="w-2.5 h-2.5" />
+                                  <span>Stop</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-2.5 h-2.5" />
+                                  <span>Timer</span>
+                                </>
+                              )}
+                            </Button>
+
+                            {/* Step forward (if allowed) */}
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={!nextStg}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (nextStg) handleTransition(job.id, nextStg);
+                              }}
+                              title={nextStg ? `Move to ${nextStg}` : 'Final stage'}
+                              className="h-6 w-6 text-slate-400 hover:text-white"
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                            </Button>
                           </div>
-                        </div>
+                        </Card>
                       );
                     })}
 
                     {stageJobs.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-slate-800 text-slate-600 space-y-2">
-                        <Package className="w-6 h-6 opacity-40" />
-                        <p className="text-xs">No active jobs in {stage}</p>
+                      <div className="text-center py-10 text-[11px] text-slate-500 border border-dashed border-white/5 rounded-2xl">
+                        Drop jobs here
                       </div>
                     )}
                   </div>
@@ -983,1022 +870,526 @@ export default function ProductionKanbanPage() {
               );
             })}
           </div>
-        </>
-      ) : (
-        /* ARTISAN TIMESHEETS REPORT VIEW */
-        <div className="space-y-6 animate-fade-in">
-          {/* TIMESHEET SUMMARY WIDGETS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="glass-card rounded-2xl p-5 border border-slate-800/80 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Selected Month Hours</p>
-                <p className="text-2xl font-extrabold text-white mt-1 font-mono">
-                  {Math.floor(timesheetTotalSam / 60)}h {timesheetTotalSam % 60}m
-                </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">({timesheetTotalSam} total SAM minutes)</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400">
-                <Clock className="w-6 h-6" />
-              </div>
-            </div>
+        </div>
+      )}
 
-            <div className="glass-card rounded-2xl p-5 border border-slate-800/80 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Accrued Payout (Rate ₹42/m)</p>
-                <p className="text-2xl font-extrabold text-emerald-400 mt-1 font-mono">
-                  ₹{timesheetTotalPayout.toLocaleString('en-IN')}
-                </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Based on completed tasks logged</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <Sparkles className="w-6 h-6" />
-              </div>
-            </div>
+      {/* ==================================================================== */}
+      {/* TAB 2: PIECE-RATE PAYOUT LEDGER & TIMESHEETS */}
+      {/* ==================================================================== */}
+      {activeTab === 'timesheets' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <SegmentedControl
+              options={[
+                { value: 'table', label: 'All Log Entries' },
+                { value: 'weekly', label: 'Weekly Artisan Rollup' },
+                { value: 'daily', label: 'Daily Atelier Rollup' },
+              ]}
+              value={timesheetViewMode}
+              onChange={(val) => setTimesheetViewMode(val as any)}
+              size="sm"
+            />
 
-            <div className="glass-card rounded-2xl p-5 border border-slate-800/80 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Log Entries Found</p>
-                <p className="text-2xl font-extrabold text-blue-400 mt-1 font-mono">{timesheetCompletedCount}</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Accrued task log rows</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                <FileText className="w-6 h-6" />
-              </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleExportTimesheetCsv}
+                leftIcon={<Download className="w-3.5 h-3.5" />}
+              >
+                Export CSV
+              </Button>
             </div>
           </div>
 
-          {/* DATE & MONTH TIMESHEET CONTROL TOOLBAR */}
-          <div className="glass-card rounded-2xl p-5 border border-slate-800/80 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Timesheet Period Filters</h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Select date ranges or monthly cycles to audit Karigar earnings</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    showToast("Timesheet report exported successfully as YellowHouse_Timesheet_Report.csv");
-                  }}
-                  className="btn-ghost text-xs py-2 px-3 flex items-center space-x-1.5"
-                >
-                  <FileText className="w-3.5 h-3.5 text-gold-400" />
-                  <span>Export CSV</span>
-                </button>
-                <button
-                  onClick={() => {
-                    if (typeof window !== 'undefined') window.print();
-                  }}
-                  className="btn-gold text-xs py-2 px-4 flex items-center space-x-1.5"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print Report</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-slate-400 block">Fiscal Year</label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="input-dark w-full py-2 px-3 text-xs"
-                >
-                  <option value={2026}>2026 Fiscal</option>
-                  <option value={2025}>2025 Fiscal</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-slate-400 block">Billing Month</label>
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                  className="input-dark w-full py-2 px-3 text-xs"
-                >
-                  <option value={-1}>All Months</option>
-                  <option value={0}>January</option>
-                  <option value={1}>February</option>
-                  <option value={2}>March</option>
-                  <option value={3}>April</option>
-                  <option value={4}>May</option>
-                  <option value={5}>June</option>
-                  <option value={6}>July</option>
-                  <option value={7}>August</option>
-                  <option value={8}>September</option>
-                  <option value={9}>October</option>
-                  <option value={10}>November</option>
-                  <option value={11}>December</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-slate-400 block">Specific Date Filter</label>
-                <input
-                  type="date"
-                  value={selectedSpecificDate}
-                  onChange={(e) => setSelectedSpecificDate(e.target.value)}
-                  className="input-dark w-full py-1.5 px-3 text-xs text-slate-300"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-slate-400 block">Karigar Workspace Filter</label>
-                <select
-                  value={selectedKarigar}
-                  onChange={(e) => setSelectedKarigar(e.target.value)}
-                  className="input-dark w-full py-2 px-3 text-xs"
-                >
-                  {KARIGAR_LIST.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* TIMESHEET VIEW MODE TOGGLER */}
-            <div className="flex items-center justify-between border-t border-slate-800/80 pt-3">
-              <span className="text-[10px] text-slate-400 font-bold uppercase">Layout Mode</span>
-              <div className="flex items-center bg-slate-900 p-0.5 rounded-xl border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setTimesheetViewMode('calendar')}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    timesheetViewMode === 'calendar' ? 'btn-gold text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Calendar Month View
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTimesheetViewMode('table')}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                    timesheetViewMode === 'table' ? 'btn-gold text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Audit List Table
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* CALENDAR OR TABLE */}
-          {timesheetViewMode === 'calendar' ? (
-            <div className="glass-card rounded-2xl border border-slate-800/80 p-5 space-y-4 shadow-xl animate-fade-in">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  {selectedMonth === -1 ? 'August' : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedYear}
-                </h4>
-                <div className="text-[10px] text-slate-500 font-mono">
-                  Click a cell to set Specific Date Filter
-                </div>
-              </div>
-
-              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-800/60">
-                <div>Sun</div>
-                <div>Mon</div>
-                <div>Tue</div>
-                <div>Wed</div>
-                <div>Thu</div>
-                <div>Fri</div>
-                <div>Sat</div>
-              </div>
-
-              <div className="grid grid-cols-7 gap-1">
-                {getCalendarDays().map((day, idx) => {
-                  const dayLogs = mockTimesheetLogs.filter((l) => l.date === day.dateStr && (selectedKarigar === 'All Karigars' || l.karigar === selectedKarigar));
-                  const dayTotalSam = dayLogs.reduce((acc, curr) => acc + curr.sam, 0);
-                  const isSelected = selectedSpecificDate === day.dateStr;
-
-                  return (
-                    <div
-                      key={idx}
-                      onClick={() => {
-                        setSelectedSpecificDate(isSelected ? '' : day.dateStr);
-                      }}
-                      className={`min-h-[90px] p-2 rounded-xl border flex flex-col justify-between transition-all cursor-pointer relative select-none ${
-                        !day.isCurrentMonth
-                          ? 'bg-slate-950/20 border-slate-900/40 opacity-30'
-                          : isSelected
-                          ? 'bg-gold-500/10 border-gold-500/80 shadow-md'
-                          : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <span className={`text-xs font-bold font-mono ${day.isCurrentMonth ? (isSelected ? 'text-gold-400' : 'text-slate-300') : 'text-slate-600'}`}>
-                          {day.dayNum}
-                        </span>
-                        {dayTotalSam > 0 && (
-                          <span className="text-[8px] bg-gold-500/10 text-gold-400 font-mono px-1 rounded border border-gold-500/20">
-                            {dayTotalSam}m
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-1.5 space-y-1 overflow-y-auto max-h-[50px] pr-0.5 scrollbar-thin">
-                        {dayLogs.map((log, lIdx) => (
-                          <div
-                            key={lIdx}
-                            title={`${log.karigar}: ${log.task}`}
-                            className={`text-[8px] px-1 py-0.5 rounded flex items-center justify-between font-medium leading-none ${
-                              log.status === 'Disbursed'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            }`}
-                          >
-                            <span className="truncate max-w-[45px] font-bold">{log.karigar.split(' ')[1]}</span>
-                            <span className="font-mono opacity-80">{log.sam}m</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="glass-card rounded-2xl border border-slate-800/80 overflow-hidden shadow-xl animate-fade-in">
+          {/* VIEW 1: FULL TABLE */}
+          {timesheetViewMode === 'table' && (
+            <Card variant="glass" padding="none">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-800 bg-slate-900/40 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="py-4 px-6 text-left">Date</th>
-                      <th className="py-4 px-4 text-left">Artisan</th>
-                      <th className="py-4 px-4 text-left">Job Card Reference</th>
-                      <th className="py-4 px-4 text-left">Garment</th>
-                      <th className="py-4 px-4 text-left">Task Done</th>
-                      <th className="py-4 px-4 text-center">SAM Minutes</th>
-                      <th className="py-4 px-4 text-right">Earned (₹)</th>
-                      <th className="py-4 px-6 text-center">Payout Status</th>
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+                    <tr>
+                      <th className="py-3 px-4">Log ID</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Artisan (Karigar)</th>
+                      <th className="py-3 px-4">Job / Garment</th>
+                      <th className="py-3 px-4">Stage & Task</th>
+                      <th className="py-3 px-4 text-right">SAM Mins</th>
+                      <th className="py-3 px-4 text-right">Rate</th>
+                      <th className="py-3 px-4 text-right">Gross (₹)</th>
+                      <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/40 text-xs">
-                    {filteredTimesheets.map((log, index) => {
-                      const payout = log.sam * log.rate;
+                  <tbody className="divide-y divide-white/5 text-slate-200">
+                    {timesheets.map((log) => {
+                      const mins = log.sam || log.minutesLogged || 0;
+                      const gross = mins * (log.rate || PIECE_RATE_PER_MINUTE);
+
                       return (
-                        <tr key={index} className="hover:bg-slate-800/30 transition-colors text-slate-300">
-                          <td className="py-3.5 px-6 font-mono text-[11px] text-slate-400">
-                            {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-3 px-4 font-mono font-medium text-amber-300">{log.id}</td>
+                          <td className="py-3 px-4 text-slate-400">{log.date}</td>
+                          <td className="py-3 px-4 font-medium text-white">{log.karigar}</td>
+                          <td className="py-3 px-4">
+                            <span className="font-semibold text-slate-200">{log.jobId}</span>
+                            <span className="text-slate-400 ml-1">({log.garment})</span>
                           </td>
-                          <td className="py-3.5 px-4 font-bold text-white">{log.karigar}</td>
-                          <td className="py-3.5 px-4">
-                            <span className="font-mono text-gold-400 font-semibold">{log.jobId}</span>
+                          <td className="py-3 px-4">
+                            <span className="text-slate-300">{log.task}</span>
+                            <span className="text-[10px] text-slate-500 block">{log.stage}</span>
                           </td>
-                          <td className="py-3.5 px-4">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getGarmentBadgeClass(log.garment)}`}>
-                              {log.garment}
-                            </span>
+                          <td className="py-3 px-4 text-right font-semibold tabular-nums">{mins} m</td>
+                          <td className="py-3 px-4 text-right text-slate-400 tabular-nums">₹{log.rate || 42}/m</td>
+                          <td className="py-3 px-4 text-right font-bold text-emerald-400 tabular-nums font-display">
+                            {formatInrCurrency(gross)}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-400">{log.task}</td>
-                          <td className="py-3.5 px-4 text-center font-mono font-bold">{log.sam} mins</td>
-                          <td className="py-3.5 px-4 text-right font-mono font-extrabold text-emerald-400">
-                            ₹{payout.toLocaleString('en-IN')}
-                          </td>
-                          <td className="py-3.5 px-6 text-center">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                                log.status === 'Disbursed'
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                              }`}
-                            >
+                          <td className="py-3 px-4 text-center">
+                            <Badge variant={log.status === 'Disbursed' ? 'success' : 'warning'} size="sm">
                               {log.status}
-                            </span>
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {log.status !== 'Disbursed' ? (
+                              <Button
+                                variant="gold"
+                                size="sm"
+                                onClick={() => handleDisburseLog(log.id)}
+                                className="h-7 px-2.5 text-[10px]"
+                              >
+                                Disburse
+                              </Button>
+                            ) : (
+                              <span className="text-[10px] text-emerald-400 font-medium">Settled</span>
+                            )}
                           </td>
                         </tr>
                       );
                     })}
-
-                    {filteredTimesheets.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="py-12 text-center text-slate-500 text-xs">
-                          <Clock className="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-40 animate-pulse" />
-                          No timesheet records match the selected date/month filters.
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
           )}
 
-          {timesheetViewMode === 'calendar' && selectedSpecificDate && (
-            <div className="glass-card rounded-2xl border border-slate-800/80 p-5 space-y-3 shadow-md animate-fade-in">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Daily Contributions: {new Date(selectedSpecificDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-                <button
-                  onClick={() => setSelectedSpecificDate('')}
-                  className="text-[10px] text-gold-400 hover:underline"
-                >
-                  Show All Month Logs
-                </button>
-              </div>
-
+          {/* VIEW 2: WEEKLY ROLLUP */}
+          {timesheetViewMode === 'weekly' && (
+            <Card variant="glass" padding="none">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="text-slate-500 font-semibold border-b border-slate-800/60 pb-1">
-                      <th className="pb-2">Artisan</th>
-                      <th className="pb-2">Job ID</th>
-                      <th className="pb-2">Garment</th>
-                      <th className="pb-2">Task Contribution</th>
-                      <th className="pb-2 text-center">SAM Min</th>
-                      <th className="pb-2 text-right">Earned</th>
+                  <thead className="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/10">
+                    <tr>
+                      <th className="py-3 px-4">Artisan</th>
+                      {weekDates.map((d) => (
+                        <th key={d} className="py-3 px-2 text-center">
+                          {d.slice(5)}
+                        </th>
+                      ))}
+                      <th className="py-3 px-4 text-right">Total SAM</th>
+                      <th className="py-3 px-4 text-right">Total Hours</th>
+                      <th className="py-3 px-4 text-right">Gross Piece-Rate (₹)</th>
+                      <th className="py-3 px-4 text-right">Disbursed</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/40 text-slate-300">
-                    {filteredTimesheets.map((log, index) => (
-                      <tr key={index} className="hover:bg-slate-800/30">
-                        <td className="py-2.5 font-bold text-slate-200">{log.karigar}</td>
-                        <td className="py-2.5 font-mono text-gold-400">{log.jobId}</td>
-                        <td className="py-2.5">{log.garment}</td>
-                        <td className="py-2.5 text-slate-400">{log.task}</td>
-                        <td className="py-2.5 text-center font-mono">{log.sam}m</td>
-                        <td className="py-2.5 text-right font-mono text-emerald-400 font-bold">₹{(log.sam * log.rate).toLocaleString('en-IN')}</td>
+                  <tbody className="divide-y divide-white/5 text-slate-200">
+                    {weeklyRollup.map((row) => (
+                      <tr key={row.karigar} className="hover:bg-white/[0.02]">
+                        <td className="py-3 px-4 font-bold text-white">{row.karigar}</td>
+                        {weekDates.map((d) => {
+                          const mins = row.dailyMinutes[d] || 0;
+                          return (
+                            <td key={d} className="py-3 px-2 text-center font-mono tabular-nums">
+                              {mins > 0 ? <span className="text-amber-300 font-semibold">{mins}m</span> : <span className="text-slate-600">—</span>}
+                            </td>
+                          );
+                        })}
+                        <td className="py-3 px-4 text-right font-bold text-amber-300 tabular-nums">
+                          {row.totalSamMinutes} m
+                        </td>
+                        <td className="py-3 px-4 text-right text-slate-300 tabular-nums">{row.totalLaborHours} h</td>
+                        <td className="py-3 px-4 text-right font-bold text-emerald-400 tabular-nums font-display">
+                          {formatInrCurrency(row.totalEarningsINR)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-medium text-slate-400 tabular-nums">
+                          {formatInrCurrency(row.disbursedEarningsINR)}
+                        </td>
                       </tr>
                     ))}
-                    {filteredTimesheets.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-4 text-center text-slate-500">No logs for this specific date.</td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </Card>
+          )}
+
+          {/* VIEW 3: DAILY ROLLUP */}
+          {timesheetViewMode === 'daily' && (
+            <Card variant="glass" padding="md" className="max-w-xl mx-auto space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div>
+                  <h3 className="text-base font-bold text-white">Daily Atelier Piece-Rate Rollup</h3>
+                  <p className="text-xs text-slate-400">Date: {dailyRollup.date}</p>
+                </div>
+                <Badge variant="gold" size="md">
+                  {dailyRollup.logsCount} Recorded Sessions
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-3 rounded-2xl bg-slate-800/50 border border-white/5">
+                  <div className="text-[11px] text-slate-400">Total Minutes</div>
+                  <div className="text-xl font-bold text-amber-300 mt-1 tabular-nums font-display">
+                    {dailyRollup.totalMinutes}m
+                  </div>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-800/50 border border-white/5">
+                  <div className="text-[11px] text-slate-400">Labor Hours</div>
+                  <div className="text-xl font-bold text-white mt-1 tabular-nums font-display">
+                    {dailyRollup.totalHours}h
+                  </div>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-800/50 border border-white/5">
+                  <div className="text-[11px] text-slate-400">Total Payout</div>
+                  <div className="text-xl font-bold text-emerald-400 mt-1 tabular-nums font-display">
+                    {formatInrCurrency(dailyRollup.totalEarningsINR)}
+                  </div>
+                </div>
+              </div>
+            </Card>
           )}
         </div>
       )}
 
-      {/* JOB CARD DETAIL MODAL */}
+      {/* ==================================================================== */}
+      {/* MODAL 1: JOB CARD DETAIL & TICKET PRINT */}
+      {/* ==================================================================== */}
       {selectedCardModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fade-in">
-          <div className="glass-card-gold rounded-2xl border border-gold-500/30 max-w-lg w-full p-6 space-y-5 shadow-2xl relative text-slate-100">
-            {/* Modal Close Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400">
-                  <Scissors className="w-4 h-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <Card
+            variant="elevated"
+            padding="none"
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900/95 border-white/15"
+          >
+            {/* Modal Header */}
+            <div className="p-5 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-white font-display">Job Ticket {selectedCardModal.id}</h2>
+                  <Badge variant={selectedCardModal.priority === 'Urgent' ? 'danger' : 'neutral'} size="sm">
+                    {selectedCardModal.priority}
+                  </Badge>
+                  <Badge variant="gold" size="sm">
+                    {selectedCardModal.stage}
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">Order Ref: {selectedCardModal.orderId}</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => window.print()}
+                  leftIcon={<Printer className="w-3.5 h-3.5" />}
+                >
+                  Print Ticket
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => {
+                    setSelectedCardModal(null);
+                    setIsEditing(false);
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 text-xs text-slate-300">
+              {/* STAGE STEPPER BUTTONS */}
+              <div className="p-4 rounded-2xl bg-slate-800/40 border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white">Workshop Pipeline Progression</span>
+                  <span className="text-xs font-bold text-amber-300">{selectedCardModal.progress}% Complete</span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2">
+                  {KANBAN_STAGES.map((stg, idx) => {
+                    const currentIdx = getStageIndex(selectedCardModal.stage);
+                    const isCurrent = selectedCardModal.stage === stg;
+                    const isAdjacent = Math.abs(idx - currentIdx) <= 1;
+
+                    return (
+                      <button
+                        key={stg}
+                        disabled={!isAdjacent || isCurrent}
+                        onClick={() => handleTransition(selectedCardModal.id, stg)}
+                        className={`flex-1 py-2 px-1 text-center rounded-xl transition-all text-[10px] font-medium ${
+                          isCurrent
+                            ? 'bg-amber-500 text-slate-950 font-bold shadow-ios-gold'
+                            : isAdjacent
+                            ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer border border-white/10'
+                            : 'bg-slate-900/50 text-slate-600 cursor-not-allowed'
+                        }`}
+                      >
+                        {stg.split(' ')[0]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* METADATA GRID */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                  <div className="text-[10px] text-slate-400">Patron Client</div>
+                  <div className="text-sm font-semibold text-white mt-0.5">{selectedCardModal.client}</div>
                 </div>
                 <div>
-                  <h3 className="font-mono font-extrabold text-gold-400 text-base">
-                    {selectedCardModal.orderId}
-                  </h3>
-                  <p className="text-xs text-slate-400">{selectedCardModal.client} — {selectedCardModal.garment}</p>
+                  <div className="text-[10px] text-slate-400">Garment Category</div>
+                  <div className="text-sm font-semibold text-amber-300 mt-0.5">{selectedCardModal.garment}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400">Assigned Karigar</div>
+                  <div className="text-sm font-semibold text-white mt-0.5">{selectedCardModal.karigar}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400">Storage Rack / Bin</div>
+                  <div className="text-sm font-medium text-slate-200 mt-0.5">
+                    {selectedCardModal.rack || getDefaultRackForStage(selectedCardModal.stage)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400">Target Due Date</div>
+                  <div className="text-sm font-medium text-slate-200 mt-0.5">{selectedCardModal.dueDate || 'Standard'}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400">SAM Logged / Estimate</div>
+                  <div className="text-sm font-bold text-amber-300 mt-0.5 tabular-nums">
+                    {selectedCardModal.samMinutesLogged} / {selectedCardModal.samTotalEstimate} mins
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setSelectedCardModal(null);
-                  setIsEditing(false);
-                  setIsDeleting(false);
-                }}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              {/* FABRIC & TAILORING NOTES */}
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Fabric & Cutting Details</div>
+                <div className="p-3 rounded-xl bg-slate-800/50 border border-white/5 text-slate-200">
+                  {selectedCardModal.fabricDetails || 'Standard atelier cut instructions.'}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Posture & Tailoring Notes</div>
+                <div className="p-3 rounded-xl bg-slate-800/50 border border-white/5 text-slate-200">
+                  {selectedCardModal.notes || 'No specialized posture offsets requested.'}
+                </div>
+              </div>
+
+              {/* PURE VECTOR SVG BARCODES */}
+              <div className="p-4 rounded-2xl bg-slate-950 border border-white/10 flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="text-[10px] font-semibold text-slate-400 uppercase">Vector Code 128 Barcode</div>
+                  <BarcodeSVG value={selectedCardModal.id} width={140} height={32} />
+                </div>
+
+                <div className="space-y-1 text-right">
+                  <div className="text-[10px] font-semibold text-slate-400 uppercase">Offline QR Verification</div>
+                  <div className="inline-block p-1 bg-white rounded-lg">
+                    <QRCodeSVG value={`https://yellowhouse.atelier/job/${selectedCardModal.id}`} size={42} />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* DELETE MODE PANEL */}
-            {isDeleting ? (
-              <div className="space-y-4 animate-fade-in">
-                <div className="bg-rose-500/10 border border-rose-500/30 p-4 rounded-xl space-y-2 text-xs">
-                  <h4 className="font-bold text-rose-400 flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4" />
-                    Confirm Job Deletion
-                  </h4>
-                  <p className="text-slate-300">
-                    Deleting this card will remove it permanently from the production pipeline. A reason is required to log this deletion in your atelier audit history.
-                  </p>
-                </div>
+            {/* Modal Footer Actions */}
+            <div className="p-4 bg-slate-950 border-t border-white/10 flex items-center justify-between">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsDeleting(true)}
+                leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+              >
+                Delete Card
+              </Button>
 
-                <div className="space-y-2 text-xs">
-                  <label className="text-slate-400 font-semibold uppercase block text-[10px]">Reason for Deletion *</label>
-                  <textarea
-                    placeholder="Enter reason (e.g. Order canceled by client, fabric out of stock, measurement revision...)"
-                    value={deleteNote}
-                    onChange={(e) => setDeleteNote(e.target.value)}
-                    className="input-dark w-full h-24 text-xs p-3 focus:border-rose-500"
-                    required
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    onClick={() => {
-                      setIsDeleting(false);
-                      setDeleteNote('');
-                    }}
-                    className="btn-ghost px-4 py-2 text-xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => handleDeleteJob(selectedCardModal.id)}
-                    disabled={!deleteNote.trim()}
-                    className="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 px-4 rounded-xl text-xs flex items-center gap-1.5 disabled:opacity-40"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Confirm Deletion
-                  </button>
-                </div>
-              </div>
-            ) : isEditing && editForm ? (
-              /* EDITING MODE FORM */
-              <div className="space-y-4 text-xs animate-fade-in">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Client Name</label>
-                    <input
-                      type="text"
-                      value={editForm.client}
-                      onChange={(e) => setEditForm({ ...editForm, client: e.target.value })}
-                      className="input-dark w-full py-2 px-3 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Garment Type</label>
-                    <input
-                      type="text"
-                      value={editForm.garment}
-                      onChange={(e) => setEditForm({ ...editForm, garment: e.target.value })}
-                      className="input-dark w-full py-2 px-3 text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Assigned Karigar</label>
-                    <select
-                      value={editForm.karigar}
-                      onChange={(e) => setEditForm({ ...editForm, karigar: e.target.value })}
-                      className="input-dark w-full py-2 px-3 text-xs"
-                    >
-                      {KARIGAR_LIST.filter(k => k !== 'All Karigars').map((k) => (
-                        <option key={k} value={k}>
-                          {k}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Target Due Date</label>
-                    <input
-                      type="text"
-                      value={editForm.dueDate}
-                      onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
-                      className="input-dark w-full py-2 px-3 text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Total SAM (Est.)</label>
-                    <input
-                      type="number"
-                      value={editForm.samTotalEstimate}
-                      onChange={(e) => setEditForm({ ...editForm, samTotalEstimate: parseInt(e.target.value) || 0 })}
-                      className="input-dark w-full py-2 px-3 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-slate-400 font-semibold uppercase text-[9px]">Priority</label>
-                    <select
-                      value={editForm.priority}
-                      onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as Priority })}
-                      className="input-dark w-full py-2 px-3 text-xs"
-                    >
-                      <option value="Normal">Normal</option>
-                      <option value="Urgent">Urgent</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Fabric Specification</label>
-                  <input
-                    type="text"
-                    value={editForm.fabricDetails || ''}
-                    onChange={(e) => setEditForm({ ...editForm, fabricDetails: e.target.value })}
-                    className="input-dark w-full py-2 px-3 text-xs"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Tailoring Notes</label>
-                  <textarea
-                    value={editForm.notes || ''}
-                    onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                    className="input-dark w-full h-16 p-2 text-xs"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="btn-ghost px-4 py-2 text-xs"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveEdit}
-                    className="btn-gold px-4 py-2 text-xs"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* STANDARD DETAIL VIEW */
-              <div className="space-y-4 text-xs animate-fade-in">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Assigned Karigar</span>
-                    <p className="font-bold text-white flex items-center space-x-1.5">
-                      <User className="w-3.5 h-3.5 text-gold-400" />
-                      <span>{selectedCardModal.karigar}</span>
-                    </p>
-                  </div>
-
-                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase">SAM Minutes Logged</span>
-                    <p className="font-mono font-bold text-amber-400 flex items-center space-x-1.5">
-                      <Clock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{selectedCardModal.samMinutesLogged} / {selectedCardModal.samTotalEstimate} mins</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Current Stage</span>
-                    <select
-                      value={selectedCardModal.stage}
-                      onChange={(e) => moveJobToStage(selectedCardModal.id, e.target.value as KanbanStage)}
-                      className="bg-slate-950 border border-gold-500/40 rounded-lg px-2.5 py-1 text-xs font-bold text-gold-400 focus:outline-none focus:border-gold-500 cursor-pointer"
-                    >
-                      {stages.map((s) => (
-                        <option key={s} value={s} className="bg-slate-900 text-slate-200">
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => moveStage(selectedCardModal.id, 'prev')}
-                      disabled={stages.indexOf(selectedCardModal.stage) === 0}
-                      className="btn-ghost text-[11px] py-1 px-3 disabled:opacity-40"
-                    >
-                      {'←'} Previous Stage
-                    </button>
-                    <button
-                      onClick={() => moveStage(selectedCardModal.id, 'next')}
-                      disabled={stages.indexOf(selectedCardModal.stage) === stages.length - 1}
-                      className="btn-gold text-[11px] py-1 px-3 disabled:opacity-40"
-                    >
-                      Next Stage {'→'}
-                    </button>
-                  </div>
-                </div>
-
-                {selectedCardModal.fabricDetails && (
-                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Fabric Specification</span>
-                    <p className="text-slate-200">{selectedCardModal.fabricDetails}</p>
-                  </div>
-                )}
-
-                {selectedCardModal.notes && (
-                  <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase">Tailoring Notes</span>
-                    <p className="text-slate-300 italic">{selectedCardModal.notes}</p>
-                  </div>
-                )}
-
-                {/* TRACKING, BARCODES, QR CODES & RACK ASSIGNMENT */}
-                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-                    <span className="text-[10px] text-gold-400 font-bold uppercase tracking-wider">Storage & Scan Logistics</span>
-                    <span className="text-[9px] text-slate-500 font-mono">Optional RFID/Rack tracking</span>
-                  </div>
-
-                  {/* Rack Selector & Info */}
-                  <div className="grid grid-cols-2 gap-3 items-center">
-                    <div className="space-y-1">
-                      <label className="text-[9px] uppercase font-bold text-slate-500 block">Assigned Storage Rack</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Rack A-12, Hanger 4"
-                        value={selectedCardModal.rack || ''}
-                        onChange={(e) => {
-                          const updatedRack = e.target.value;
-                          const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, rack: updatedRack } : j);
-                          setJobs(updatedJobs);
-                          setLocalStorage('yh_production_jobs', updatedJobs);
-                          setSelectedCardModal({ ...selectedCardModal, rack: updatedRack });
-                        }}
-                        className="input-dark w-full py-1 px-2.5 text-xs text-slate-200"
-                      />
-                    </div>
-                    <div className="flex gap-4 items-center justify-end">
-                      <label className="flex items-center space-x-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={!!selectedCardModal.barcodeEnabled}
-                          onChange={(e) => {
-                            const val = e.target.checked;
-                            const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, barcodeEnabled: val } : j);
-                            setJobs(updatedJobs);
-                            setLocalStorage('yh_production_jobs', updatedJobs);
-                            setSelectedCardModal({ ...selectedCardModal, barcodeEnabled: val });
-                          }}
-                          className="rounded border-slate-800 bg-slate-900 text-gold-500 focus:ring-0 w-3 h-3 animate-fade-in"
-                        />
-                        <span className="text-[9px] text-slate-400 font-bold uppercase select-none">Barcode</span>
-                      </label>
-
-                      <label className="flex items-center space-x-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={!!selectedCardModal.qrCodeEnabled}
-                          onChange={(e) => {
-                            const val = e.target.checked;
-                            const updatedJobs = jobs.map(j => j.id === selectedCardModal.id ? { ...j, qrCodeEnabled: val } : j);
-                            setJobs(updatedJobs);
-                            setLocalStorage('yh_production_jobs', updatedJobs);
-                            setSelectedCardModal({ ...selectedCardModal, qrCodeEnabled: val });
-                          }}
-                          className="rounded border-slate-800 bg-slate-900 text-gold-500 focus:ring-0 w-3 h-3 animate-fade-in"
-                        />
-                        <span className="text-[9px] text-slate-400 font-bold uppercase select-none">QR Code</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Render Mock Barcode / QR Code if enabled */}
-                  <div className="flex items-center justify-around gap-4 pt-2 border-t border-slate-800/40">
-                    {selectedCardModal.barcodeEnabled ? (
-                      <div className="bg-white p-2 rounded flex flex-col items-center justify-center space-y-1 shadow-md border border-slate-700">
-                        <div className="flex items-end space-x-[1px] h-8">
-                          {generateBarcode(selectedCardModal.orderId).map((width, idx) => (
-                            <div
-                              key={idx}
-                              style={{ width: `${width}px`, opacity: width === 1 && idx % 2 !== 0 ? 0 : 1 }}
-                              className="bg-black h-full"
-                            />
-                          ))}
-                        </div>
-                        <span className="font-mono text-[8px] text-slate-900 tracking-widest">{selectedCardModal.orderId}</span>
-                      </div>
-                    ) : (
-                      <div className="text-[9px] text-slate-600 italic">Barcode tracking deactivated</div>
-                    )}
-
-                    {selectedCardModal.qrCodeEnabled ? (
-                      <div className="bg-white p-2 rounded flex flex-col items-center justify-center space-y-1 shadow-md border border-slate-700">
-                        <div className="w-10 h-10 border border-black p-0.5 grid grid-cols-5 gap-0.5">
-                          <div className="bg-black"></div><div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div><div className="bg-black"></div>
-                          <div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div>
-                          <div className="bg-white"></div><div className="bg-black"></div><div className="bg-black"></div><div className="bg-black"></div><div className="bg-white"></div>
-                          <div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div>
-                          <div className="bg-black"></div><div className="bg-black"></div><div className="bg-white"></div><div className="bg-black"></div><div className="bg-black"></div>
-                        </div>
-                        <span className="font-mono text-[8px] text-slate-900 uppercase">Scan Details</span>
-                      </div>
-                    ) : (
-                      <div className="text-[9px] text-slate-600 italic">QR tracking deactivated</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* ACTIVITY TIMELINE */}
-                {selectedCardModal.history && selectedCardModal.history.length > 0 && (
-                  <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block border-b border-slate-800 pb-1.5">Activity Timeline</span>
-                    <div className="space-y-4 pt-2">
-                      {selectedCardModal.history.map((entry, idx) => (
-                        <div key={idx} className="relative pl-4 border-l-2 border-slate-700/50 pb-2 last:pb-0">
-                          <div className="absolute w-2 h-2 rounded-full bg-gold-500 -left-[5px] top-1"></div>
-                          <p className="text-xs font-semibold text-slate-200">{entry.action}</p>
-                          {entry.stage && <p className="text-[10px] text-gold-400 font-medium">{entry.stage}</p>}
-                          <p className="text-[9px] text-slate-500 mt-0.5">{new Date(entry.timestamp).toLocaleString()}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* INTERACTIVE ACTIONS ROW */}
-                <div className="flex items-center justify-between border-t border-slate-800 pt-3 mt-4">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleStartEdit(selectedCardModal)}
-                      className="btn-ghost py-1.5 px-3 flex items-center space-x-1 hover:border-gold-500/40 text-slate-300 hover:text-white"
-                    >
-                      <Edit2 className="w-3.5 h-3.5 text-gold-400" />
-                      <span>Edit Details</span>
-                    </button>
-                    <button
-                      onClick={() => setIsDeleting(true)}
-                      className="btn-ghost py-1.5 px-3 flex items-center space-x-1 hover:border-rose-500/40 text-slate-400 hover:text-rose-400"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Delete Job</span>
-                    </button>
-                  </div>
-
-                  {selectedCardModal.stage === 'QC & Ready for Delivery' && (
-                    <button
-                      onClick={() => setShowDeliveryNote(selectedCardModal)}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-xl flex items-center space-x-1 text-xs"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Delivery Note</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Modal Footer */}
-            {!isEditing && !isDeleting && (
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-500">Target Delivery Date: <strong className="text-slate-200">{selectedCardModal.dueDate}</strong></span>
-                <button
-                  onClick={() => setSelectedCardModal(null)}
-                  className="btn-ghost text-xs py-1.5 px-4"
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="gold"
+                  size="sm"
+                  onClick={() => {
+                    handleStartTimerForJob(selectedCardModal);
+                    setSelectedCardModal(null);
+                  }}
+                  leftIcon={<Play className="w-3.5 h-3.5" />}
                 >
-                  Close Window
-                </button>
+                  Start Active Timer
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setSelectedCardModal(null)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+
+            {/* DELETE CONFIRMATION NESTED DIALOG */}
+            {isDeleting && (
+              <div className="p-4 bg-rose-950/40 border-t border-rose-500/30 space-y-3">
+                <div className="text-xs font-semibold text-rose-300">
+                  Confirm Deletion of Job Card {selectedCardModal.id}
+                </div>
+                <Input
+                  placeholder="Audit reason (e.g. Order cancelled, duplicate ticket)..."
+                  value={deleteNote}
+                  onChange={(e) => setDeleteNote(e.target.value)}
+                  inputSize="sm"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setIsDeleting(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => handleDeleteJob(selectedCardModal.id)}>
+                    Confirm Delete
+                  </Button>
+                </div>
               </div>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* DELIVERY NOTE MODAL */}
-      {showDeliveryNote && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-          <style>{`
-            @media print {
-              body * {
-                visibility: hidden;
-              }
-              #delivery-note-content, #delivery-note-content * {
-                visibility: visible;
-              }
-              #delivery-note-content {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                box-shadow: none !important;
-                background: white !important;
-                padding: 2rem !important;
-              }
-            }
-          `}</style>
-          <div id="delivery-note-content" className="bg-white text-slate-900 rounded-2xl max-w-xl w-full p-8 space-y-6 shadow-2xl relative font-sans">
-            <button
-              onClick={() => setShowDeliveryNote(null)}
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Delivery Note Brand Header */}
-            <div className="flex items-start justify-between border-b-2 border-slate-200 pb-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-extrabold text-slate-900 uppercase tracking-tight flex items-center gap-1.5">
-                  <Scissors className="w-5 h-5 text-gold-600" />
-                  YellowHouse Atelier
-                </h2>
-                <p className="text-[10px] text-slate-500 leading-tight">
-                  12 Savile Row, London / Flagship Boutique New Delhi<br />
-                  Support: billing@yellowhouse.app | +91 98765 43210
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full text-[10px] uppercase">
-                  Ready for Delivery
-                </span>
-                <p className="font-mono text-xs text-slate-500 mt-2 font-bold">{showDeliveryNote.orderId}</p>
-              </div>
-            </div>
-
-            {/* Delivery Note Metadata */}
-            <div className="grid grid-cols-2 gap-4 text-xs border-b border-slate-100 pb-4">
-              <div className="space-y-2">
-                <p className="text-slate-500">CLIENT DETAILS</p>
-                <div className="font-bold text-slate-900 space-y-0.5">
-                  <p>{showDeliveryNote.client}</p>
-                  <p className="font-normal text-slate-500">Premium Bespoke Client</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-slate-500">ORDER INFORMATION</p>
-                <div className="font-mono text-slate-900 space-y-0.5">
-                  <p>Garment: <strong>{showDeliveryNote.garment}</strong></p>
-                  <p>Ready Date: <strong>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></p>
-                </div>
-              </div>
-            </div>
-
-            {/* Fabric Specs & Tailoring Specifications */}
-            <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs">
-              <div>
-                <h4 className="font-bold text-slate-800 uppercase text-[9px] mb-1">Fabric Specifications</h4>
-                <p className="text-slate-700 leading-relaxed font-medium">
-                  {showDeliveryNote.fabricDetails || 'Selected high-grade raw boutique wool - matching client selections'}
-                </p>
-              </div>
-              <div className="pt-2 border-t border-slate-200">
-                <h4 className="font-bold text-slate-800 uppercase text-[9px] mb-1">Pattern & Fitments Details</h4>
-                <p className="text-slate-600 italic">
-                  {showDeliveryNote.notes || 'Handmade custom lapels, bespoke patterns seeded in workshop. Standard sleeve adjustments.'}
-                </p>
-              </div>
-            </div>
-
-            {/* Delivery Receipt Layout Footer */}
-            <div className="flex items-center justify-between pt-4 border-t-2 border-dashed border-slate-200">
-              <div className="space-y-1">
-                <div className="bg-slate-900 text-white font-mono text-[9px] px-3 py-1 tracking-[0.3em] font-black rounded select-none flex items-center justify-center">
-                  ||| | | ||| || ||| | |||
-                </div>
-                <p className="text-[8px] text-center text-slate-400 font-mono">SCANNABLE ORDER TOKEN</p>
-              </div>
-              <div className="text-right text-[10px] text-slate-500 space-y-1">
-                <p>Tailor Signature: __________________</p>
-                <p className="text-[9px]">Verified by {showDeliveryNote.karigar}</p>
-              </div>
-            </div>
-
-            {/* Action Row */}
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowDeliveryNote(null)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 px-5 rounded-xl text-xs transition-colors"
-              >
-                Close Receipt
-              </button>
-              <button
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    window.print();
-                  }
-                }}
-                className="btn-gold text-xs py-2.5 px-5 flex items-center gap-1.5 transition-colors font-bold"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Print Delivery Note</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CREATE JOB MODAL */}
+      {/* ==================================================================== */}
+      {/* MODAL 2: CREATE NEW JOB TICKET */}
+      {/* ==================================================================== */}
       {showCreateJobModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fade-in">
-          <div className="glass-card-gold rounded-2xl border border-gold-500/30 max-w-lg w-full p-6 space-y-5 shadow-2xl relative text-slate-100">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-mono font-extrabold text-gold-400 text-base flex items-center gap-2">
-                <Plus className="w-5 h-5" /> Create New Job Card
-              </h3>
-              <button
-                onClick={() => setShowCreateJobModal(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <Card
+            variant="elevated"
+            padding="none"
+            className="w-full max-w-lg bg-slate-900/95 border-white/15"
+          >
+            <div className="p-5 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white font-display">New Workshop Job Ticket</h2>
+              <Button variant="ghost" size="icon-sm" onClick={() => setShowCreateJobModal(false)}>
+                <X className="w-4 h-4" />
+              </Button>
             </div>
-            <form onSubmit={handleCreateJobSubmit} className="space-y-4 text-xs">
+
+            <form onSubmit={handleCreateJobSubmit} className="p-6 space-y-4 text-xs">
+              <Input
+                label="Patron Client Full Name"
+                placeholder="e.g. Maharaja Vikramaditya"
+                value={newJobForm.client}
+                onChange={(e) => setNewJobForm({ ...newJobForm, client: e.target.value })}
+                required
+                inputSize="sm"
+              />
+
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Client Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={newJobForm.client}
-                    onChange={(e) => setNewJobForm({ ...newJobForm, client: e.target.value })}
-                    className="input-dark w-full py-2 px-3 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Garment Type</label>
-                  <input
-                    type="text"
-                    required
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Garment Category</label>
+                  <select
                     value={newJobForm.garment}
-                    onChange={(e) => setNewJobForm({ ...newJobForm, garment: e.target.value })}
-                    className="input-dark w-full py-2 px-3 text-xs"
-                  />
+                    onChange={(e) => {
+                      const g = e.target.value;
+                      const samCalc = calculateGarmentSam({ garmentCategory: resolveGarmentCategory(g) });
+                      setNewJobForm({
+                        ...newJobForm,
+                        garment: g,
+                        samTotalEstimate: samCalc.totalSamMinutes,
+                      });
+                    }}
+                    className="w-full bg-slate-800/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
+                  >
+                    {DEFAULT_GARMENT_FILTER_LIST.filter((g) => g !== 'All Garments').map((g) => (
+                      <option key={g} value={g} className="bg-slate-900">
+                        {g}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Assigned Karigar</label>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Assigned Karigar</label>
                   <select
                     value={newJobForm.karigar}
                     onChange={(e) => setNewJobForm({ ...newJobForm, karigar: e.target.value })}
-                    className="input-dark w-full py-2 px-3 text-xs"
+                    className="w-full bg-slate-800/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
                   >
-                    {KARIGAR_LIST.filter(k => k !== 'All Karigars').map((k) => (
-                      <option key={k} value={k}>{k}</option>
+                    {DEFAULT_KARIGAR_LIST.filter((k) => k !== 'All Karigars').map((k) => (
+                      <option key={k} value={k} className="bg-slate-900">
+                        {k}
+                      </option>
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Target Due Date</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Aug 25"
-                    value={newJobForm.dueDate}
-                    onChange={(e) => setNewJobForm({ ...newJobForm, dueDate: e.target.value })}
-                    className="input-dark w-full py-2 px-3 text-xs"
-                  />
-                </div>
               </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Total SAM (Est.)</label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={newJobForm.samTotalEstimate || ''}
-                    onChange={(e) => setNewJobForm({ ...newJobForm, samTotalEstimate: parseInt(e.target.value) || 0 })}
-                    className="input-dark w-full py-2 px-3 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-slate-400 font-semibold uppercase text-[9px]">Priority</label>
+                <Input
+                  label="SAM Total Estimate (Mins)"
+                  type="number"
+                  value={String(newJobForm.samTotalEstimate || '')}
+                  onChange={(e) =>
+                    setNewJobForm({ ...newJobForm, samTotalEstimate: Number(e.target.value) || 0 })
+                  }
+                  required
+                  inputSize="sm"
+                />
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Priority</label>
                   <select
                     value={newJobForm.priority}
-                    onChange={(e) => setNewJobForm({ ...newJobForm, priority: e.target.value as Priority })}
-                    className="input-dark w-full py-2 px-3 text-xs"
+                    onChange={(e) => setNewJobForm({ ...newJobForm, priority: e.target.value as any })}
+                    className="w-full bg-slate-800/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
                   >
-                    <option value="Normal">Normal</option>
-                    <option value="Urgent">Urgent</option>
+                    <option value="Normal" className="bg-slate-900">Normal Priority</option>
+                    <option value="Urgent" className="bg-slate-900">Urgent Priority</option>
                   </select>
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-slate-400 font-semibold uppercase text-[9px]">Fabric Specification</label>
-                <input
-                  type="text"
-                  value={newJobForm.fabricDetails}
-                  onChange={(e) => setNewJobForm({ ...newJobForm, fabricDetails: e.target.value })}
-                  className="input-dark w-full py-2 px-3 text-xs"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateJobModal(false)}
-                  className="btn-ghost px-4 py-2 text-xs"
-                >
+
+              <Input
+                label="Target Due Date"
+                type="date"
+                value={newJobForm.dueDate}
+                onChange={(e) => setNewJobForm({ ...newJobForm, dueDate: e.target.value })}
+                inputSize="sm"
+              />
+
+              <Input
+                label="Fabric Details / SKU"
+                placeholder="e.g. CUST-FAB-7718 Pure Banarasi Zari Brocade"
+                value={newJobForm.fabricDetails}
+                onChange={(e) => setNewJobForm({ ...newJobForm, fabricDetails: e.target.value })}
+                inputSize="sm"
+              />
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
+                <Button variant="ghost" size="sm" type="button" onClick={() => setShowCreateJobModal(false)}>
                   Cancel
-                </button>
-                <button type="submit" className="btn-gold px-4 py-2 text-xs">
-                  Create Job Card
-                </button>
+                </Button>
+                <Button variant="gold" size="sm" type="submit">
+                  Create Job Ticket
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
         </div>
       )}
 
-      {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-[100] bg-gold-500 text-slate-950 px-5 py-3 rounded-xl text-sm font-bold shadow-2xl animate-fade-in">
-          {toastMsg}
+      {/* PRINT-ONLY ISOLATED SECTION */}
+      {selectedCardModal && (
+        <div className="print-only hidden print:block">
+          <JobCardPrint job={selectedCardModal} />
         </div>
       )}
-
-      {/* Printable Schedule & Workshop Board (Hidden on screen, rendered on Print) */}
-      <ScheduleListPrint 
-        title="Karigar Workshop Production Schedule & Active Jobs"
-        schedules={jobs.map((j) => ({
-          id: j.id,
-          title: `${j.garment} (${j.orderId})`,
-          date: `Due: ${j.dueDate}`,
-          clientName: j.client,
-          karigar: j.karigar,
-          stage: j.stage,
-          status: `${j.priority} priority &bull; ${j.progress}%`,
-          notes: j.notes || j.fabricDetails || 'Active production card'
-        }))} 
-      />
     </div>
   );
 }

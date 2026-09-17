@@ -16,13 +16,22 @@ import {
   ArrowRight,
   AlertTriangle,
   DollarSign,
-  Sparkles
+  Sparkles,
+  Scissors,
+  Activity,
+  ChevronRight,
+  Layers,
+  ArrowUpRight
 } from 'lucide-react';
 import { Order, OrderStatus, JobCardItem, syncAllOrdersToJobs, ActivityItem, dispatchSyncEvent } from '@/lib/state-sync-utils';
+import { formatRelativeTime, isOrderOverdue, computeDaysOverdue } from '@/lib/date-utils';
 import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
 import { Tooltip } from '@/components/Tooltip';
 import { useToast } from '@/components/toast-context';
 import { useCurrency } from '@/components/currency-context';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 const DEFAULT_INITIAL_ORDERS: Order[] = [
   {
@@ -102,23 +111,13 @@ const DEFAULT_INITIAL_JOBS: JobCardItem[] = [
   { id: 'JC-8988', orderId: 'JC-8988', client: 'Aarav Mehta', garment: 'Tuxedo', karigar: 'Karigar Latif', stage: 'QC & Ready for Delivery', priority: 'Normal', dueDate: 'Aug 8', samMinutesLogged: 160, samTotalEstimate: 160, progress: 100 },
 ];
 
-function formatRelativeTime(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
 export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>(DEFAULT_INITIAL_ORDERS);
   const [jobs, setJobs] = useState<JobCardItem[]>(DEFAULT_INITIAL_JOBS);
   const [customersCount, setCustomersCount] = useState<number>(0);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const toast = useToast();
+  const { formatCurrency } = useCurrency();
 
   const loadData = () => {
     let storedOrders = getLocalStorage<Order[]>('yh_orders', []);
@@ -155,7 +154,7 @@ export default function DashboardPage() {
     return () => window.removeEventListener('yh-data-sync', handleSync);
   }, []);
 
-  // Compute Metrics
+  // Compute Metrics strictly following invariant specifications
   const activeOrdersCount = useMemo(() => {
     return orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'DRAFT').length;
   }, [orders]);
@@ -188,48 +187,60 @@ export default function DashboardPage() {
   const overdueOrders = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return orders.filter(o => {
-      if (o.status === 'DELIVERED' || o.status === 'DRAFT') return false;
-      if (!o.dueDate) return false;
-      // Handle formats like "Aug 15", "2026-08-15"
-      const dateStr = o.dueDate.includes('202') ? o.dueDate : `${o.dueDate}, ${today.getFullYear()}`;
-      const dDate = new Date(dateStr);
-      if (isNaN(dDate.getTime())) return false;
-      return dDate < today;
-    }).map(o => {
-      const dateStr = o.dueDate.includes('202') ? o.dueDate : `${o.dueDate}, ${today.getFullYear()}`;
-      const dDate = new Date(dateStr);
-      const diffTime = Math.abs(today.getTime() - dDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return { ...o, daysOverdue: isNaN(diffDays) ? 1 : diffDays };
-    });
+    return orders
+      .filter(o => {
+        if (o.status === 'DELIVERED' || o.status === 'DRAFT') return false;
+        return isOrderOverdue(o.dueDate, today, o.createdAt);
+      })
+      .map(o => {
+        const daysOverdue = computeDaysOverdue(o.dueDate, today, o.createdAt);
+        return { ...o, daysOverdue: daysOverdue || 1 };
+      });
   }, [orders]);
 
-  const { formatCurrency } = useCurrency();
+  // Karigar SAM Yield Telemetry
+  const samTelemetry = useMemo(() => {
+    const totalEstimateMins = jobs.reduce((sum, j) => sum + (j.samTotalEstimate || 0), 0);
+    const totalLoggedMins = jobs.reduce((sum, j) => sum + (j.samMinutesLogged || 0), 0);
+    const efficiencyRate = totalEstimateMins > 0 ? Math.round((totalLoggedMins / totalEstimateMins) * 100) : 0;
+    return {
+      totalEstimateMins,
+      totalLoggedMins,
+      efficiencyRate
+    };
+  }, [jobs]);
 
-  // Status badge utility
+  // Status badge utility using Apple-grade Badge primitive
   const renderStatusBadge = (status: OrderStatus) => {
     switch (status) {
       case 'DRAFT':
-        return <span className="badge bg-slate-800 text-slate-400 border-slate-700">DRAFT</span>;
+        return <Badge variant="neutral" size="sm">DRAFT</Badge>;
       case 'CONFIRMED':
-        return <span className="badge badge-blue">CONFIRMED</span>;
+        return <Badge variant="info" size="sm">CONFIRMED</Badge>;
       case 'CUTTING':
-        return <span className="badge badge-amber">CUTTING</span>;
+        return <Badge variant="warning" size="sm">CUTTING</Badge>;
       case 'IN_PRODUCTION':
-        return <span className="badge badge-gold">PRODUCTION</span>;
+        return <Badge variant="gold" size="sm">PRODUCTION</Badge>;
       case 'TRIAL_FITTING':
-        return <span className="badge bg-purple-500/10 text-purple-400 border-purple-500/20">TRIAL</span>;
+        return <span className="inline-flex items-center font-medium rounded-full tracking-tight select-none backdrop-blur-md font-sans transition-colors text-[10px] px-2.5 py-0.5 gap-1 bg-purple-500/15 text-purple-300 border border-purple-500/30">TRIAL</span>;
       case 'QC_CHECK':
-        return <span className="badge bg-orange-500/10 text-orange-400 border-orange-500/20">QC</span>;
+        return <span className="inline-flex items-center font-medium rounded-full tracking-tight select-none backdrop-blur-md font-sans transition-colors text-[10px] px-2.5 py-0.5 gap-1 bg-orange-500/15 text-orange-300 border border-orange-500/30">QC</span>;
       case 'READY_FOR_DELIVERY':
-        return <span className="badge badge-emerald">READY</span>;
+        return <Badge variant="success" size="sm">READY</Badge>;
       case 'DELIVERED':
-        return <span className="badge bg-green-500/10 text-green-400 border-green-500/20">DELIVERED</span>;
+        return <Badge variant="success" size="sm">DELIVERED</Badge>;
       default:
-        return <span className="badge bg-slate-800 text-slate-300">{status}</span>;
+        return <Badge variant="neutral" size="sm">{status}</Badge>;
     }
   };
+
+  const WORKSHOP_STAGES = [
+    'Fabric Inspection',
+    'Master Cutting',
+    'Zardozi/Aari Embroidery',
+    'Stitching Assembly',
+    'QC & Ready for Delivery'
+  ];
 
   const stageColors: Record<string, string> = {
     'Fabric Inspection': 'bg-slate-400',
@@ -250,160 +261,199 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-8 animate-fade-in pb-12">
-      {/* Welcome Banner */}
-      <div className="glass-card-gold rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-yellow-500/30 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-transparent blur-3xl pointer-events-none" />
+    <div className="max-w-7xl xl:max-w-[1540px] mx-auto w-full space-y-8 animate-fade-in pb-16 font-sans">
+      {/* Apple-Grade Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-amber-950/20 via-slate-900/90 to-slate-950/95 border border-[#D4AF37]/35 shadow-[0_12px_40px_0_rgba(212,175,55,0.12),inset_0_1px_1px_0_rgba(228,191,100,0.25)] backdrop-blur-2xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#D4AF37]/15 via-amber-500/10 to-transparent blur-3xl pointer-events-none" />
         
-        <div className="space-y-2 relative z-10">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Master Atelier Command Hub</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-1" />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2.5 max-w-2xl">
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/25 text-[#E4BF64] text-xs font-semibold backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Master Atelier Command Hub</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight font-display">
+              Executive Control Center
+            </h1>
+            <p className="text-sm text-slate-300 leading-relaxed font-sans">
+              Real-time atelier telemetry, bespoke client fitting intelligence, SAM production ledger, and automated order workflows.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-            Executive Control Center
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-            Real-time operations, client fit intelligence, SAM labor estimation, and automated production telemetry for your bespoke tailoring atelier.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-3 relative z-10">
-          <Tooltip content="Launch new bespoke order draft & pricing engine">
-            <Link href="/orders" className="btn-gold shadow-xl shadow-yellow-500/20">
-              <Plus className="w-4 h-4 mr-2 stroke-[2.5]" />
-              <span>Create Bespoke Order</span>
-            </Link>
-          </Tooltip>
-          
-          <Tooltip content="Open 2D CAD silhouette & posture measurement engine">
-            <Link href="/measurements" className="btn-ghost border-slate-700/80 bg-slate-900/60 hover:border-yellow-500/30">
-              <Ruler className="w-4 h-4 mr-2 text-yellow-400" />
-              <span>Fit Profiles</span>
-            </Link>
-          </Tooltip>
+          <div className="flex flex-wrap items-center gap-3 relative z-10">
+            <Tooltip content="Launch new bespoke order draft & pricing engine">
+              <Link href="/orders">
+                <Button variant="gold" size="md" leftIcon={<Plus className="w-4 h-4 stroke-[2.5]" />}>
+                  Create Bespoke Order
+                </Button>
+              </Link>
+            </Tooltip>
+            
+            <Tooltip content="Open 2D CAD silhouette & posture measurement engine">
+              <Link href="/measurements">
+                <Button variant="secondary" size="md" leftIcon={<Ruler className="w-4 h-4 text-[#D4AF37]" />}>
+                  Fit Profiles & CAD
+                </Button>
+              </Link>
+            </Tooltip>
+
+            <Tooltip content="Review Karigar artisan workshop Kanban board">
+              <Link href="/production">
+                <Button variant="secondary" size="md" leftIcon={<Factory className="w-4 h-4 text-emerald-400" />}>
+                  Workshop Floor
+                </Button>
+              </Link>
+            </Tooltip>
+          </div>
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards Grid - Apple Frosted Glass with Layered Luminance */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {/* Active Orders */}
+        {/* 1. Active Orders */}
         <Tooltip content="Orders currently in confirmed, cutting, production, or trial stage">
-          <div className="glass-card w-full p-5 rounded-2xl flex items-center justify-between hover:border-yellow-500/40 transition-all duration-300 group">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Orders</span>
-              <div className="text-3xl font-black text-white">{activeOrdersCount}</div>
-              <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                <TrendingUp className="w-3.5 h-3.5 text-yellow-400" />
-                <span>In active processing</span>
+          <Card variant="glass" padding="md" hoverable className="border-white/10 group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Orders</span>
+                <div className="text-3xl font-bold text-white font-display tracking-tight">{activeOrdersCount}</div>
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 font-sans">
+                  <TrendingUp className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <span>In active processing</span>
+                </div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 text-[#D4AF37] border border-[#D4AF37]/20 group-hover:scale-105 transition-transform duration-300">
+                <ShoppingBag className="w-6 h-6" />
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-yellow-500/10 text-yellow-400 group-hover:scale-110 transition-transform">
-              <ShoppingBag className="w-6 h-6" />
-            </div>
-          </div>
+          </Card>
         </Tooltip>
 
-        {/* Total Customers */}
+        {/* 2. Total Clients */}
         <Tooltip content="Total registered client profiles with active fit histories">
-          <div className="glass-card w-full p-5 rounded-2xl flex items-center justify-between hover:border-blue-500/40 transition-all duration-300 group">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Clients</span>
-              <div className="text-3xl font-black text-white">{customersCount}</div>
-              <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Registered accounts</span>
+          <Card variant="glass" padding="md" hoverable className="border-white/10 group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Clients</span>
+                <div className="text-3xl font-bold text-white font-display tracking-tight">{customersCount}</div>
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 font-sans">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Registered accounts</span>
+                </div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20 group-hover:scale-105 transition-transform duration-300">
+                <Users className="w-6 h-6" />
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-blue-500/10 text-blue-400 group-hover:scale-110 transition-transform">
-              <Users className="w-6 h-6" />
-            </div>
-          </div>
+          </Card>
         </Tooltip>
 
-        {/* Urgent Kanban Tasks */}
+        {/* 3. Urgent Kanban Tasks */}
         <Tooltip content="High priority jobs requiring immediate artisan action on Kanban">
-          <div className="glass-card w-full p-5 rounded-2xl flex items-center justify-between hover:border-rose-500/40 transition-all duration-300 group">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Urgent Jobs</span>
-              <div className="text-3xl font-black text-white">{urgentJobsCount}</div>
-              <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
-                <span>Require immediate attention</span>
+          <Card variant="glass" padding="md" hoverable className="border-white/10 group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Urgent Jobs</span>
+                <div className="text-3xl font-bold text-white font-display tracking-tight">{urgentJobsCount}</div>
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 font-sans">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Require immediate action</span>
+                </div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:scale-105 transition-transform duration-300">
+                <Factory className="w-6 h-6" />
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-rose-500/10 text-rose-400 group-hover:scale-110 transition-transform">
-              <Factory className="w-6 h-6" />
-            </div>
-          </div>
+          </Card>
         </Tooltip>
 
-        {/* Accrued Revenue */}
+        {/* 4. Total Booking Value */}
         <Tooltip content="Gross total value across all confirmed bespoke order bookings">
-          <div className="glass-card w-full p-5 rounded-2xl flex items-center justify-between hover:border-emerald-500/40 transition-all duration-300 group">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Booking Value</span>
-              <div className="text-2xl font-black text-white truncate max-w-[160px]">{formatCurrency(totalRevenue)}</div>
-              <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Confirmed booking sums</span>
+          <Card variant="glass" padding="md" hoverable className="border-white/10 group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Booking Value</span>
+                <div className="text-2xl font-bold text-white truncate max-w-[170px] font-mono tabular-nums">
+                  {formatCurrency(totalRevenue)}
+                </div>
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 font-sans">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Confirmed booking sums</span>
+                </div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
+                <TrendingUp className="w-6 h-6" />
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-          </div>
+          </Card>
         </Tooltip>
         
-        {/* Collected */}
+        {/* 5. Collected Advance */}
         <Tooltip content="Total advance amount collected across all orders">
-          <div className={`glass-card w-full p-5 rounded-2xl flex items-center justify-between hover:border-green-500/40 transition-all duration-300 group ${isCollectedGood ? 'border-green-500/30 bg-green-500/5' : ''}`}>
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Collected</span>
-              <div className={`text-2xl font-black truncate max-w-[160px] ${isCollectedGood ? 'text-green-400' : 'text-white'}`}>{formatCurrency(totalCollected)}</div>
-              <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                <DollarSign className={`w-3.5 h-3.5 ${isCollectedGood ? 'text-green-400' : 'text-slate-400'}`} />
-                <span>Sum of advance payments</span>
+          <Card 
+            variant="glass" 
+            padding="md" 
+            hoverable 
+            className={`border-white/10 group ${isCollectedGood ? 'border-emerald-500/30 bg-emerald-950/15' : ''}`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Collected</span>
+                <div className={`text-2xl font-bold truncate max-w-[170px] font-mono tabular-nums ${isCollectedGood ? 'text-emerald-400' : 'text-white'}`}>
+                  {formatCurrency(totalCollected)}
+                </div>
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 font-sans">
+                  <DollarSign className={`w-3.5 h-3.5 ${isCollectedGood ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  <span>{isCollectedGood ? 'Cashflow positive (>50%)' : 'Advance payments collected'}</span>
+                </div>
+              </div>
+              <div className={`p-3.5 rounded-2xl border transition-transform duration-300 group-hover:scale-105 ${
+                isCollectedGood 
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
+                  : 'bg-slate-800/80 text-slate-300 border-white/10'
+              }`}>
+                <DollarSign className="w-6 h-6" />
               </div>
             </div>
-            <div className={`p-4 rounded-xl group-hover:scale-110 transition-transform ${isCollectedGood ? 'bg-green-500/20 text-green-400' : 'bg-slate-700/50 text-slate-300'}`}>
-              <DollarSign className="w-6 h-6" />
-            </div>
-          </div>
+          </Card>
         </Tooltip>
 
-        {/* Delivery Rate */}
+        {/* 6. Delivery Completion Rate */}
         <Tooltip content="Percentage of total orders that have been successfully delivered">
-          <div className="glass-card w-full p-5 rounded-2xl flex items-center justify-between hover:border-purple-500/40 transition-all duration-300 group">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Delivery Rate</span>
-              <div className="text-3xl font-black text-white">{deliveryRate}%</div>
-              <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
-                <span>Delivered vs Total Orders</span>
+          <Card variant="glass" padding="md" hoverable className="border-white/10 group">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Delivery Rate</span>
+                <div className="text-3xl font-bold text-white font-display tracking-tight">{deliveryRate}%</div>
+                <div className="text-[11px] text-slate-500 flex items-center gap-1 font-sans">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Delivered vs Total Orders</span>
+                </div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:scale-105 transition-transform duration-300">
+                <CheckCircle2 className="w-6 h-6" />
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-purple-500/10 text-purple-400 group-hover:scale-110 transition-transform">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-          </div>
+          </Card>
         </Tooltip>
       </div>
 
-      {/* Overdue Orders Alert */}
+      {/* Overdue Orders Alert Banner */}
       {overdueOrders.length > 0 && (
-        <div className="glass-card rounded-2xl border-rose-500/30 bg-rose-500/5 p-6 animate-fade-in">
-          <div className="flex items-center gap-2 mb-4 text-rose-400 font-bold">
-            <AlertTriangle className="w-5 h-5" />
-            <h2>Overdue Orders ({overdueOrders.length})</h2>
+        <Card variant="glass" padding="md" className="border-rose-500/30 bg-rose-950/15 animate-fade-in">
+          <div className="flex items-center gap-2 mb-4 text-rose-400 font-bold font-display">
+            <AlertTriangle className="w-5 h-5 text-rose-400" />
+            <h2 className="text-base tracking-tight">Overdue Orders ({overdueOrders.length})</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {overdueOrders.map(order => (
-              <div key={order.id} className="bg-slate-900/60 rounded-xl p-4 border border-rose-500/20">
+              <div key={order.id} className="bg-slate-900/70 rounded-2xl p-4 border border-rose-500/20 backdrop-blur-md">
                 <div className="flex justify-between items-start mb-2">
-                  <Link href={`/orders`} className="font-mono font-bold text-rose-300 hover:text-rose-200">{order.id}</Link>
-                  <span className="text-xs bg-rose-500/20 text-rose-300 px-2 py-1 rounded font-bold">
+                  <Link href="/orders" className="font-mono font-bold text-rose-300 hover:text-rose-200 transition-colors">
+                    {order.id}
+                  </Link>
+                  <span className="text-xs bg-rose-500/20 text-rose-300 px-2.5 py-0.5 rounded-full font-bold border border-rose-500/30">
                     {order.daysOverdue} {order.daysOverdue === 1 ? 'day' : 'days'} overdue
                   </span>
                 </div>
@@ -412,49 +462,57 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Main Grid: Recent Orders & Quick Actions */}
+      {/* Main Grid: Recent Orders & Pipeline Telemetry */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Recent Orders & Activity */}
+        {/* Left Column: Recent Orders & Activity Feed */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="glass-card rounded-2xl p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-gold-400" />
-                <span>Recent Orders</span>
-              </h2>
-              <Link href="/orders" className="text-xs text-gold-400 hover:text-gold-300 font-semibold flex items-center gap-1">
-                <span>View All</span>
-                <ArrowRight className="w-3 h-3" />
+          {/* Recent Orders Card */}
+          <Card variant="glass" padding="none" className="border-white/10">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-[#D4AF37] border border-[#D4AF37]/20">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <h2 className="text-lg font-bold text-white font-display tracking-tight">Recent Orders</h2>
+              </div>
+              <Link href="/orders">
+                <Button variant="ghost" size="sm" rightIcon={<ArrowRight className="w-3.5 h-3.5" />}>
+                  View All Orders
+                </Button>
               </Link>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800/80 text-slate-400 font-semibold">
-                    <th className="pb-3 pr-4">Order ID</th>
-                    <th className="pb-3 px-4">Client</th>
-                    <th className="pb-3 px-4">Garment</th>
-                    <th className="pb-3 px-4 text-right">Value</th>
-                    <th className="pb-3 pl-4 text-center">Status</th>
+                  <tr className="border-b border-white/5 text-slate-400 font-semibold bg-slate-950/30">
+                    <th className="py-3.5 px-6">Order ID</th>
+                    <th className="py-3.5 px-4">Client</th>
+                    <th className="py-3.5 px-4">Garment</th>
+                    <th className="py-3.5 px-4 text-right">Value</th>
+                    <th className="py-3.5 px-6 text-center">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-white/5">
                   {orders.slice(0, 5).map((order) => (
-                    <tr key={order.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 pr-4 font-mono font-bold text-slate-300">{order.id}</td>
-                      <td className="py-3 px-4 font-semibold text-white">{order.clientName}</td>
-                      <td className="py-3 px-4 text-slate-400">{order.garmentSummary}</td>
-                      <td className="py-3 px-4 text-right font-mono text-slate-300">{formatCurrency(order?.totalAmount || 0)}</td>
-                      <td className="py-3 pl-4 text-center">{renderStatusBadge(order.status)}</td>
+                    <tr key={order.id} className="hover:bg-white/[0.03] transition-colors group">
+                      <td className="py-3.5 px-6 font-mono font-bold text-slate-300 group-hover:text-[#D4AF37] transition-colors">
+                        {order.id}
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-white">{order.clientName}</td>
+                      <td className="py-3.5 px-4 text-slate-400">{order.garmentSummary}</td>
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-200 tabular-nums">
+                        {formatCurrency(order?.totalAmount || 0)}
+                      </td>
+                      <td className="py-3.5 px-6 text-center">{renderStatusBadge(order.status)}</td>
                     </tr>
                   ))}
                   {orders.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500 font-medium">
+                      <td colSpan={5} className="py-10 text-center text-slate-500 font-medium">
                         No orders found. Set up your first order to get started!
                       </td>
                     </tr>
@@ -462,30 +520,35 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
           
           {/* Today's Activity Feed */}
-          <div className="glass-card rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Clock className="w-5 h-5 text-gold-400" />
-              <span>Today's Activity Feed</span>
-            </h2>
+          <Card variant="glass" padding="md" className="border-white/10 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <h2 className="text-lg font-bold text-white font-display tracking-tight">Today's Activity Feed</h2>
+              </div>
+              <Badge variant="neutral" size="sm">Live Stream</Badge>
+            </div>
             
             {activities.length > 0 ? (
-              <div className="space-y-4 mt-4">
+              <div className="space-y-3 pt-2">
                 {activities.slice(0, 8).map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-900/40 border border-slate-800/50">
-                    <div className="p-2 rounded-lg bg-slate-800">
+                  <div key={activity.id} className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-900/50 border border-white/5 hover:border-white/10 transition-colors">
+                    <div className="p-2 rounded-xl bg-slate-800/80 border border-white/5 shrink-0 mt-0.5">
                       {getActivityIcon(activity.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-200">{activity.message}</p>
-                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                      <p className="text-sm text-slate-200 font-medium">{activity.message}</p>
+                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 font-mono">
                         <span>{formatRelativeTime(activity.timestamp)}</span>
                         {activity.entityId && (
                           <>
                             <span>&bull;</span>
-                            <span className="font-mono text-slate-400">{activity.entityId}</span>
+                            <span className="text-[#D4AF37]">{activity.entityId}</span>
                           </>
                         )}
                       </div>
@@ -498,70 +561,44 @@ export default function DashboardPage() {
                 No recent activity. Actions you take will appear here.
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
-        {/* Right Column: Quick Tools */}
+        {/* Right Column: Karigar SAM Yield & Workshop Pipeline */}
         <div className="space-y-6">
-          {/* Quick Actions Panel */}
-          <div className="glass-card rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-bold text-white">Quick Shortcuts</h2>
-            <div className="grid grid-cols-1 gap-2.5">
-              <Tooltip content="Configure swatches, labor & surcharges for new order">
-                <Link href="/orders" className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-gold-500/40 hover:bg-slate-900 transition-all group w-full">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-gold-500/10 text-gold-400">
-                      <Plus className="w-4 h-4" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-white">Create Order</div>
-                      <div className="text-[10px] text-slate-500">Configure swatches & items</div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-gold-400 group-hover:translate-x-0.5 transition-all" />
-                </Link>
-              </Tooltip>
-
-              <Tooltip content="Adjust 2D anatomical hotspots & posture modifiers">
-                <Link href="/measurements" className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-blue-500/40 hover:bg-slate-900 transition-all group w-full">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-                      <Ruler className="w-4 h-4" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-white">Fit Profile Engine</div>
-                      <div className="text-[10px] text-slate-500">Check CAD 2D silhouettes</div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
-                </Link>
-              </Tooltip>
-
-              <Tooltip content="Register new client contact & fit history file">
-                <Link href="/customers" className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-emerald-500/40 hover:bg-slate-900 transition-all group w-full">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
-                      <UserPlus className="w-4 h-4" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-xs font-bold text-white">Add Customer</div>
-                      <div className="text-[10px] text-slate-500">Log new client contacts</div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
-                </Link>
-              </Tooltip>
+          {/* Workshop Pipeline & Karigar SAM Yield Telemetry */}
+          <Card variant="glass" padding="md" className="border-white/10 space-y-5">
+            <div className="flex items-center justify-between pb-2 border-b border-white/5">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+                  <Factory className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white font-display tracking-tight">Workshop Pipeline</h2>
+                  <p className="text-[11px] text-slate-400">Karigar production stage distribution</p>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Workshop Pipeline Enhancement */}
-          <div className="glass-card rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Factory className="w-5 h-5 text-gold-400" />
-              <span>Workshop Pipeline</span>
-            </h2>
+            {/* SAM Yield Summary Pill */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/10 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">SAM Efficiency Yield</span>
+                <span className="text-base font-bold text-emerald-400 font-mono tabular-nums">
+                  {samTelemetry.efficiencyRate}% Yield
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Logged / Target SAM</span>
+                <span className="text-xs font-mono font-bold text-slate-300">
+                  {samTelemetry.totalLoggedMins}m / {samTelemetry.totalEstimateMins}m
+                </span>
+              </div>
+            </div>
+
+            {/* 5-Stage Yield Bars */}
             <div className="space-y-4">
-              {['Fabric Inspection', 'Master Cutting', 'Zardozi/Aari Embroidery', 'Stitching Assembly', 'QC & Ready for Delivery'].map((stage) => {
+              {WORKSHOP_STAGES.map((stage) => {
                 const count = jobs.filter(j => j.stage === stage).length;
                 const total = jobs.length || 1;
                 const percentage = Math.round((count / total) * 100);
@@ -574,11 +611,11 @@ export default function DashboardPage() {
                         <div className={`w-2 h-2 rounded-full ${dotColor}`} />
                         <span className="text-slate-300 font-medium">{stage}</span>
                       </div>
-                      <span className="font-mono text-slate-400">{count} jobs</span>
+                      <span className="font-mono text-slate-400 tabular-nums">{count} jobs ({percentage}%)</span>
                     </div>
-                    <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-slate-950/80 rounded-full overflow-hidden border border-white/5">
                       <div 
-                        className={`h-full ${dotColor} transition-all duration-500`}
+                        className={`h-full ${dotColor} rounded-full transition-all duration-500 shadow-sm`}
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
@@ -586,7 +623,85 @@ export default function DashboardPage() {
                 );
               })}
             </div>
-          </div>
+          </Card>
+
+          {/* Quick Shortcuts Panel */}
+          <Card variant="glass" padding="md" className="border-white/10 space-y-4">
+            <h2 className="text-base font-bold text-white font-display tracking-tight">Atelier Quick Actions</h2>
+            <div className="grid grid-cols-1 gap-2.5">
+              <Tooltip content="Configure swatches, labor & surcharges for new order">
+                <Link 
+                  href="/orders" 
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/60 border border-white/10 hover:border-[#D4AF37]/40 hover:bg-slate-900/90 transition-all duration-200 group w-full"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-[#D4AF37] border border-[#D4AF37]/20">
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-white group-hover:text-[#D4AF37] transition-colors">Create Order</div>
+                      <div className="text-[11px] text-slate-400">Configure swatches & BOM presets</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-[#D4AF37] group-hover:translate-x-0.5 transition-all" />
+                </Link>
+              </Tooltip>
+
+              <Tooltip content="Adjust 2D anatomical hotspots & posture modifiers">
+                <Link 
+                  href="/measurements" 
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/60 border border-white/10 hover:border-blue-500/40 hover:bg-slate-900/90 transition-all duration-200 group w-full"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <Ruler className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-white group-hover:text-blue-300 transition-colors">2D CAD Studio</div>
+                      <div className="text-[11px] text-slate-400">Mannequin calipers & drapes</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+                </Link>
+              </Tooltip>
+
+              <Tooltip content="Register new client contact & fit history file">
+                <Link 
+                  href="/customers" 
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/60 border border-white/10 hover:border-emerald-500/40 hover:bg-slate-900/90 transition-all duration-200 group w-full"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <UserPlus className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-white group-hover:text-emerald-300 transition-colors">Add Client CRM</div>
+                      <div className="text-[11px] text-slate-400">Log patron contacts & profiles</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                </Link>
+              </Tooltip>
+
+              <Tooltip content="Manage Karigar artisan workforce and SAM timesheets">
+                <Link 
+                  href="/staff" 
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/60 border border-white/10 hover:border-purple-500/40 hover:bg-slate-900/90 transition-all duration-200 group w-full"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors">Staff Roster</div>
+                      <div className="text-[11px] text-slate-400">Master cutters & karigars</div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
+                </Link>
+              </Tooltip>
+            </div>
+          </Card>
         </div>
       </div>
     </div>

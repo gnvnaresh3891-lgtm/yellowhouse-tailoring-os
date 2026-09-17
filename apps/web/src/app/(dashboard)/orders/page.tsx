@@ -28,204 +28,47 @@ import {
   Tag,
   AlertCircle,
   Printer,
-  UserPlus
+  UserPlus,
+  Ruler,
+  Layers,
+  ChevronRight,
+  Package,
+  RotateCcw
 } from 'lucide-react';
+import Link from 'next/link';
 import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
 import { syncOrderToJobsStorage, logActivity, calculatePaymentStatus, calculateBalance } from '@/lib/state-sync-utils';
 import { useToast } from '@/components/toast-context';
-import { ConfirmDialog } from '@/components/confirm-dialog';
-import { OrderReceipt } from '@/components/print-layouts';
 import { QRCodeSVG, BarcodeSVG } from '@/components/id-codes';
 import { calculateBespokePricing } from '@/lib/pricing-calculator';
 import { calculateFabricYield } from '@/lib/fabric-yield';
 import { GarmentCategory } from '@/types/measurement';
 import { Tooltip } from '@/components/Tooltip';
 import { useCurrency } from '@/components/currency-context';
-
-export type OrderStatus =
-  | 'DRAFT'
-  | 'CONFIRMED'
-  | 'CUTTING'
-  | 'IN_PRODUCTION'
-  | 'TRIAL_FITTING'
-  | 'QC_CHECK'
-  | 'READY_FOR_DELIVERY'
-  | 'DELIVERED'
-  | 'CANCELLED';
-
-export interface BOMItem {
-  id: string;
-  name: string;
-  category: 'thread' | 'zipper' | 'button' | 'lining' | 'canvas' | 'lace' | 'hook' | 'piping' | 'fabric' | 'other';
-  quantity: number;
-  unit: string;
-  unitCost: number;
-  isOptional?: boolean;
-  isCustomerProvided?: boolean; // Customer brought their own zipper/buttons/lace/fabric
-  receivedDate?: string;
-}
-
-export interface OrderItemRow {
-  id: string;
-  garmentType: string;
-  fabricSku: string;
-  fabricMeters: number;
-  unitPrice: number;
-  fabricImage?: string;
-  liningImage?: string;
-  materialNotes?: string;
-  isCustomerFabric?: boolean; // Customer provided their own main garment fabric
-  customerFabricNotes?: string;
-  bomItems?: BOMItem[];
-}
-
-export interface Order {
-  id: string;
-  customerId?: string;
-  clientName: string;
-  clientPhone: string;
-  garmentSummary: string;
-  itemCount: number;
-  status: OrderStatus;
-  totalAmount: number;
-  advanceAmount?: number;
-  balanceAmount?: number;
-  paymentStatus?: 'UNPAID' | 'ADVANCE_PAID' | 'FULLY_PAID';
-  dueDate: string;
-  rawDueDate?: string;
-  createdAt: string;
-  isUrgent?: boolean;
-  items?: OrderItemRow[];
-  notes?: string;
-}
-
-export interface OrderFormDraft {
-  selectedClientId: string;
-  dueDate: string;
-  notes: string;
-  advanceAmount?: number;
-  items: OrderItemRow[];
-  updatedAt: string;
-}
-
-const initialOrders: Order[] = [
-  {
-    id: '#YH-9021',
-    clientName: 'Rajeshwar Malhotra',
-    clientPhone: '+91 98765 43210',
-    garmentSummary: 'Sherwani + Churidar',
-    itemCount: 2,
-    status: 'IN_PRODUCTION',
-    totalAmount: 45000,
-    dueDate: 'Aug 15',
-    createdAt: '2026-08-01',
-    isUrgent: true
-  },
-  {
-    id: '#YH-9018',
-    clientName: 'Ananya Sharma',
-    clientPhone: '+91 98765 43211',
-    garmentSummary: 'Lehenga Choli',
-    itemCount: 1,
-    status: 'TRIAL_FITTING',
-    totalAmount: 68000,
-    dueDate: 'Aug 12',
-    createdAt: '2026-07-28',
-    isUrgent: true
-  },
-  {
-    id: '#YH-8994',
-    clientName: 'Priya Patel',
-    clientPhone: '+91 98765 43213',
-    garmentSummary: 'Sari Blouse (x3)',
-    itemCount: 3,
-    status: 'QC_CHECK',
-    totalAmount: 12000,
-    dueDate: 'Aug 10',
-    createdAt: '2026-07-25'
-  },
-  {
-    id: '#YH-9025',
-    clientName: 'Vikram Singh',
-    clientPhone: '+91 98765 43212',
-    garmentSummary: '3-Piece Suit',
-    itemCount: 1,
-    status: 'CUTTING',
-    totalAmount: 35000,
-    dueDate: 'Aug 20',
-    createdAt: '2026-08-03'
-  },
-  {
-    id: '#YH-9030',
-    clientName: 'Deepika Nair',
-    clientPhone: '+91 98765 43215',
-    garmentSummary: 'Anarkali Gown',
-    itemCount: 1,
-    status: 'DELIVERED',
-    totalAmount: 28000,
-    dueDate: 'Aug 5',
-    createdAt: '2026-07-20'
-  },
-  {
-    id: '#YH-9033',
-    clientName: 'Mohammed Farooq',
-    clientPhone: '+91 98765 43214',
-    garmentSummary: 'Bandhgala + Trouser',
-    itemCount: 2,
-    status: 'DRAFT',
-    totalAmount: 42000,
-    dueDate: 'Aug 25',
-    createdAt: '2026-08-05'
-  },
-  {
-    id: '#YH-9035',
-    clientName: 'Arjun Kapoor',
-    clientPhone: '+91 98765 43216',
-    garmentSummary: 'Custom Shirt (x5)',
-    itemCount: 5,
-    status: 'CONFIRMED',
-    totalAmount: 15000,
-    dueDate: 'Aug 18',
-    createdAt: '2026-08-04'
-  },
-  {
-    id: '#YH-9038',
-    clientName: 'Meera Reddy',
-    clientPhone: '+91 98765 43217',
-    garmentSummary: 'Corset Blouse',
-    itemCount: 1,
-    status: 'READY_FOR_DELIVERY',
-    totalAmount: 22000,
-    dueDate: 'Aug 8',
-    createdAt: '2026-08-02'
-  }
-];
-
-const customerList = [
-  { id: 'CUST-001', name: 'Rajeshwar Malhotra', phone: '+91 98765 43210', isVip: true },
-  { id: 'CUST-002', name: 'Ananya Sharma', phone: '+91 98765 43211', isVip: true },
-  { id: 'CUST-003', name: 'Vikram Singh', phone: '+91 98765 43212', isVip: false },
-  { id: 'CUST-004', name: 'Priya Patel', phone: '+91 98765 43213', isVip: false },
-  { id: 'CUST-005', name: 'Mohammed Farooq', phone: '+91 98765 43214', isVip: false },
-  { id: 'CUST-006', name: 'Deepika Nair', phone: '+91 98765 43215', isVip: true },
-  { id: 'CUST-007', name: 'Arjun Kapoor', phone: '+91 98765 43216', isVip: false },
-  { id: 'CUST-008', name: 'Meera Reddy', phone: '+91 98765 43217', isVip: false }
-];
-
-const garmentOptions: { label: string; value: string; defaultMeters: number; defaultPrice: number; skuPrefix: string; boltWidth?: number; bufferNote?: string }[] = [
-  { label: 'Saree Blouse (Single)', value: 'Blouse', defaultMeters: 1.0, defaultPrice: 3500, skuPrefix: 'SKU-BLS-112', boltWidth: 44, bufferNote: '1.0m (up to 42" bust) + 0.8m lining' },
-  { label: 'Corset Blouse / Bustier', value: 'Corset', defaultMeters: 1.2, defaultPrice: 6500, skuPrefix: 'SKU-CST-201', boltWidth: 44, bufferNote: '1.2m + fused interlining' },
-  { label: 'Bespoke Shirt (Full Sleeve)', value: 'Shirt', defaultMeters: 2.2, defaultPrice: 2800, skuPrefix: 'SKU-SHRT-101', boltWidth: 44, bufferNote: '2.2m (44" width) or 1.6m (58" width)' },
-  { label: 'Bespoke Trouser / Pants', value: 'Trouser', defaultMeters: 1.4, defaultPrice: 3200, skuPrefix: 'SKU-TRS-102', boltWidth: 58, bufferNote: '1.4m (58" width) or 2.2m (44" width)' },
-  { label: '2-Piece Suit (Jacket + Trouser)', value: '2-Piece Suit', defaultMeters: 3.2, defaultPrice: 28000, skuPrefix: 'SKU-SUIT-2PC', boltWidth: 58, bufferNote: '3.2m (58" width wool/linen)' },
-  { label: '3-Piece Suit (Jacket + Vest + Trouser)', value: '3-Piece Suit', defaultMeters: 4.0, defaultPrice: 38000, skuPrefix: 'SKU-SUIT-3PC', boltWidth: 58, bufferNote: '4.0m (58" width) + 3.0m satin lining' },
-  { label: 'Sherwani + Churidar', value: 'Sherwani', defaultMeters: 4.5, defaultPrice: 32000, skuPrefix: 'SKU-SHER-901', boltWidth: 44, bufferNote: '4.5m brocade/raw silk + 2.5m churidar' },
-  { label: 'Bandhgala / Jodhpuri Suit', value: 'Bandhgala', defaultMeters: 3.5, defaultPrice: 24000, skuPrefix: 'SKU-BDG-401', boltWidth: 58, bufferNote: '3.5m (58" width)' },
-  { label: 'Kurta Pyjama Set', value: 'Kurta', defaultMeters: 3.8, defaultPrice: 7500, skuPrefix: 'SKU-KRT-302', boltWidth: 44, bufferNote: '2.4m Kurta + 2.2m Pyjama/Salwar' },
-  { label: 'Bridal Lehenga (16-24 Kali Flare)', value: 'Lehenga', defaultMeters: 5.5, defaultPrice: 65000, skuPrefix: 'SKU-LHG-509', boltWidth: 44, bufferNote: '5.5m main silk + 4.5m lining + 4m cancan' },
-  { label: 'Anarkali Gown / Floor Length Suit', value: 'Anarkali', defaultMeters: 5.0, defaultPrice: 26000, skuPrefix: 'SKU-ANK-440', boltWidth: 44, bufferNote: '5.0m flare georgette + 4.0m crepe lining' },
-  { label: 'Evening Haute Couture Gown', value: 'Gown', defaultMeters: 4.8, defaultPrice: 35000, skuPrefix: 'SKU-GWN-710', boltWidth: 58, bufferNote: '4.8m (58" satin/crepe) + 1.2m train' }
-];
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import type {
+  OrderStatus,
+  BOMItem,
+  OrderItemRow,
+  Order,
+  OrderFormDraft,
+  CustomerOption,
+  GarmentOption
+} from '@/lib/orders-utils';
+import {
+  initialOrders,
+  customerList,
+  garmentOptions,
+  generateCustomerFabricSku,
+  getDefaultBOMForGarment,
+  getValidNextStatuses,
+  resolveFabricSku,
+  findGarmentPreset
+} from '@/lib/orders-utils';
 
 export default function OrderManagementPage() {
   const { formatCurrency } = useCurrency();
@@ -235,6 +78,31 @@ export default function OrderManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  const renderStatusBadge = (status: OrderStatus) => {
+    switch (status) {
+      case 'DELIVERED':
+        return <Badge variant="success" size="sm" dot>DELIVERED</Badge>;
+      case 'READY_FOR_DELIVERY':
+        return <Badge variant="gold" size="sm" dot>READY</Badge>;
+      case 'QC_CHECK':
+        return <Badge variant="info" size="sm" dot>QC</Badge>;
+      case 'TRIAL_FITTING':
+        return <Badge variant="warning" size="sm" dot>TRIAL</Badge>;
+      case 'IN_PRODUCTION':
+        return <Badge variant="warning" size="sm" dot>PRODUCTION</Badge>;
+      case 'CUTTING':
+        return <Badge variant="info" size="sm" dot>CUTTING</Badge>;
+      case 'CONFIRMED':
+        return <Badge variant="info" size="sm" dot>CONFIRMED</Badge>;
+      case 'DRAFT':
+        return <Badge variant="neutral" size="sm" dot>DRAFT</Badge>;
+      case 'CANCELLED':
+        return <Badge variant="danger" size="sm" dot>CANCELLED</Badge>;
+      default:
+        return <Badge variant="neutral" size="sm">{status}</Badge>;
+    }
+  };
 
   // Load orders from localStorage on mount with array safety
   useEffect(() => {
@@ -291,6 +159,7 @@ export default function OrderManagementPage() {
   });
   const [notes, setNotes] = useState<string>('');
   const [advanceAmountInput, setAdvanceAmountInput] = useState<string>('');
+  const [isPomLinked, setIsPomLinked] = useState<boolean>(true);
   
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [deleteModalOrder, setDeleteModalOrder] = useState<Order | null>(null);
@@ -303,7 +172,8 @@ export default function OrderManagementPage() {
       garmentType: 'Sherwani',
       fabricSku: 'SKU-SHER-901',
       fabricMeters: 4.5,
-      unitPrice: 28000
+      unitPrice: 32000,
+      bomItems: getDefaultBOMForGarment('Sherwani')
     }
   ]);
 
@@ -367,12 +237,32 @@ export default function OrderManagementPage() {
     setItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
+          const isCust = item.isCustomerFabric;
+          const sku = isCust ? item.fabricSku : preset.skuPrefix;
           return {
             ...item,
             garmentType: newGarmentType,
-            fabricSku: preset.skuPrefix,
+            fabricSku: sku,
             fabricMeters: preset.defaultMeters,
-            unitPrice: preset.defaultPrice
+            unitPrice: preset.defaultPrice,
+            bomItems: getDefaultBOMForGarment(newGarmentType)
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Handle Customer Fabric Toggle strictly adhering to CUST-FAB- prefix
+  const handleToggleCustomerFabric = (itemId: string, isCustomer: boolean) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id === itemId) {
+          const fabricSku = resolveFabricSku(item.fabricSku, isCustomer, item.garmentType, garmentOptions);
+          return {
+            ...item,
+            isCustomerFabric: isCustomer,
+            fabricSku,
           };
         }
         return item;
@@ -388,7 +278,8 @@ export default function OrderManagementPage() {
       garmentType: preset.value,
       fabricSku: preset.skuPrefix,
       fabricMeters: preset.defaultMeters,
-      unitPrice: preset.defaultPrice
+      unitPrice: preset.defaultPrice,
+      bomItems: getDefaultBOMForGarment(preset.value)
     };
     setItems([...items, newItem]);
   };
@@ -399,138 +290,6 @@ export default function OrderManagementPage() {
     setItems(items.filter((item) => item.id !== id));
   };
 
-  // Helper: Default BOM generation based on garment type
-  const getDefaultBOMForGarment = (garmentType: string): BOMItem[] => {
-    const g = garmentType.toLowerCase();
-    const items: BOMItem[] = [
-      {
-        id: `bom-${Date.now()}-1`,
-        name: 'Matching Spun Poly / Silk Thread Spools',
-        category: 'thread',
-        quantity: 2,
-        unit: 'spools',
-        unitCost: 60,
-        isOptional: false
-      }
-    ];
-
-    if (g.includes('sherwani') || g.includes('bandhgala') || g.includes('kurta')) {
-      items.push({
-        id: `bom-${Date.now()}-2`,
-        name: 'Gold Plated / Antique Metal Kurta Buttons',
-        category: 'button',
-        quantity: 7,
-        unit: 'pcs',
-        unitCost: 80,
-        isOptional: false
-      });
-      items.push({
-        id: `bom-${Date.now()}-3`,
-        name: 'Horsehair Canvas Chest Piece Reinforcement',
-        category: 'canvas',
-        quantity: 1.5,
-        unit: 'meters',
-        unitCost: 350,
-        isOptional: true
-      });
-      items.push({
-        id: `bom-${Date.now()}-4`,
-        name: 'Gold Zari Border Piping Trim',
-        category: 'piping',
-        quantity: 3.5,
-        unit: 'meters',
-        unitCost: 90,
-        isOptional: true
-      });
-    } else if (g.includes('lehenga') || g.includes('gown') || g.includes('anarkali')) {
-      items.push({
-        id: `bom-${Date.now()}-2`,
-        name: 'Cancan Mesh Netting for Flare Volume',
-        category: 'canvas',
-        quantity: 4.0,
-        unit: 'meters',
-        unitCost: 110,
-        isOptional: true
-      });
-      items.push({
-        id: `bom-${Date.now()}-3`,
-        name: 'Heavy Zari Waistband Latkan Tassels',
-        category: 'lace',
-        quantity: 2,
-        unit: 'pcs',
-        unitCost: 220,
-        isOptional: true
-      });
-      items.push({
-        id: `bom-${Date.now()}-4`,
-        name: 'Concealed Side Zipper (18 inch)',
-        category: 'zipper',
-        quantity: 1,
-        unit: 'pcs',
-        unitCost: 65,
-        isOptional: false
-      });
-    } else if (g.includes('blouse') || g.includes('corset') || g.includes('choli')) {
-      items.push({
-        id: `bom-${Date.now()}-2`,
-        name: 'Heavy Duty Side Invisible Zipper (12 inch)',
-        category: 'zipper',
-        quantity: 1,
-        unit: 'pcs',
-        unitCost: 55,
-        isOptional: false
-      });
-      items.push({
-        id: `bom-${Date.now()}-3`,
-        name: 'Back Eyelet / Braided Dori Hooks & Loops',
-        category: 'hook',
-        quantity: 8,
-        unit: 'pairs',
-        unitCost: 15,
-        isOptional: true
-      });
-      items.push({
-        id: `bom-${Date.now()}-4`,
-        name: 'Padded Cup Inserts & Boning Strips',
-        category: 'canvas',
-        quantity: 1,
-        unit: 'pair',
-        unitCost: 180,
-        isOptional: true
-      });
-    } else if (g.includes('trouser') || g.includes('suit') || g.includes('churidar')) {
-      items.push({
-        id: `bom-${Date.now()}-2`,
-        name: 'YKK Concealed Metal Trouser Zipper (7 inch)',
-        category: 'zipper',
-        quantity: 1,
-        unit: 'pcs',
-        unitCost: 45,
-        isOptional: false
-      });
-      items.push({
-        id: `bom-${Date.now()}-3`,
-        name: 'Waistband Canvas Stiffener (Interlining)',
-        category: 'canvas',
-        quantity: 1.2,
-        unit: 'meters',
-        unitCost: 120,
-        isOptional: true
-      });
-      items.push({
-        id: `bom-${Date.now()}-4`,
-        name: 'Horn / Resin Jacket Buttons (Set of 6)',
-        category: 'button',
-        quantity: 1,
-        unit: 'set',
-        unitCost: 250,
-        isOptional: true
-      });
-    }
-
-    return items;
-  };
-
   // Add BOM Item to an Order Item Row
   const handleAddBOMItem = (itemId: string) => {
     setItems((prev) =>
@@ -539,11 +298,11 @@ export default function OrderManagementPage() {
           const currentBOM = item.bomItems || getDefaultBOMForGarment(item.garmentType);
           const newBOMItem: BOMItem = {
             id: `bom-${Date.now()}-${currentBOM.length + 1}`,
-            name: 'New Accessory / Trim',
-            category: 'thread',
+            name: 'New Custom Accessory / Trim',
+            category: 'other',
             quantity: 1,
             unit: 'pcs',
-            unitCost: 50,
+            unitCost: 75,
             isOptional: true
           };
           return { ...item, bomItems: [...currentBOM, newBOMItem] };
@@ -633,21 +392,6 @@ export default function OrderManagementPage() {
   const advanceAmount = Math.round(totalOrderAmount * 0.5);
 
   const selectedCustomer = activeCustomers.find((c: any) => c.id === selectedClientId) || activeCustomers[0] || customerList[0];
-
-  const getValidNextStatuses = (current: OrderStatus): OrderStatus[] => {
-    const transitions: Record<OrderStatus, OrderStatus[]> = {
-      DRAFT: ['DRAFT', 'CONFIRMED', 'CANCELLED'],
-      CONFIRMED: ['CONFIRMED', 'CUTTING', 'CANCELLED'],
-      CUTTING: ['CUTTING', 'IN_PRODUCTION', 'CANCELLED'],
-      IN_PRODUCTION: ['IN_PRODUCTION', 'TRIAL_FITTING', 'CANCELLED'],
-      TRIAL_FITTING: ['TRIAL_FITTING', 'READY_FOR_DELIVERY', 'QC_CHECK', 'CANCELLED'],
-      QC_CHECK: ['QC_CHECK', 'READY_FOR_DELIVERY', 'CANCELLED'],
-      READY_FOR_DELIVERY: ['READY_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
-      DELIVERED: ['DELIVERED', 'CANCELLED'],
-      CANCELLED: ['CANCELLED']
-    };
-    return transitions[current] || ['CANCELLED'];
-  };
 
   const formatDueDate = (dateStr: string) => {
     if (!dateStr) {
@@ -765,15 +509,6 @@ export default function OrderManagementPage() {
     showNotification(`Order ${deleteModalOrder.id} deleted successfully.`);
   };
 
-  const handleFileUpload = (id: string, field: 'fabricImage' | 'liningImage', file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      handleUpdateItem(id, field, base64);
-    };
-    reader.readAsDataURL(file);
-  };
-
   // Direct status change handler with bidirectional sync to jobs storage
   const handleOrderStatusChange = (orderId: string, newStatus: OrderStatus) => {
     let updatedOrderObj: Order | null = null;
@@ -789,11 +524,11 @@ export default function OrderManagementPage() {
 
     if (updatedOrderObj) {
       syncOrderToJobsStorage(updatedOrderObj);
-      showNotification(`Order ${orderId} status changed to ${newStatus}`);
+      showNotification(`Order ${orderId} transitioned to ${newStatus}`);
     }
   };
 
-  // Create Order Handler
+  // Create / Update Order Handler
   const handleSaveOrder = (status: OrderStatus) => {
     const garmentSummary = items.map((i) => i.garmentType).join(' + ');
     const formattedDate = formatDueDate(dueDate);
@@ -825,7 +560,8 @@ export default function OrderManagementPage() {
             dueDate: formattedDate,
             rawDueDate: dueDate,
             items,
-            notes
+            notes,
+            pomSnapshotLinked: isPomLinked
           };
           syncOrderToJobsStorage(updated);
           logActivity({ type: 'order_updated', message: `Order ${updated.id} was updated.`, entityId: updated.id });
@@ -851,7 +587,8 @@ export default function OrderManagementPage() {
         rawDueDate: dueDate,
         createdAt: new Date().toISOString().split('T')[0],
         items,
-        notes
+        notes,
+        pomSnapshotLinked: isPomLinked
       };
       updatedOrders = [newOrder, ...orders];
       syncOrderToJobsStorage(newOrder);
@@ -877,34 +614,35 @@ export default function OrderManagementPage() {
         garmentType: 'Sherwani',
         fabricSku: 'SKU-SHER-901',
         fabricMeters: 4.5,
-        unitPrice: 28000
+        unitPrice: 32000,
+        bomItems: getDefaultBOMForGarment('Sherwani')
       }
     ]);
 
     if (status === 'CONFIRMED') {
-      showNotification(`Quotation sent via WhatsApp to ${selectedCustomer.name}! Order ${finalOrderId} ${isNew ? 'created' : 'updated'}.`);
+      showNotification(`Order ${finalOrderId} confirmed! WhatsApp quotation dispatched to ${selectedCustomer.name}.`);
     } else {
-      showNotification(`Order ${finalOrderId} ${isNew ? 'saved as Draft' : 'updated'}.`, 'info');
+      showNotification(`Order ${finalOrderId} saved as Draft.`, 'info');
     }
   };
 
   return (
-    <div className="max-w-7xl xl:max-w-[1500px] mx-auto w-full space-y-6 animate-fade-in">
+    <div className="max-w-7xl xl:max-w-[1540px] mx-auto w-full space-y-8 animate-fade-in pb-16 font-sans">
       {/* Toast Notification Banner */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
           <div
-            className={`flex items-center space-x-3 px-4 py-3 rounded-xl shadow-2xl border backdrop-blur-md ${
+            className={`flex items-center space-x-3 px-5 py-3.5 rounded-2xl shadow-2xl border backdrop-blur-2xl ${
               notification.type === 'success'
-                ? 'bg-gold-500/15 border-gold-500/40 text-gold-300'
-                : 'bg-slate-900/90 border-slate-700 text-slate-200'
+                ? 'bg-amber-950/40 border-[#D4AF37]/50 text-amber-300 shadow-[0_12px_32px_rgba(212,175,55,0.2)]'
+                : 'bg-slate-900/95 border-white/10 text-slate-200'
             }`}
           >
-            <CheckCircle2 className="w-5 h-5 text-gold-400 shrink-0" />
+            <CheckCircle2 className="w-5 h-5 text-[#D4AF37] shrink-0" />
             <span className="text-sm font-medium">{notification.message}</span>
             <button
               onClick={() => setNotification(null)}
-              className="text-slate-400 hover:text-white ml-2 p-1"
+              className="text-slate-400 hover:text-white ml-3 p-1 rounded-full hover:bg-white/10"
             >
               <X className="w-4 h-4" />
             </button>
@@ -912,168 +650,115 @@ export default function OrderManagementPage() {
         </div>
       )}
 
-      {/* 1. Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-2xl bg-gold-500/10 border border-gold-500/20 text-gold-400 shadow-md">
-            <ShoppingBag className="w-7 h-7" />
+      {/* 1. Header with Apple Aesthetic */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-1.5">
+          <div className="flex items-center space-x-2.5">
+            <h1 className="text-3xl font-extrabold text-white tracking-tight font-display">
+              Orders & Dynamic BOM Studio
+            </h1>
+            <Badge variant="gold" size="sm">Atelier OS</Badge>
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-2xl font-extrabold text-white tracking-tight">Order Management</h1>
-              <span className="badge badge-gold flex items-center space-x-1">
-                <Sparkles className="w-3 h-3" />
-                <span>Atelier OS</span>
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Create tailored customer orders, allocate fabrics, manage fittings, and send WhatsApp quotations.
-            </p>
-          </div>
+          <p className="text-sm text-slate-400">
+            Intake bespoke commissions, allocate fabrics, manage 12-garment BOM presets, and monitor fitting trials.
+          </p>
         </div>
 
-        {/* Action Toggle Button */}
-        <div className="flex items-center space-x-2">
-          {activeTab === 'active' ? (
-            <Tooltip content="Launch new bespoke order draft workspace">
-              <button
-                onClick={() => setActiveTab('create')}
-                className="btn-gold flex items-center space-x-2 cursor-pointer shadow-lg"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>Create New Order</span>
-              </button>
-            </Tooltip>
-          ) : (
-            <button
-              onClick={() => setActiveTab('active')}
-              className="btn-ghost flex items-center space-x-2 cursor-pointer"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>View Active Orders</span>
-            </button>
-          )}
+        {/* Apple Segmented Control Tab Switcher */}
+        <div className="w-full md:w-auto">
+          <SegmentedControl
+            options={[
+              { value: 'active', label: `Active Orders (${orders.length})`, icon: <ShoppingBag className="w-4 h-4" /> },
+              { value: 'create', label: editingOrderId ? 'Edit Order' : 'Create Order', icon: <Plus className="w-4 h-4" /> }
+            ]}
+            value={activeTab}
+            onChange={(val) => setActiveTab(val as 'active' | 'create')}
+            size="md"
+          />
         </div>
       </div>
 
       {/* KPI Stats Overview Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card rounded-xl p-4 border border-slate-800/80">
+        <Card variant="glass" padding="sm" hoverable className="border-white/10">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Active Orders</span>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Orders</span>
             <ShoppingBag className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-2xl font-bold text-white">{orders.length}</span>
-            <span className="text-[11px] text-slate-500">Live atelier jobs</span>
+            <span className="text-2xl font-bold text-white font-display">{orders.length}</span>
+            <span className="text-[11px] text-slate-500">All registered</span>
           </div>
-        </div>
+        </Card>
 
-        <div className="glass-card-gold rounded-xl p-4">
+        <Card variant="glass" padding="sm" hoverable className="border-amber-500/30 bg-amber-950/15">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-gold-400 uppercase tracking-wider">In Production</span>
-            <Scissors className="w-4 h-4 text-gold-400" />
+            <span className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">In Production</span>
+            <Scissors className="w-4 h-4 text-amber-400" />
           </div>
           <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-2xl font-bold text-gold-300">
+            <span className="text-2xl font-bold text-amber-300 font-display">
               {orders.filter((o) => o.status === 'IN_PRODUCTION' || o.status === 'CUTTING').length}
             </span>
-            <span className="text-[11px] text-gold-400/80">Cutting & Stitching</span>
+            <span className="text-[11px] text-amber-400/80">Active floor</span>
           </div>
-        </div>
+        </Card>
 
-        <div className="glass-card rounded-xl p-4 border border-slate-800/80">
+        <Card variant="glass" padding="sm" hoverable className="border-white/10">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Fittings & QC</span>
+            <span className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider">Fitting Trials</span>
             <Shirt className="w-4 h-4 text-purple-400" />
           </div>
           <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-2xl font-bold text-white">
+            <span className="text-2xl font-bold text-white font-display">
               {orders.filter((o) => o.status === 'TRIAL_FITTING' || o.status === 'QC_CHECK').length}
             </span>
-            <span className="text-[11px] text-slate-500">Client Reviews</span>
+            <span className="text-[11px] text-slate-500">First / 2nd Trials</span>
           </div>
-        </div>
+        </Card>
 
-        <div className="glass-card rounded-xl p-4 border border-slate-800/80">
+        <Card variant="glass" padding="sm" hoverable className="border-white/10">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Gross Order Value</span>
+            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Gross Booking</span>
             <DollarSign className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="flex items-baseline space-x-2 mt-2">
-            <span className="text-xl font-bold text-white">
+            <span className="text-xl font-bold text-white font-mono tabular-nums">
               {formatCurrency(orders.reduce((acc, curr) => acc + curr.totalAmount, 0))}
             </span>
             <span className="text-[11px] text-slate-500">Pipeline</span>
           </div>
-        </div>
-      </div>
-
-      {/* 2. Navigation Tabs */}
-      <div className="flex border-b border-slate-800/80 space-x-4">
-        <button
-          onClick={() => setActiveTab('active')}
-          className={`pb-3.5 px-3 text-sm font-semibold flex items-center space-x-2 transition-all border-b-2 cursor-pointer ${
-            activeTab === 'active'
-              ? 'border-gold-500 text-gold-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <ShoppingBag className="w-4 h-4" />
-          <span>Active Orders</span>
-          <span className="badge badge-gold font-mono ml-1.5">{orders.length}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('create')}
-          className={`pb-3.5 px-3 text-sm font-semibold flex items-center space-x-2 transition-all border-b-2 cursor-pointer ${
-            activeTab === 'create'
-              ? 'border-gold-500 text-gold-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create New Order</span>
-          <span className="badge badge-blue ml-1.5">New</span>
-        </button>
+        </Card>
       </div>
 
       {/* TAB 1: ACTIVE ORDERS */}
       {activeTab === 'active' && (
-        <div className="space-y-4 animate-fade-in">
-          {/* Filters & Search */}
-          <div className="glass-card rounded-2xl p-4 border border-slate-800/80">
+        <div className="space-y-5 animate-fade-in">
+          {/* Filters & Search - Apple Style Controls */}
+          <Card variant="glass" padding="sm" className="border-white/10">
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
+                <Input
+                  placeholder="Search by Order #, Client name, or Garment type..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by Order #, Client name, or Garment type..."
-                  className="input-dark pl-10"
+                  leftIcon={<Search className="w-4 h-4" />}
+                  shape="pill"
+                  inputSize="md"
                 />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center space-x-2 text-xs text-slate-400">
-                  <Filter className="w-3.5 h-3.5" />
-                  <span>Status:</span>
+                <div className="flex items-center space-x-2 text-xs text-slate-400 font-medium">
+                  <Filter className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <span>Stage:</span>
                 </div>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="input-dark w-auto text-xs font-medium cursor-pointer"
+                  className="bg-slate-900/80 border border-white/10 hover:border-white/20 rounded-full text-xs font-semibold px-4 py-2 text-slate-200 cursor-pointer focus:outline-none focus:border-[#D4AF37] backdrop-blur-md"
                 >
-                  <option value="ALL" className="bg-slate-900">All Statuses</option>
+                  <option value="ALL" className="bg-slate-900">All Stages</option>
                   <option value="DRAFT" className="bg-slate-900">DRAFT</option>
                   <option value="CONFIRMED" className="bg-slate-900">CONFIRMED</option>
                   <option value="CUTTING" className="bg-slate-900">CUTTING</option>
@@ -1085,52 +770,53 @@ export default function OrderManagementPage() {
                 </select>
 
                 {(searchQuery || statusFilter !== 'ALL') && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       setSearchQuery('');
                       setStatusFilter('ALL');
                     }}
-                    className="btn-ghost text-xs py-2 px-3 flex items-center space-x-1 cursor-pointer"
+                    leftIcon={<X className="w-3.5 h-3.5" />}
                   >
-                    <X className="w-3.5 h-3.5" />
-                    <span>Reset</span>
-                  </button>
+                    Reset Filters
+                  </Button>
                 )}
               </div>
             </div>
-          </div>
+          </Card>
 
-          {/* Orders Table */}
-          <div className="glass-card rounded-2xl overflow-hidden border border-slate-800/80 shadow-2xl hidden md:block">
+          {/* Orders Table with Apple Styling */}
+          <Card variant="glass" padding="none" className="border-white/10 hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800/80 bg-slate-950/50 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+                  <tr className="border-b border-white/5 bg-slate-950/40 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
                     <th className="py-4 px-6">Order #</th>
-                    <th className="py-4 px-4">Client</th>
-                    <th className="py-4 px-4">Garment Type</th>
+                    <th className="py-4 px-4">Client Profile</th>
+                    <th className="py-4 px-4">Garments & BOM</th>
                     <th className="py-4 px-4 text-center">Items</th>
-                    <th className="py-4 px-4">Status</th>
+                    <th className="py-4 px-4">Stage Transition</th>
                     <th className="py-4 px-4 text-right">Amount</th>
                     <th className="py-4 px-4">Due Date</th>
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/50">
+                <tbody className="divide-y divide-white/5">
                   {filteredOrders.map((order) => (
                     <tr
                       key={order.id}
-                      className="hover:bg-slate-800/40 transition-colors group cursor-pointer"
+                      className="hover:bg-white/[0.03] transition-colors group cursor-pointer"
                       onClick={() => setSelectedOrder(order)}
                     >
                       {/* Order # */}
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
-                          <span className="font-mono font-bold text-gold-400 text-sm group-hover:underline">
+                          <span className="font-mono font-bold text-amber-300 text-sm group-hover:underline">
                             {order.id}
                           </span>
                           {order.isUrgent && (
-                            <span className="badge badge-rose text-[9px] px-1.5 py-0.2">URGENT</span>
+                            <Badge variant="danger" size="sm">URGENT</Badge>
                           )}
                         </div>
                       </td>
@@ -1138,36 +824,45 @@ export default function OrderManagementPage() {
                       {/* Client */}
                       <td className="py-4 px-4">
                         <div>
-                          <div className="font-semibold text-white group-hover:text-gold-300 transition-colors">
-                            {order.clientName}
+                          <div className="font-semibold text-white group-hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                            <span>{order.clientName}</span>
+                            {order.pomSnapshotLinked && (
+                              <Tooltip content="POM measurements linked to active CAD form">
+                                <span className="p-0.5 rounded bg-blue-500/20 text-blue-400 text-[10px]">
+                                  <Ruler className="w-3 h-3 inline" />
+                                </span>
+                              </Tooltip>
+                            )}
                           </div>
-                          <div className="text-[11px] text-slate-500 font-mono">{order.clientPhone}</div>
+                          <div className="text-[11px] text-slate-400 font-mono">{order.clientPhone}</div>
                         </div>
                       </td>
 
                       {/* Garment Type */}
                       <td className="py-4 px-4">
-                        <span className="text-slate-300 font-medium text-xs bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-800 inline-block">
-                          {order.garmentSummary}
-                        </span>
+                        <div className="space-y-1">
+                          <span className="text-slate-200 font-medium text-xs bg-slate-900/90 px-3 py-1 rounded-full border border-white/10 inline-block">
+                            {order.garmentSummary}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Items */}
                       <td className="py-4 px-4 text-center">
-                        <span className="badge badge-blue font-mono font-bold">
+                        <Badge variant="neutral" size="sm" className="font-mono font-bold">
                           {order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}
-                        </span>
+                        </Badge>
                       </td>
 
-                      {/* Status */}
+                      {/* Status State Machine Transition */}
                       <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
                         <select
                           value={order.status}
                           onChange={(e) => handleOrderStatusChange(order.id, e.target.value as OrderStatus)}
-                          className="bg-slate-900 border border-slate-700 hover:border-gold-500/60 rounded-lg text-xs py-1 px-2 text-slate-200 font-bold cursor-pointer focus:outline-none focus:border-gold-500"
+                          className="bg-slate-900/90 border border-white/15 hover:border-[#D4AF37] rounded-full text-xs py-1.5 px-3 text-slate-200 font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30"
                         >
-                          <option value={order.status} className="bg-slate-900 text-slate-300">{order.status}</option>
-                          {getValidNextStatuses(order.status).map(s => {
+                          <option value={order.status} className="bg-slate-900 text-amber-300 font-bold">{order.status}</option>
+                          {getValidNextStatuses(order.status).map((s) => {
                             if (s !== order.status) {
                               return <option key={s} value={s} className="bg-slate-900">{s}</option>;
                             }
@@ -1178,37 +873,37 @@ export default function OrderManagementPage() {
 
                       {/* Amount */}
                       <td className="py-4 px-4 text-right">
-                        <div className="font-mono font-semibold text-white">
+                        <div className="font-mono font-semibold text-white tabular-nums">
                           {formatCurrency(order.totalAmount)}
                         </div>
-                        {order.paymentStatus === 'FULLY_PAID' && <span className="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] mt-1">FULLY PAID</span>}
-                        {order.paymentStatus === 'ADVANCE_PAID' && <span className="badge bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] mt-1">ADVANCE PAID</span>}
-                        {(!order.paymentStatus || order.paymentStatus === 'UNPAID') && <span className="badge bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[9px] mt-1">UNPAID</span>}
+                        {order.paymentStatus === 'FULLY_PAID' && <Badge variant="success" size="sm" className="mt-1">FULLY PAID</Badge>}
+                        {order.paymentStatus === 'ADVANCE_PAID' && <Badge variant="warning" size="sm" className="mt-1">ADVANCE PAID</Badge>}
+                        {(!order.paymentStatus || order.paymentStatus === 'UNPAID') && <Badge variant="danger" size="sm" className="mt-1">UNPAID</Badge>}
                       </td>
 
                       {/* Due Date */}
                       <td className="py-4 px-4">
-                        <div className="flex items-center space-x-1.5 text-xs text-slate-300">
-                          <Calendar className="w-3.5 h-3.5 text-gold-400 shrink-0" />
+                        <div className="flex items-center space-x-1.5 text-xs text-slate-300 font-mono">
+                          <Calendar className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
                           <span>{order.dueDate}</span>
                         </div>
                       </td>
 
                       {/* Actions */}
                       <td className="py-4 px-6 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end space-x-1">
+                        <div className="flex items-center justify-end space-x-1.5">
                           <Tooltip content="Print Delivery Note & Job Tag">
                             <button
                               onClick={() => setPrintModalOrder(order)}
-                              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-amber-400 transition-colors"
+                              className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-amber-400 transition-colors"
                             >
-                              <Printer className="w-4 h-4 text-amber-400/90" />
+                              <Printer className="w-4 h-4 text-amber-400" />
                             </button>
                           </Tooltip>
                           <Tooltip content="Inspect item breakdown and status">
                             <button
                               onClick={() => setSelectedOrder(order)}
-                              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                              className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -1216,7 +911,7 @@ export default function OrderManagementPage() {
                           <Tooltip content="Edit Order">
                             <button
                               onClick={() => handleEditOrder(order)}
-                              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-blue-400 transition-colors"
+                              className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-blue-400 transition-colors"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
@@ -1226,7 +921,7 @@ export default function OrderManagementPage() {
                               onClick={() => {
                                 showNotification(`Quotation resent for ${order.id} via WhatsApp`);
                               }}
-                              className="p-1.5 rounded-lg hover:bg-gold-500/10 text-slate-400 hover:text-gold-400 transition-colors"
+                              className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-[#D4AF37] transition-colors"
                             >
                               <MessageSquare className="w-4 h-4" />
                             </button>
@@ -1234,7 +929,7 @@ export default function OrderManagementPage() {
                           <Tooltip content="Delete Order">
                             <button
                               onClick={() => setDeleteModalOrder(order)}
-                              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors"
+                              className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-rose-400 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1246,20 +941,21 @@ export default function OrderManagementPage() {
 
                   {filteredOrders.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center">
+                      <td colSpan={8} className="py-16 text-center">
                         <div className="max-w-xs mx-auto space-y-3">
                           <ShoppingBag className="w-10 h-10 text-slate-600 mx-auto" />
                           <p className="text-slate-300 text-sm font-semibold">No orders match your filter</p>
-                          <p className="text-slate-500 text-xs">Try clearing the search query or changing status criteria.</p>
-                          <button
+                          <p className="text-slate-500 text-xs">Try clearing the search query or changing stage criteria.</p>
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={() => {
                               setSearchQuery('');
                               setStatusFilter('ALL');
                             }}
-                            className="btn-ghost text-xs py-1.5 px-3"
                           >
                             Clear Filters
-                          </button>
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -1269,557 +965,352 @@ export default function OrderManagementPage() {
             </div>
 
             {/* Table Footer */}
-            <div className="px-6 py-4 bg-slate-950/60 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-              <span>Showing <strong>{filteredOrders.length}</strong> of <strong>{orders.length}</strong> active orders</span>
-              <span className="font-mono text-slate-500">YellowHouse Tailoring OS • Order Engine</span>
+            <div className="px-6 py-4 bg-slate-950/40 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+              <span>Showing <strong>{filteredOrders.length}</strong> of <strong>{orders.length}</strong> atelier orders</span>
+              <span className="font-mono text-slate-500">YellowHouse OS • High-Altitude Order Engine</span>
             </div>
-          </div>
+          </Card>
 
           {/* Mobile Orders View */}
           <div className="md:hidden space-y-4">
             {filteredOrders.map((order) => (
-              <div
+              <Card
                 key={order.id}
-                className="glass-card rounded-2xl border border-slate-800 p-4 space-y-3 cursor-pointer hover:bg-slate-800/40 transition-colors"
+                variant="glass"
+                padding="sm"
+                className="border-white/10 space-y-3 cursor-pointer hover:border-white/20 transition-colors"
                 onClick={() => setSelectedOrder(order)}
               >
-                {/* Top row: Client name (bold) + Status badge (colored) */}
                 <div className="flex justify-between items-start">
                   <div>
-                    <div className="font-bold text-white text-base">
-                      {order.clientName}
-                      {order.isUrgent && <span className="ml-2 badge badge-rose text-[9px] px-1.5 py-0.2">URGENT</span>}
+                    <div className="font-bold text-white text-base flex items-center gap-2">
+                      <span>{order.clientName}</span>
+                      {order.isUrgent && <Badge variant="danger" size="sm">URGENT</Badge>}
                     </div>
-                    <div className="text-xs text-gold-400 font-mono mt-0.5">{order.id}</div>
+                    <div className="text-xs text-amber-300 font-mono mt-0.5">{order.id}</div>
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     <select
                       value={order.status}
                       onChange={(e) => handleOrderStatusChange(order.id, e.target.value as OrderStatus)}
-                      className="bg-slate-900 border border-slate-700 hover:border-gold-500/60 rounded-lg text-[10px] py-1 px-2 text-slate-200 font-bold cursor-pointer focus:outline-none focus:border-gold-500"
+                      className="bg-slate-900 border border-white/10 rounded-full text-[10px] py-1 px-2.5 text-slate-200 font-bold focus:outline-none"
                     >
-                      <option value={order.status} className="bg-slate-900 text-slate-300">{order.status}</option>
+                      <option value={order.status}>{order.status}</option>
                       {getValidNextStatuses(order.status).map(s => {
-                        if (s !== order.status) {
-                          return <option key={s} value={s} className="bg-slate-900">{s}</option>;
-                        }
+                        if (s !== order.status) return <option key={s} value={s}>{s}</option>;
                         return null;
                       })}
                     </select>
                   </div>
                 </div>
 
-                {/* Middle: Garment summary, Due date */}
-                <div className="flex justify-between items-center bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/50">
-                  <div className="text-xs text-slate-300 font-medium">
-                    {order.garmentSummary} <span className="text-slate-500 font-mono">({order.itemCount})</span>
-                  </div>
-                  <div className="flex items-center space-x-1.5 text-xs text-slate-400">
-                    <Calendar className="w-3.5 h-3.5 text-gold-400 shrink-0" />
-                    <span>{order.dueDate}</span>
-                  </div>
+                <div className="flex justify-between items-center text-xs text-slate-300">
+                  <span className="truncate max-w-[200px]">{order.garmentSummary}</span>
+                  <span className="font-mono font-bold">{formatCurrency(order.totalAmount)}</span>
                 </div>
 
-                {/* Bottom row: Total amount (formatted) + Action buttons */}
-                <div className="flex justify-between items-center pt-2 border-t border-slate-800/50">
-                  <div className="font-mono font-bold text-white text-base">
-                    {formatCurrency(order.totalAmount)}
-                  </div>
-                  <div className="flex items-center space-x-1.5" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => setPrintModalOrder(order)}
-                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-amber-300 transition-colors border border-slate-800"
-                      title="Print Delivery Note & QR Tag"
-                    >
+                <div className="flex justify-between items-center text-[11px] text-slate-400 pt-1 border-t border-white/5">
+                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-[#D4AF37]" /> Due {order.dueDate}</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={(e) => { e.stopPropagation(); setPrintModalOrder(order); }} className="text-amber-400 hover:text-amber-300">
                       <Printer className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => setSelectedOrder(order)}
-                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors border border-slate-800"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleEditOrder(order)}
-                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-blue-400 transition-colors border border-slate-800"
-                    >
+                    <button onClick={(e) => { e.stopPropagation(); handleEditOrder(order); }} className="text-blue-400 hover:text-blue-300">
                       <Edit className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        showNotification(`Quotation resent for ${order.id} via WhatsApp`);
-                      }}
-                      className="p-2 rounded-lg bg-slate-900 hover:bg-gold-500/10 text-slate-400 hover:text-gold-400 transition-colors border border-slate-800"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteModalOrder(order)}
-                      className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition-colors border border-slate-800"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-              </div>
+              </Card>
             ))}
-            {filteredOrders.length === 0 && (
-              <div className="glass-card rounded-2xl border border-slate-800 p-8 text-center space-y-3">
-                <ShoppingBag className="w-8 h-8 text-slate-600 mx-auto" />
-                <p className="text-slate-300 text-sm font-semibold">No orders match your filter</p>
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setStatusFilter('ALL');
-                  }}
-                  className="btn-ghost text-xs py-1.5 px-3 mt-2"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
 
-      {/* TAB 2: CREATE NEW ORDER */}
+      {/* TAB 2: CREATE / EDIT BESPOKE ORDER STUDIO */}
       {activeTab === 'create' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
-          {/* Main Form (2 cols) */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Step 1: Customer Selection */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <User className="w-5 h-5 text-gold-400" />
-                  <h2 className="text-base font-bold text-white">1. Select Client Profile</h2>
-                </div>
-                {selectedCustomer.isVip && (
-                  <span className="badge badge-gold flex items-center space-x-1">
-                    <Sparkles className="w-3 h-3 text-gold-400 fill-gold-400" />
-                    <span>VIP Client</span>
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-300">Client Name *</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsQuickAddCustomerOpen(true)}
-                      className="text-[11px] font-semibold text-gold-400 hover:text-gold-300 flex items-center space-x-1 cursor-pointer transition-colors"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>+ Add New Client</span>
-                    </button>
+        <div className="space-y-8 animate-fade-in">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left 2 Cols: Client Profile, Garment Selection, BOM Presets */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Client Profile & POM Linking Card */}
+              <Card variant="glass" padding="md" className="border-white/10 space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2.5 rounded-2xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-bold text-white font-display tracking-tight">Client Profile & Fit Linking</h2>
+                      <p className="text-xs text-slate-400">Select patron and bind to 2D CAD anatomical measurements</p>
+                    </div>
                   </div>
-                  <select
-                    value={selectedClientId}
-                    onChange={(e) => setSelectedClientId(e.target.value)}
-                    className="input-dark cursor-pointer text-sm font-medium"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsQuickAddCustomerOpen(true)}
+                    leftIcon={<UserPlus className="w-4 h-4 text-[#D4AF37]" />}
                   >
-                    {activeCustomers.map((c: any) => (
-                      <option key={c.id} value={c.id} className="bg-slate-900 text-white">
-                        {c.name} ({c.phone}) {c.isVip ? '★ VIP' : ''}
-                      </option>
-                    ))}
-                  </select>
+                    Quick Add Patron
+                  </Button>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-300">Requested Target Due Date *</label>
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="input-dark text-sm font-mono"
-                  />
-                </div>
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Select Patron Profile *</label>
+                    <select
+                      value={selectedClientId}
+                      onChange={(e) => setSelectedClientId(e.target.value)}
+                      className="input-dark w-full text-sm font-medium cursor-pointer"
+                    >
+                      {activeCustomers.map((c: any) => (
+                        <option key={c.id} value={c.id} className="bg-slate-900 text-white">
+                          {c.name} ({c.phone}) {c.isVip ? '★ VIP' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-            {/* Step 2: Item List Creation */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Scissors className="w-5 h-5 text-gold-400" />
-                  <h2 className="text-base font-bold text-white">2. Order Garment Items</h2>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-slate-300">Target Delivery Date *</label>
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="input-dark text-sm w-full font-mono"
+                      required
+                    />
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="btn-gold text-xs flex items-center space-x-1.5 cursor-pointer py-1.5 px-3"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>Add Item</span>
-                </button>
-              </div>
 
-              {/* Items Table / Cards */}
-              <div className="space-y-4">
-                {items.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    className="bg-slate-950/60 rounded-xl p-4 border border-slate-800/90 space-y-3 transition-all hover:border-slate-700"
-                  >
-                    <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
-                      <span className="text-xs font-bold text-gold-400 flex items-center space-x-1.5">
-                        <Tag className="w-3.5 h-3.5" />
-                        <span>Garment Item #{idx + 1}</span>
-                      </span>
-                      {items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="text-xs text-rose-400 hover:text-rose-300 flex items-center space-x-1 cursor-pointer p-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Remove</span>
-                        </button>
-                      )}
+                {/* Selected Patron Intelligence Card */}
+                {selectedCustomer && (
+                  <div className="p-4 rounded-2xl bg-slate-950/50 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-amber-700 flex items-center justify-center font-bold text-slate-950 font-display">
+                        {selectedCustomer.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>{selectedCustomer.name}</span>
+                          {selectedCustomer.isVip && <Badge variant="gold" size="sm">VIP Patron</Badge>}
+                        </div>
+                        <div className="text-xs text-slate-400 font-mono">{selectedCustomer.phone}</div>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {/* Garment Type Selector */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-400">Garment Type</label>
-                        <select
-                          value={item.garmentType}
-                          onChange={(e) => handleGarmentTypeChange(item.id, e.target.value)}
-                          className="input-dark text-xs font-medium cursor-pointer"
-                        >
-                          {garmentOptions.map((g) => (
-                            <option key={g.value} value={g.value} className="bg-slate-900">
-                              {g.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Fabric SKU / Customer Fabric Input */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-semibold text-slate-400">
-                            {item.isCustomerFabric ? 'Customer Fabric Detail' : 'Fabric SKU'}
-                          </label>
-                          <label className="flex items-center space-x-1 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={!!item.isCustomerFabric}
-                              onChange={(e) => {
-                                const isCust = e.target.checked;
-                                handleUpdateItem(item.id, 'isCustomerFabric', isCust);
-                                if (isCust && !item.fabricSku.startsWith('CUST-FAB-')) {
-                                  handleUpdateItem(item.id, 'fabricSku', `CUST-FAB-${Date.now().toString(36).toUpperCase()}`);
-                                }
-                              }}
-                              className="w-3 h-3 accent-emerald-500 rounded cursor-pointer"
-                            />
-                            <span className="text-[9px] font-bold text-emerald-400">Customer Given</span>
-                          </label>
-                        </div>
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center cursor-pointer select-none text-xs text-slate-300">
                         <input
-                          type="text"
-                          value={item.fabricSku}
-                          onChange={(e) => handleUpdateItem(item.id, 'fabricSku', e.target.value)}
-                          placeholder={item.isCustomerFabric ? 'e.g. Brought Raw Silk Saree / 4.5m Banarasi' : 'e.g. SKU-SILK-902'}
-                          className={`input-dark text-xs font-mono ${item.isCustomerFabric ? 'border-emerald-500/40 text-emerald-300' : ''}`}
+                          type="checkbox"
+                          checked={isPomLinked}
+                          onChange={(e) => setIsPomLinked(e.target.checked)}
+                          className="mr-2 rounded border-slate-700 bg-slate-900 text-[#D4AF37] focus:ring-[#D4AF37]/30"
                         />
+                        <span>Link 2D CAD Measurement Profile</span>
+                      </label>
+                      <Link href="/measurements">
+                        <button className="text-[11px] text-[#D4AF37] hover:underline flex items-center gap-1 font-semibold ml-2">
+                          <Ruler className="w-3 h-3" /> CAD Workbench
+                        </button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Garment Items & Dynamic BOM Cards */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-white font-display tracking-tight">Commissions & Dynamic BOM</h2>
+                    <p className="text-xs text-slate-400">12 garment presets with automatic trim and accessory calculations</p>
+                  </div>
+                  <Button
+                    variant="gold"
+                    size="sm"
+                    onClick={handleAddItem}
+                    leftIcon={<Plus className="w-4 h-4" />}
+                  >
+                    Add Garment Item
+                  </Button>
+                </div>
+
+                {items.map((item, index) => {
+                  const preset = garmentOptions.find((g) => g.value === item.garmentType) || garmentOptions[0];
+                  return (
+                    <Card key={item.id} variant="glass" padding="md" className="border-white/10 space-y-5 relative">
+                      {/* Item Header */}
+                      <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                        <div className="flex items-center space-x-2.5">
+                          <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/20 flex items-center justify-center font-bold text-xs font-mono">
+                            {index + 1}
+                          </div>
+                          <h3 className="font-bold text-white text-base font-display">{item.garmentType}</h3>
+                          {item.isCustomerFabric && (
+                            <Badge variant="success" size="sm">Client Fabric: {item.fabricSku}</Badge>
+                          )}
+                        </div>
+
+                        {items.length > 1 && (
+                          <button
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+                            title="Remove Garment Item"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
 
-                      {/* Fabric Meters & Width Calculator */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-semibold text-gold-400 flex items-center gap-1">
-                            <span>Fabric Required</span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-gold-400/10 text-gold-300 font-mono">Yield Calc</span>
-                          </label>
-                          <div className="flex items-center space-x-1 text-[9px] text-slate-400 font-mono">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const preset = garmentOptions.find(g => g.value === item.garmentType);
-                                if (preset) handleUpdateItem(item.id, 'fabricMeters', preset.defaultMeters);
-                              }}
-                              className="hover:text-gold-400 underline decoration-dotted"
-                              title="Reset to recommended standard yield"
-                            >
-                              Standard
-                            </button>
-                          </div>
+                      {/* Garment Selection & Dimensions */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-300">Garment Preset *</label>
+                          <select
+                            value={item.garmentType}
+                            onChange={(e) => handleGarmentTypeChange(item.id, e.target.value)}
+                            className="input-dark text-xs py-2 px-3 w-full cursor-pointer font-medium"
+                          >
+                            {garmentOptions.map((g) => (
+                              <option key={g.value} value={g.value} className="bg-slate-900 text-white">
+                                {g.label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                        <div className="relative">
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-300">Fabric Required (Meters)</label>
                           <input
                             type="number"
                             step="0.1"
-                            min="0.5"
                             value={item.fabricMeters}
                             onChange={(e) => handleUpdateItem(item.id, 'fabricMeters', parseFloat(e.target.value) || 0)}
-                            className="pom-input text-xs font-mono font-bold text-gold-300"
+                            className="input-dark text-xs py-2 px-3 w-full font-mono"
                           />
-                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gold-400/80 font-mono">meters</span>
                         </div>
-                        {(() => {
-                          const preset = garmentOptions.find(g => g.value === item.garmentType);
-                          return preset?.bufferNote ? (
-                            <p className="text-[9px] text-slate-500 italic truncate font-sans">
-                              {preset.bufferNote}
-                            </p>
-                          ) : null;
-                        })()}
-                      </div>
 
-                      {/* Unit Price Input */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-semibold text-slate-400">Unit Price (₹)</label>
-                        <div className="relative">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-300">Item Price ({formatCurrency(0).slice(0, 1)})</label>
                           <input
                             type="number"
-                            step="500"
                             value={item.unitPrice}
                             onChange={(e) => handleUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="input-dark text-xs font-mono font-semibold"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* FABRIC SWATCH & MATERIAL ATTACHMENTS SECTION */}
-                    <div className="border-t border-slate-800/60 pt-3 mt-3 space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fabric & Lining Attachments</span>
-                        <div className="flex items-center space-x-2">
-                          <label className="btn-ghost py-1 px-2.5 text-[10px] flex items-center space-x-1 cursor-pointer">
-                            <span>+ Fabric Photo</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  handleFileUpload(item.id, 'fabricImage', e.target.files[0]);
-                                  showNotification("Uploaded custom fabric swatch successfully!");
-                                }
-                              }}
-                            />
-                          </label>
-                          <label className="btn-ghost py-1 px-2.5 text-[10px] flex items-center space-x-1 cursor-pointer">
-                            <span>+ Lining Photo</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  handleFileUpload(item.id, 'liningImage', e.target.files[0]);
-                                  showNotification("Uploaded custom lining photo successfully!");
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {/* Selected Fabric Preset / Thumbnail */}
-                        <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
-                          <span className="text-[9px] uppercase font-bold text-slate-500">Fabric Swatch Preview</span>
-                          <div className="flex items-center space-x-3">
-                            {item.fabricImage ? (
-                              <div className="relative w-12 h-12 rounded bg-slate-950 overflow-hidden border border-slate-800 shrink-0">
-                                <img src={item.fabricImage} alt="Fabric Swatch" className="w-full h-full object-cover" />
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateItem(item.id, 'fabricImage', '')}
-                                  className="absolute top-0 right-0 bg-black/60 text-white p-0.5 rounded-bl hover:bg-black/90"
-                                >
-                                  <X className="w-2.5 h-2.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="w-12 h-12 rounded bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
-                                <Shirt className="w-5 h-5 opacity-30" />
-                              </div>
-                            )}
-                            <div className="flex-1 space-y-1">
-                              <select
-                                onChange={(e) => handleUpdateItem(item.id, 'fabricImage', e.target.value)}
-                                value={item.fabricImage || ''}
-                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] text-slate-300 w-full focus:outline-none focus:border-gold-500/50"
-                              >
-                                <option value="">Choose Swatch Preset</option>
-                                <option value="https://images.unsplash.com/photo-1590736969955-71cb94801759?w=150">Crimson Silk Velvet</option>
-                                <option value="https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=150">Emerald Green Velvet</option>
-                                <option value="https://images.unsplash.com/photo-1544816155-12df9643f363?w=150">Royal Blue Brocade</option>
-                                <option value="https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=150">Ivory Gold Jacquard</option>
-                              </select>
-                              <p className="text-[8px] text-slate-500">Pick preset or click "+ Fabric Photo"</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Selected Lining / Accessories Swatch */}
-                        <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-2 flex flex-col justify-between">
-                          <span className="text-[9px] uppercase font-bold text-slate-500">Lining / Accs Preview</span>
-                          <div className="flex items-center space-x-3">
-                            {item.liningImage ? (
-                              <div className="relative w-12 h-12 rounded bg-slate-950 overflow-hidden border border-slate-800 shrink-0">
-                                <img src={item.liningImage} alt="Lining Swatch" className="w-full h-full object-cover" />
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateItem(item.id, 'liningImage', '')}
-                                  className="absolute top-0 right-0 bg-black/60 text-white p-0.5 rounded-bl hover:bg-black/90"
-                                >
-                                  <X className="w-2.5 h-2.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="w-12 h-12 rounded bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
-                                <Tag className="w-5 h-5 opacity-30" />
-                              </div>
-                            )}
-                            <div className="flex-1 space-y-1">
-                              <select
-                                onChange={(e) => handleUpdateItem(item.id, 'liningImage', e.target.value)}
-                                value={item.liningImage || ''}
-                                className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[9px] text-slate-300 w-full focus:outline-none focus:border-gold-500/50"
-                              >
-                                <option value="">Choose Lining Preset</option>
-                                <option value="https://images.unsplash.com/photo-1544816155-12df9643f363?w=150">Gold Zari Threads</option>
-                                <option value="https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=150">Satin Silk Lining</option>
-                                <option value="https://images.unsplash.com/photo-1590736969955-71cb94801759?w=150">Premium Brass Buttons</option>
-                              </select>
-                              <p className="text-[8px] text-slate-500">Pick preset or click "+ Lining Photo"</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Materials Notes details input */}
-                        <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 space-y-1 flex flex-col justify-between">
-                          <label className="text-[9px] uppercase font-bold text-slate-500">Trim & Material Specs</label>
-                          <textarea
-                            placeholder="Specify buttons, zipper, laces, canvas collar reinforcement specs..."
-                            value={item.materialNotes || ''}
-                            onChange={(e) => handleUpdateItem(item.id, 'materialNotes', e.target.value)}
-                            className="bg-slate-950 border border-slate-800 rounded px-2.5 py-1 text-[10px] text-slate-200 placeholder-slate-600 w-full h-11 focus:outline-none focus:border-gold-500/50 resize-none"
+                            className="input-dark text-xs py-2 px-3 w-full font-mono font-bold text-amber-300"
                           />
                         </div>
                       </div>
 
-                      {/* BILL OF MATERIALS (BOM) & TRIMS SECTION */}
-                      <div className="bg-slate-950/80 rounded-xl border border-slate-800/90 p-3.5 mt-3 space-y-3">
+                      {/* Fabric SKU & Customer Fabric Allocation Toggle */}
+                      <div className="p-4 rounded-2xl bg-slate-950/50 border border-white/10 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <label className="inline-flex items-center cursor-pointer select-none text-xs font-semibold text-slate-200">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(item.isCustomerFabric)}
+                              onChange={(e) => handleToggleCustomerFabric(item.id, e.target.checked)}
+                              className="mr-2 rounded border-slate-700 bg-slate-900 text-[#D4AF37] focus:ring-[#D4AF37]/30"
+                            />
+                            <span className="text-amber-300 font-bold">Client Provided Their Own Fabric</span>
+                          </label>
+
+                          <span className="text-[11px] font-mono text-slate-400">
+                            Bolt Spec: {preset.boltWidth || 44}" width ({preset.bufferNote || 'Standard allowance'})
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          <div className="space-y-1">
+                            <label className="text-[11px] text-slate-400 font-semibold">
+                              Fabric SKU {item.isCustomerFabric ? '(Strictly CUST-FAB-)' : '(Atelier Catalog)'}
+                            </label>
+                            <input
+                              type="text"
+                              value={item.fabricSku}
+                              onChange={(e) => handleUpdateItem(item.id, 'fabricSku', e.target.value)}
+                              className="input-dark text-xs py-1.5 px-3 font-mono"
+                              placeholder="CUST-FAB-..."
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[11px] text-slate-400 font-semibold">Fabric Material / Swatch Notes</label>
+                            <input
+                              type="text"
+                              value={item.materialNotes || ''}
+                              onChange={(e) => handleUpdateItem(item.id, 'materialNotes', e.target.value)}
+                              placeholder="e.g., Italian Super 140s Wool, Banarasi Brocade..."
+                              className="input-dark text-xs py-1.5 px-3"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dynamic Bill of Materials (BOM) Editor */}
+                      <div className="space-y-3 pt-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            <Scissors className="w-3.5 h-3.5 text-amber-400" />
-                            <span className="text-[11px] font-bold text-white uppercase tracking-wider">Bill of Materials (BOM) & Trims</span>
-                            <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 font-mono font-semibold">
-                              {(item.bomItems || getDefaultBOMForGarment(item.garmentType)).length} Items Required
-                            </span>
+                            <Scissors className="w-4 h-4 text-[#D4AF37]" />
+                            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                              Dynamic Bill of Materials (Trims & Accessories)
+                            </h4>
                           </div>
                           <button
-                            type="button"
                             onClick={() => handleAddBOMItem(item.id)}
-                            className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center space-x-1 transition-all"
+                            className="text-xs text-[#D4AF37] hover:underline font-semibold flex items-center gap-1"
                           >
-                            <Plus className="w-3 h-3" />
-                            <span>Add Material</span>
+                            <Plus className="w-3.5 h-3.5" /> Add Trim
                           </button>
                         </div>
 
-                        {/* BOM Items Table / List */}
                         <div className="space-y-2">
-                          {(item.bomItems || getDefaultBOMForGarment(item.garmentType)).map((bom) => (
+                          {item.bomItems?.map((bom) => (
                             <div
                               key={bom.id}
-                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded-lg bg-slate-900/60 border border-slate-800/80 text-xs"
+                              className="p-3 rounded-xl bg-slate-900/60 border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                             >
-                              <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                <input
-                                  type="checkbox"
-                                  checked={!bom.isOptional}
-                                  onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'isOptional', !e.target.checked)}
-                                  className="w-3.5 h-3.5 accent-amber-500 rounded cursor-pointer shrink-0"
-                                  title="Check if mandatory for production, uncheck if optional"
-                                />
-                                <input
-                                  type="text"
-                                  value={bom.name}
-                                  onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'name', e.target.value)}
-                                  placeholder="Material / Trim description"
-                                  className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50 flex-1"
-                                />
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="text"
+                                    value={bom.name}
+                                    onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'name', e.target.value)}
+                                    className="bg-transparent border-b border-white/10 hover:border-white/30 focus:border-[#D4AF37] outline-none text-xs text-white font-medium w-full max-w-xs"
+                                  />
+                                  {bom.isCustomerProvided && (
+                                    <Badge variant="success" size="sm">Client Supplied</Badge>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-slate-400 capitalize">
+                                  Category: {bom.category} &bull; Standard unit cost: {formatCurrency(bom.unitCost)}
+                                </div>
                               </div>
 
-                              <div className="flex items-center space-x-2">
-                                <select
-                                  value={bom.category}
-                                  onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'category', e.target.value as any)}
-                                  className="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-slate-300 focus:outline-none"
-                                >
-                                  <option value="thread">Thread</option>
-                                  <option value="zipper">Zipper</option>
-                                  <option value="button">Buttons</option>
-                                  <option value="lining">Lining</option>
-                                  <option value="canvas">Canvas / Interlining</option>
-                                  <option value="lace">Lace / Latkan</option>
-                                  <option value="hook">Hooks</option>
-                                  <option value="piping">Piping</option>
-                                  <option value="fabric">Extra Fabric/Patch</option>
-                                  <option value="other">Other Trim</option>
-                                </select>
-
-                                <div className="flex items-center space-x-1">
+                              <div className="flex items-center gap-3 shrink-0">
+                                <div className="flex items-center gap-1 font-mono">
                                   <input
                                     type="number"
                                     step="0.5"
-                                    min="0.1"
                                     value={bom.quantity}
                                     onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'quantity', parseFloat(e.target.value) || 0)}
-                                    className="bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-xs text-right text-slate-200 w-12 font-mono"
+                                    className="input-dark w-16 text-center text-xs py-1 px-1 font-mono"
                                   />
-                                  <input
-                                    type="text"
-                                    value={bom.unit}
-                                    onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'unit', e.target.value)}
-                                    className="bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-slate-400 w-14 text-center font-mono"
-                                    placeholder="unit"
-                                  />
+                                  <span className="text-slate-400 text-[10px]">{bom.unit}</span>
                                 </div>
 
-                                <div className="flex items-center space-x-1">
-                                  <span className="text-[10px] text-slate-500 font-mono">₹</span>
+                                <label className="inline-flex items-center text-[10px] text-slate-400 cursor-pointer select-none">
                                   <input
-                                    type="number"
-                                    value={bom.unitCost}
-                                    onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'unitCost', parseFloat(e.target.value) || 0)}
-                                    className="bg-slate-950 border border-slate-800 rounded px-1.5 py-1 text-xs text-right text-amber-300 w-14 font-mono font-semibold"
+                                    type="checkbox"
+                                    checked={Boolean(bom.isCustomerProvided)}
+                                    onChange={(e) => handleUpdateBOMItem(item.id, bom.id, 'isCustomerProvided', e.target.checked)}
+                                    className="mr-1 rounded border-slate-700 bg-slate-900 text-emerald-400"
                                   />
-                                </div>
-
-                                {/* Customer Provided Toggle */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateBOMItem(item.id, bom.id, 'isCustomerProvided', !bom.isCustomerProvided)}
-                                  className={`text-[9px] px-2 py-0.5 rounded font-extrabold uppercase tracking-wider transition-all border ${
-                                    bom.isCustomerProvided
-                                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/20'
-                                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-300'
-                                  }`}
-                                  title="Toggle if customer provided this material directly"
-                                >
-                                  {bom.isCustomerProvided ? '✓ Client Given' : 'Atelier Supplied'}
-                                </button>
-
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${bom.isOptional ? 'bg-slate-800 text-slate-400' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}`}>
-                                  {bom.isOptional ? 'Optional' : 'Required'}
-                                </span>
+                                  <span>Client Given</span>
+                                </label>
 
                                 <button
-                                  type="button"
                                   onClick={() => handleRemoveBOMItem(item.id, bom.id)}
-                                  className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
+                                  className="text-slate-500 hover:text-rose-400 transition-colors p-1"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -1828,232 +1319,235 @@ export default function OrderManagementPage() {
                           ))}
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    </Card>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Step 3: Special Tailoring Notes */}
-            <div className="glass-card rounded-2xl p-6 border border-slate-800 space-y-3">
-              <label className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
-                <FileText className="w-4 h-4 text-slate-400" />
-                <span>Special Tailoring & Embroidery Instructions</span>
-              </label>
-              <textarea
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Mention specific lining materials, thread color preferences, embroidery motifs, or fitting trial preferences..."
-                className="input-dark resize-none text-xs"
-              />
-            </div>
-          </div>
-
-          {/* Right Column: Order Summary Card (Upgraded to glass-card-gold) */}
-          <div className="space-y-6">
-            <div className="glass-card-gold rounded-2xl p-6 border border-gold-500/30 space-y-6 sticky top-6">
-              <div className="flex items-center justify-between pb-4 border-b border-gold-500/30">
-                <div className="flex items-center space-x-2">
-                  <ShoppingBag className="w-5 h-5 text-gold-400" />
-                  <h3 className="text-lg font-bold text-white">Order Pricing Engine</h3>
-                </div>
-                <span className="badge badge-gold font-mono">LIVE QUOTE</span>
-              </div>
-
-              {/* Client Info Brief */}
-              <div className="bg-slate-950/70 rounded-xl p-3.5 border border-slate-800 space-y-1.5 text-xs">
-                <div className="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Client Profile</div>
-                <div className="font-bold text-white text-sm">{selectedCustomer.name}</div>
-                <div className="text-slate-400 font-mono">{selectedCustomer.phone}</div>
-              </div>
-
-              {/* Breakdown with Tooltips */}
-              <div className="space-y-3 text-xs">
-                <div className="flex items-center justify-between text-slate-300">
-                  <span>Total Items</span>
-                  <span className="font-mono font-bold text-white">{totalItemsCount} {totalItemsCount === 1 ? 'garment' : 'garments'}</span>
+            {/* Right Column: Dynamic Atelier Pricing & Commission Summary */}
+            <div className="space-y-6">
+              {/* Financial Quotation Summary Card */}
+              <Card variant="gold" padding="md" className="space-y-5 sticky top-24">
+                <div className="pb-3 border-b border-[#D4AF37]/20 flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="w-4 h-4 text-[#D4AF37]" />
+                    <h3 className="font-bold text-base text-white font-display">Bespoke Quotation</h3>
+                  </div>
+                  <Badge variant="gold" size="sm">Draft</Badge>
                 </div>
 
-                <Tooltip content="Estimated fabric yield based on garment category and 44 bolt width">
-                  <div className="flex items-center justify-between text-slate-300 w-full">
-                    <span>Fabric Required</span>
-                    <span className="font-mono text-gold-400 font-semibold">
-                      {items.reduce((acc, curr) => acc + (curr.fabricMeters || 0), 0).toFixed(1)} meters
+                <div className="space-y-3 text-xs">
+                  <div className="flex justify-between text-slate-300">
+                    <span>Commission Items</span>
+                    <span className="font-mono font-bold text-white">{totalItemsCount} items</span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-300">
+                    <span>Estimated Artisan SAM</span>
+                    <span className="font-mono font-bold text-amber-300">{totalCalculatedSamMinutes} mins</span>
+                  </div>
+
+                  <div className="flex justify-between text-slate-300">
+                    <span>Base Tailoring Labor</span>
+                    <span className="font-mono font-semibold text-slate-200">{formatCurrency(totalLaborCost)}</span>
+                  </div>
+
+                  <div className="border-t border-white/10 pt-3 flex justify-between items-baseline">
+                    <span className="text-sm font-bold text-white">Total Order Value</span>
+                    <span className="text-2xl font-black text-amber-300 font-mono tabular-nums">
+                      {formatCurrency(totalOrderAmount)}
                     </span>
                   </div>
-                </Tooltip>
 
-                <Tooltip content="Standard Allowed Minutes (SAM) calculated for workshop labor allocation">
-                  <div className="flex items-center justify-between text-slate-300 w-full">
-                    <span>Estimated SAM</span>
-                    <span className="font-mono text-amber-400 font-semibold">
-                      {totalCalculatedSamMinutes} mins ({Number((totalCalculatedSamMinutes / 60).toFixed(1))} hrs)
-                    </span>
-                  </div>
-                </Tooltip>
-
-                <Tooltip content="Base labor surcharge rated at ₹42/minute for master tailors">
-                  <div className="flex items-center justify-between text-slate-300 w-full">
-                    <span>Tailoring Labor (₹42/min)</span>
-                    <span className="font-mono text-emerald-400 font-semibold">
-                      {formatCurrency(totalLaborCost)}
-                    </span>
-                  </div>
-                </Tooltip>
-
-                <div className="border-t border-slate-800/80 pt-3 flex items-center justify-between text-sm font-semibold">
-                  <span className="text-slate-200">Total Order Amount</span>
-                  <span className="font-mono text-lg font-extrabold text-white">
-                    {formatCurrency(totalOrderAmount)}
-                  </span>
-                </div>
-
-                <div className="bg-slate-900/60 rounded-xl p-3.5 border border-slate-800 space-y-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-300">Advance/Deposit (₹)</label>
+                  {/* Advance Payment Input */}
+                  <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-white/10 space-y-2 mt-2">
+                    <label className="text-[11px] font-semibold text-slate-300 flex justify-between">
+                      <span>Advance Amount Received</span>
+                      <span className="text-slate-400 font-mono">Suggested: 50%</span>
+                    </label>
                     <input
                       type="number"
+                      placeholder={String(advanceAmount)}
                       value={advanceAmountInput}
                       onChange={(e) => setAdvanceAmountInput(e.target.value)}
-                      placeholder="e.g. 10000"
-                      className="input-dark w-full font-mono text-sm"
+                      className="input-dark text-sm py-2 px-3 font-mono font-bold text-emerald-400"
+                    />
+                    <div className="text-[10px] text-slate-400 flex justify-between font-mono">
+                      <span>Balance Due on Fitting:</span>
+                      <span className="text-slate-200">
+                        {formatCurrency(Math.max(0, totalOrderAmount - (Number(advanceAmountInput) || 0)))}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Commission Special Notes */}
+                  <div className="space-y-1.5 pt-2">
+                    <label className="text-xs font-semibold text-slate-300">Special Instructions & Fittings</label>
+                    <textarea
+                      rows={3}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Enter styling nuances, specific pocket requests, trial scheduling..."
+                      className="input-dark text-xs py-2 px-3 resize-none"
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/80">
-                    <span>Balance Due on Fitting</span>
-                    <span className="font-mono font-semibold text-slate-300">
-                      {formatCurrency(calculateBalance(totalOrderAmount, Number(advanceAmountInput) || 0))}
-                    </span>
-                  </div>
                 </div>
-              </div>
 
-              {/* Actions: Send Quotation via WhatsApp & Save as Draft */}
-              <div className="space-y-3 pt-2">
-                <Tooltip content="Generate WhatsApp payment link with 50% advance requirement">
-                  <button
-                    type="button"
+                {/* Submission Buttons */}
+                <div className="space-y-2.5 pt-3 border-t border-[#D4AF37]/20">
+                  <Button
+                    variant="gold"
+                    size="lg"
+                    className="w-full"
                     onClick={() => handleSaveOrder('CONFIRMED')}
-                    className="btn-gold w-full flex items-center justify-center space-x-2 py-3 cursor-pointer text-sm font-bold shadow-lg"
+                    leftIcon={<Send className="w-4 h-4" />}
                   >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>{editingOrderId ? 'Update & Send Quotation' : 'Send Quotation via WhatsApp'}</span>
-                  </button>
-                </Tooltip>
+                    Confirm & Send WhatsApp Quote
+                  </Button>
 
-                <Tooltip content="Save current draft locally to resume editing later">
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="md"
+                    className="w-full"
                     onClick={() => handleSaveOrder('DRAFT')}
-                    className="btn-ghost w-full flex items-center justify-center space-x-2 py-2.5 cursor-pointer text-sm"
+                    leftIcon={<Save className="w-4 h-4 text-slate-400" />}
                   >
-                    <Save className="w-4 h-4 text-slate-400" />
-                    <span>{editingOrderId ? 'Update Order' : 'Save as Draft'}</span>
-                  </button>
-                </Tooltip>
-                
-                {editingOrderId && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingOrderId(null);
-                      setActiveTab('active');
-                    }}
-                    className="btn-ghost w-full flex items-center justify-center space-x-2 py-2 cursor-pointer text-sm text-slate-400"
-                  >
-                    Cancel Edit
-                  </button>
-                )}
-              </div>
-
-              <div className="text-[11px] text-slate-500 text-center leading-relaxed">
-                Clicking WhatsApp Quotation generates client payment link with 50% advance requirement.
-              </div>
+                    Save as Draft Commission
+                  </Button>
+                </div>
+              </Card>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal / Detail Drawer for Selected Active Order */}
+      {/* 3. ORDER INSPECTION SLIDE-OVER MODAL */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="glass-card-gold rounded-2xl border border-gold-500/30 max-w-lg w-full p-6 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in print:hidden">
+          <Card variant="glass" padding="none" className="border-white/10 max-w-xl w-full p-6 space-y-5 shadow-2xl animate-scale-up max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="flex items-center space-x-3">
-                <div className="p-2.5 rounded-xl bg-gold-500/10 border border-gold-500/20 text-gold-400">
-                  <ShoppingBag className="w-6 h-6" />
+                <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                  <ShoppingBag className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <h3 className="text-lg font-bold text-white">{selectedOrder.id}</h3>
-                    <select
-                      value={selectedOrder.status}
-                      onChange={(e) => {
-                        const newStat = e.target.value as OrderStatus;
-                        handleOrderStatusChange(selectedOrder.id, newStat);
-                        setSelectedOrder({ ...selectedOrder, status: newStat });
-                      }}
-                      className="bg-slate-900 border border-gold-500/40 rounded-lg text-xs py-1 px-2 text-gold-400 font-bold cursor-pointer focus:outline-none focus:border-gold-500"
-                    >
-                      <option value="DRAFT">DRAFT</option>
-                      <option value="CONFIRMED">CONFIRMED</option>
-                      <option value="CUTTING">CUTTING</option>
-                      <option value="IN_PRODUCTION">IN_PRODUCTION</option>
-                      <option value="TRIAL_FITTING">TRIAL_FITTING</option>
-                      <option value="QC_CHECK">QC_CHECK</option>
-                      <option value="READY_FOR_DELIVERY">READY_FOR_DELIVERY</option>
-                      <option value="DELIVERED">DELIVERED</option>
-                    </select>
+                    <h2 className="text-lg font-bold text-white font-mono">{selectedOrder.id}</h2>
+                    {renderStatusBadge(selectedOrder.status)}
                   </div>
-                  <p className="text-xs text-slate-400 font-mono">Created on {selectedOrder.createdAt}</p>
+                  <p className="text-xs text-slate-400 font-mono">Commissioned on {selectedOrder.createdAt}</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* Client & Schedule Stats */}
             <div className="grid grid-cols-2 gap-4 text-xs">
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold">Client</span>
-                <p className="text-white font-bold">{selectedOrder.clientName}</p>
+              <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 space-y-1">
+                <span className="text-slate-400 uppercase tracking-wider text-[10px] font-semibold">Patron Details</span>
+                <p className="text-white font-bold text-sm">{selectedOrder.clientName}</p>
                 <p className="text-slate-400 font-mono text-[11px]">{selectedOrder.clientPhone}</p>
               </div>
 
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
-                <span className="text-slate-500 uppercase tracking-wider text-[10px] font-semibold">Target Due Date</span>
-                <p className="text-gold-400 font-mono font-bold flex items-center space-x-1">
-                  <Calendar className="w-3.5 h-3.5 inline shrink-0" />
+              <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-white/5 space-y-1">
+                <span className="text-slate-400 uppercase tracking-wider text-[10px] font-semibold">Target Fitting Due</span>
+                <p className="text-amber-300 font-mono font-bold flex items-center space-x-1.5 text-sm">
+                  <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
                   <span>{selectedOrder.dueDate}</span>
                 </p>
-                <p className="text-slate-500 text-[10px]">Atelier Schedule</p>
+                <p className="text-slate-500 text-[10px]">Atelier Production Slot</p>
               </div>
             </div>
 
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-              <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Garment Items Summary</div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-200 font-medium">{selectedOrder.garmentSummary}</span>
-                <span className="badge badge-blue font-mono">{selectedOrder.itemCount} Items</span>
+            {/* Fitting Trial Stage Transition Actions */}
+            <div className="p-4 rounded-2xl bg-slate-950/80 border border-purple-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Shirt className="w-4 h-4 text-purple-400" />
+                  <span>Fitting Trial Stage Transitions</span>
+                </span>
+                <Badge variant="neutral" size="sm">{selectedOrder.status}</Badge>
               </div>
-              <div className="border-t border-slate-800/80 pt-2 flex items-center justify-between text-sm">
+
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedOrder.status === 'IN_PRODUCTION' && (
+                  <Button
+                    variant="gold"
+                    size="sm"
+                    onClick={() => handleOrderStatusChange(selectedOrder.id, 'TRIAL_FITTING')}
+                  >
+                    Advance to First Fitting Trial
+                  </Button>
+                )}
+
+                {selectedOrder.status === 'TRIAL_FITTING' && (
+                  <>
+                    <Button
+                      variant="gold"
+                      size="sm"
+                      onClick={() => handleOrderStatusChange(selectedOrder.id, 'QC_CHECK')}
+                    >
+                      Alterations Required (Second Trial)
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleOrderStatusChange(selectedOrder.id, 'READY_FOR_DELIVERY')}
+                    >
+                      Approve & Mark Ready for Delivery
+                    </Button>
+                  </>
+                )}
+
+                {selectedOrder.status === 'QC_CHECK' && (
+                  <Button
+                    variant="gold"
+                    size="sm"
+                    onClick={() => handleOrderStatusChange(selectedOrder.id, 'READY_FOR_DELIVERY')}
+                  >
+                    Pass QC & Mark Ready for Delivery
+                  </Button>
+                )}
+
+                {selectedOrder.status === 'READY_FOR_DELIVERY' && (
+                  <Button
+                    variant="gold"
+                    size="sm"
+                    onClick={() => handleOrderStatusChange(selectedOrder.id, 'DELIVERED')}
+                  >
+                    Complete Handover (Final Delivery)
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Garments Breakdown */}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 space-y-3">
+              <div className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Commissions Summary</div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-200 font-semibold">{selectedOrder.garmentSummary}</span>
+                <Badge variant="neutral" size="sm">{selectedOrder.itemCount} Items</Badge>
+              </div>
+              <div className="border-t border-white/5 pt-2 flex items-center justify-between text-sm">
                 <span className="text-slate-400 text-xs">Total Amount:</span>
                 <span className="font-mono font-extrabold text-white text-base">
                   {formatCurrency(selectedOrder.totalAmount)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-xs text-gold-400/90 pt-1">
+              <div className="flex items-center justify-between text-xs text-[#D4AF37] pt-1">
                 <span>50% Advance Received:</span>
                 <span className="font-mono font-bold">{formatCurrency(selectedOrder.totalAmount * 0.5)}</span>
               </div>
             </div>
 
-            {/* Bill of Materials (BOM) Summary in Inspection Drawer */}
-            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+            {/* BOM Materials List in Inspection Drawer */}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
                   <Scissors className="w-3.5 h-3.5 text-amber-400" />
@@ -2064,21 +1558,21 @@ export default function OrderManagementPage() {
                 </span>
               </div>
 
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
                 {selectedOrder.items && selectedOrder.items.some(it => it.bomItems && it.bomItems.length > 0) ? (
                   selectedOrder.items.map((it) => (
                     <div key={it.id} className="space-y-1.5">
-                      <div className="text-[11px] font-bold text-slate-300 border-b border-slate-800/60 pb-0.5 flex items-center justify-between">
+                      <div className="text-[11px] font-bold text-slate-300 border-b border-white/5 pb-0.5 flex items-center justify-between">
                         <span>{it.garmentType}</span>
                         <span className={`text-[9px] font-mono font-semibold ${it.isCustomerFabric ? 'text-emerald-400' : 'text-slate-400'}`}>
                           {it.isCustomerFabric ? '✓ Client Fabric: ' : 'SKU: '}{it.fabricSku}
                         </span>
                       </div>
                       {it.bomItems?.map((bom) => (
-                        <div key={bom.id} className="flex items-center justify-between text-xs py-0.5 px-2 rounded bg-slate-900/60 border border-slate-800/50">
-                          <div className="flex items-center space-x-1.5 truncate max-w-[200px]">
+                        <div key={bom.id} className="flex items-center justify-between text-xs py-1 px-2.5 rounded-xl bg-slate-900/60 border border-white/5">
+                          <div className="flex items-center space-x-1.5 truncate max-w-[220px]">
                             {bom.isCustomerProvided && (
-                              <span className="text-[8px] font-extrabold px-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+                              <span className="text-[8px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
                                 CLIENT GIVEN
                               </span>
                             )}
@@ -2086,7 +1580,7 @@ export default function OrderManagementPage() {
                           </div>
                           <div className="flex items-center space-x-2 shrink-0">
                             <span className="font-mono text-slate-400 text-[10px]">{bom.quantity} {bom.unit}</span>
-                            <span className={`text-[9px] px-1.5 rounded font-bold uppercase ${bom.isOptional ? 'bg-slate-800 text-slate-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                            <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${bom.isOptional ? 'bg-slate-800 text-slate-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
                               {bom.isOptional ? 'Optional' : 'Required'}
                             </span>
                           </div>
@@ -2095,104 +1589,124 @@ export default function OrderManagementPage() {
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-2 text-xs text-slate-500">
+                  <div className="text-center py-3 text-xs text-slate-500">
                     Standard materials (threads, canvas, zipper) provisioned on cutting allocation.
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Modal Actions */}
             <div className="flex justify-between items-center pt-2">
-              <button
+              <Button
+                variant="gold"
+                size="sm"
                 onClick={() => {
                   const o = selectedOrder;
                   setSelectedOrder(null);
                   setPrintModalOrder(o);
                 }}
-                className="px-4 py-2 rounded-xl bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 border border-amber-400/40 text-xs font-bold flex items-center space-x-2 transition-all"
+                leftIcon={<Printer className="w-3.5 h-3.5" />}
               >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Delivery Note & Job Tag</span>
-              </button>
+                Print Delivery Note & Job Tag
+              </Button>
 
-              <div className="flex items-center space-x-3">
-                <button
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setSelectedOrder(null)}
-                  className="btn-ghost text-xs"
                 >
                   Close
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
                   onClick={() => {
                     showNotification(`WhatsApp quotation shared for ${selectedOrder.id}`);
                     setSelectedOrder(null);
                   }}
-                  className="btn-gold text-xs flex items-center space-x-1.5"
+                  leftIcon={<MessageSquare className="w-3.5 h-3.5 text-[#D4AF37]" />}
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>Resend WhatsApp Link</span>
-                </button>
+                  Resend WhatsApp
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Delete Confirmation Modal */}
       {deleteModalOrder && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in print:hidden">
-          <div className="glass-card rounded-2xl border border-rose-500/30 max-w-sm w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <Card variant="glass" padding="md" className="border-rose-500/30 max-w-sm w-full space-y-4">
+            <h3 className="text-base font-bold text-white flex items-center gap-2 font-display">
               <AlertCircle className="w-5 h-5 text-rose-500" />
               Delete Order {deleteModalOrder.id}
             </h3>
-            <p className="text-sm text-slate-300">Are you sure you want to delete this order? This action cannot be undone.</p>
+            <p className="text-xs text-slate-300">Are you sure you want to delete this order? This action logs the deletion and cannot be undone.</p>
             <div className="space-y-1">
               <label className="text-xs text-slate-400 font-semibold">Reason for deletion (Required)</label>
               <textarea 
                 value={deleteReason}
                 onChange={(e) => setDeleteReason(e.target.value)}
-                className="input-dark text-sm w-full"
+                className="input-dark text-xs w-full"
                 rows={3}
-                placeholder="e.g. Client cancelled, duplicate entry..."
+                placeholder="e.g. Client cancelled commission, duplicate booking..."
               />
             </div>
-            <div className="flex justify-end space-x-3 pt-2">
-              <button onClick={() => setDeleteModalOrder(null)} className="btn-ghost text-xs">Cancel</button>
+            <div className="flex justify-end space-x-2 pt-2">
+              <Button variant="ghost" size="sm" onClick={() => setDeleteModalOrder(null)}>Cancel</Button>
               <button 
                 onClick={handleConfirmDelete} 
                 disabled={!deleteReason.trim()}
-                className="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 px-4 py-2 rounded-lg text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 px-4 py-2 rounded-full text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-rose-500/30"
               >
                 Confirm Delete
               </button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* Print Delivery Note Modal */}
+      {/* Printable Delivery Note & Karigar Job Tag Modal with Strict @media print Isolation */}
       {printModalOrder && (
-        <div className="fixed inset-0 z-[70] flex items-start justify-center p-4 sm:p-8 bg-black/80 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-[70] flex items-start justify-center p-4 sm:p-8 bg-black/85 backdrop-blur-xl overflow-y-auto">
           <style>{`
             @media print {
-              body * { visibility: hidden; }
-              .print-section, .print-section * { visibility: visible; }
-              .print-section { position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0; border: none; box-shadow: none; background: white; color: black; }
+              body * { visibility: hidden !important; }
+              .print-section, .print-section * { visibility: visible !important; }
+              .print-section {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                padding: 24px !important;
+                margin: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
+                color: black !important;
+              }
             }
           `}</style>
-          <div className="print-section glass-card-gold rounded-2xl border border-gold-500/30 max-w-2xl w-full p-8 shadow-2xl relative print:!border-none print:!shadow-none print:!text-black print:!bg-white">
+          <div className="print-section rounded-3xl border border-[#D4AF37]/30 max-w-2xl w-full p-8 shadow-2xl relative bg-slate-900/95 text-slate-100 print:!border-none print:!shadow-none print:!text-black print:!bg-white">
             <button
               onClick={() => setPrintModalOrder(null)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-900 print:hidden"
+              className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-white bg-slate-800/80 print:hidden"
             >
               <X className="w-5 h-5" />
             </button>
             
-            <div className="flex justify-between items-start border-b border-slate-800 print:border-black pb-6 mb-6">
+            {/* Printable Header with Vector QR & Code 128 Barcode */}
+            <div className="flex justify-between items-start border-b border-white/10 print:border-black pb-6 mb-6">
               <div>
-                <h1 className="text-3xl font-extrabold text-gold-400 print:text-black tracking-tight mb-1">YELLOWHOUSE</h1>
-                <p className="text-sm text-slate-400 print:text-gray-600 uppercase tracking-widest">Delivery Note & Karigar Tag</p>
+                <h1 className="text-3xl font-black text-[#D4AF37] print:text-black tracking-tight font-display mb-1">
+                  YELLOWHOUSE
+                </h1>
+                <p className="text-xs text-slate-400 print:text-gray-600 uppercase tracking-widest font-semibold">
+                  Delivery Note & Karigar Job Tag
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 <QRCodeSVG value={`https://yellowhouse.atelier/track/${printModalOrder.id}`} size={56} />
@@ -2202,38 +1716,42 @@ export default function OrderManagementPage() {
             
             <div className="grid grid-cols-2 gap-8 mb-8">
               <div>
-                <h4 className="text-xs text-slate-500 print:text-gray-500 uppercase font-bold mb-2">Client Details</h4>
-                <p className="font-bold text-white print:text-black">{printModalOrder.clientName}</p>
-                <p className="text-sm text-slate-400 print:text-gray-600">{printModalOrder.clientPhone}</p>
+                <h4 className="text-[10px] text-slate-400 print:text-gray-500 uppercase font-bold mb-1">Patron Details</h4>
+                <p className="font-bold text-white print:text-black text-base">{printModalOrder.clientName}</p>
+                <p className="text-xs text-slate-400 print:text-gray-600 font-mono">{printModalOrder.clientPhone}</p>
               </div>
               <div className="text-right">
-                <h4 className="text-xs text-slate-500 print:text-gray-500 uppercase font-bold mb-2">Order Information</h4>
-                <p className="font-bold text-white print:text-black">{printModalOrder.id}</p>
-                <p className="text-sm text-slate-400 print:text-gray-600">Due: {printModalOrder.dueDate}</p>
+                <h4 className="text-[10px] text-slate-400 print:text-gray-500 uppercase font-bold mb-1">Commission Details</h4>
+                <p className="font-mono font-bold text-white print:text-black text-base">{printModalOrder.id}</p>
+                <p className="text-xs text-slate-400 print:text-gray-600">Target Delivery: {printModalOrder.dueDate}</p>
               </div>
             </div>
 
             <div className="space-y-4 mb-8">
-              <h4 className="text-xs text-slate-500 print:text-gray-500 uppercase font-bold border-b border-slate-800 print:border-black pb-2">Order Items & Material BOM</h4>
+              <h4 className="text-xs text-slate-400 print:text-gray-500 uppercase font-bold border-b border-white/10 print:border-black pb-2">
+                Order Items & Material BOM Presets
+              </h4>
               {printModalOrder.items?.map((item, idx) => (
-                <div key={item.id} className="border-b border-slate-800/50 print:border-gray-300 pb-3 space-y-1.5">
+                <div key={item.id} className="border-b border-white/5 print:border-gray-300 pb-3 space-y-2">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-bold text-slate-200 print:text-black">{idx + 1}. {item.garmentType}</p>
-                      <p className="text-xs text-slate-400 print:text-gray-600">
+                      <p className="font-bold text-slate-100 print:text-black">{idx + 1}. {item.garmentType}</p>
+                      <p className="text-xs text-slate-400 print:text-gray-600 font-mono">
                         {item.isCustomerFabric ? '✓ Client Provided Fabric: ' : 'Fabric SKU: '}{item.fabricSku} ({item.fabricMeters}m)
                       </p>
-                      {item.materialNotes && <p className="text-xs text-slate-400 print:text-gray-600 italic mt-1">Note: {item.materialNotes}</p>}
+                      {item.materialNotes && <p className="text-xs text-slate-400 print:text-gray-600 italic mt-0.5">Note: {item.materialNotes}</p>}
                     </div>
                   </div>
                   {item.bomItems && item.bomItems.length > 0 && (
-                    <div className="bg-slate-900/60 print:bg-gray-100 p-2 rounded text-[11px] print:text-[10px] space-y-1">
-                      <div className="font-semibold text-amber-400 print:text-gray-700 uppercase tracking-wider text-[9px]">Material BOM / Trims:</div>
+                    <div className="bg-slate-950/60 print:bg-gray-100 p-2.5 rounded-xl text-[11px] print:text-[10px] space-y-1">
+                      <div className="font-semibold text-amber-300 print:text-gray-700 uppercase tracking-wider text-[9px]">
+                        Bill of Materials (BOM) Allocated:
+                      </div>
                       <div className="grid grid-cols-2 gap-1 text-slate-300 print:text-black">
                         {item.bomItems.map(b => (
                           <div key={b.id} className="flex items-center justify-between pr-2">
                             <span>• {b.name} {b.isCustomerProvided ? '(Client Given)' : ''}</span>
-                            <span className="font-mono text-slate-400 print:text-gray-600">{b.quantity} {b.unit} ({b.isOptional ? 'Optional' : 'Req'})</span>
+                            <span className="font-mono text-slate-400 print:text-gray-600">{b.quantity} {b.unit}</span>
                           </div>
                         ))}
                       </div>
@@ -2243,19 +1761,22 @@ export default function OrderManagementPage() {
               ))}
             </div>
 
-            <div className="mt-12 text-center text-sm text-slate-500 print:text-gray-600">
-              <p>Thank you for choosing YellowHouse Atelier.</p>
-              <p className="mt-4 border-t border-slate-800 print:border-black pt-4 w-1/2 mx-auto text-black">Client Signature</p>
+            <div className="mt-12 text-center text-xs text-slate-400 print:text-gray-600">
+              <p>Thank you for choosing YellowHouse Atelier Bespoke Couture.</p>
+              <p className="mt-6 border-t border-white/10 print:border-black pt-4 w-1/2 mx-auto text-slate-300 print:text-black">
+                Authorized Artisan / Client Signature
+              </p>
             </div>
 
             <div className="mt-8 flex justify-center print:hidden">
-              <button
+              <Button
+                variant="gold"
+                size="md"
                 onClick={() => window.print()}
-                className="btn-gold flex items-center space-x-2 py-2 px-6"
+                leftIcon={<Printer className="w-4 h-4" />}
               >
-                <Printer className="w-4 h-4" />
-                <span>Print Document</span>
-              </button>
+                Print Delivery Document
+              </Button>
             </div>
           </div>
         </div>
@@ -2263,15 +1784,15 @@ export default function OrderManagementPage() {
 
       {/* QUICK ADD CUSTOMER MODAL */}
       {isQuickAddCustomerOpen && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="glass-card max-w-lg w-full rounded-2xl border border-gold-500/30 p-6 space-y-5 shadow-2xl animate-scale-up">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+          <Card variant="glass" padding="md" className="max-w-lg w-full rounded-3xl border border-[#D4AF37]/35 p-6 space-y-5 shadow-2xl animate-scale-up">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center space-x-2.5">
-                <div className="p-2 rounded-xl bg-gold-500/10 border border-gold-500/20 text-gold-400">
+                <div className="p-2 rounded-xl bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Add New Client Profile</h3>
+                  <h3 className="text-base font-bold text-white font-display">Add New Client Profile</h3>
                   <p className="text-xs text-slate-400">Instantly create client and attach to current order</p>
                 </div>
               </div>
@@ -2281,14 +1802,14 @@ export default function OrderManagementPage() {
                   setIsQuickAddCustomerOpen(false);
                   setQuickCustomerError('');
                 }}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-white/10"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {quickCustomerError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center space-x-2">
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{quickCustomerError}</span>
               </div>
@@ -2315,7 +1836,7 @@ export default function OrderManagementPage() {
                     placeholder="+91 98765 43210"
                     value={newQuickCustomer.phone}
                     onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, phone: e.target.value })}
-                    className="input-dark text-xs py-2 px-3 w-full"
+                    className="input-dark text-xs py-2 px-3 w-full font-mono"
                     required
                   />
                 </div>
@@ -2364,10 +1885,10 @@ export default function OrderManagementPage() {
                   id="quickIsVip"
                   checked={newQuickCustomer.isVip}
                   onChange={(e) => setNewQuickCustomer({ ...newQuickCustomer, isVip: e.target.checked })}
-                  className="rounded border-slate-700 bg-slate-900 text-gold-500 focus:ring-gold-500/20 cursor-pointer"
+                  className="rounded border-slate-700 bg-slate-900 text-[#D4AF37] focus:ring-[#D4AF37]/20 cursor-pointer"
                 />
-                <label htmlFor="quickIsVip" className="text-xs font-semibold text-gold-400 cursor-pointer flex items-center space-x-1">
-                  <Sparkles className="w-3.5 h-3.5" />
+                <label htmlFor="quickIsVip" className="text-xs font-semibold text-amber-300 cursor-pointer flex items-center space-x-1">
+                  <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
                   <span>Mark as VIP Atelier Patron</span>
                 </label>
               </div>
@@ -2383,27 +1904,29 @@ export default function OrderManagementPage() {
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-3 border-t border-slate-800">
-                <button
+              <div className="flex justify-end space-x-2 pt-3 border-t border-white/10">
+                <Button
+                  variant="ghost"
+                  size="sm"
                   type="button"
                   onClick={() => {
                     setIsQuickAddCustomerOpen(false);
                     setQuickCustomerError('');
                   }}
-                  className="btn-ghost text-xs py-2 px-4 cursor-pointer"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="gold"
+                  size="sm"
                   type="submit"
-                  className="btn-gold text-xs py-2 px-5 cursor-pointer flex items-center space-x-1.5"
+                  leftIcon={<Plus className="w-4 h-4" />}
                 >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                  <span>Add & Select Client</span>
-                </button>
+                  Add & Select Client
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
         </div>
       )}
     </div>

@@ -3,41 +3,24 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Shield, 
-  ArrowRight, 
-  Check, 
-  AlertCircle, 
-  Building2, 
+import {
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Building2,
   LogOut,
   Sparkles,
-  UserCheck
+  UserCheck,
+  ArrowRight,
+  AlertCircle,
+  Crown,
 } from 'lucide-react';
 import { getLocalStorage, setLocalStorage, removeLocalStorage } from '@/lib/storage-utils';
-
-// Helper for rendering role badges
-function getRoleBadgeClass(role: string): string {
-  switch (role) {
-    case 'TENANT_OWNER':
-      return 'badge-gold';
-    case 'BRANCH_MANAGER':
-      return 'badge-blue';
-    case 'MASTER_TAILOR':
-      return 'badge-amber';
-    case 'RECEPTIONIST':
-      return 'badge-emerald';
-    case 'KARIGAR':
-      return 'bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-md';
-    case 'ACCOUNTANT':
-      return 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-md';
-    default:
-      return 'badge-gold';
-  }
-}
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface StoredUser {
   id: string;
@@ -52,41 +35,41 @@ interface StoredUser {
   loggedInAt: string;
 }
 
-const DEMO_ACCOUNTS = [
+const DEMO_PERSONAS = [
   {
     role: 'TENANT_OWNER',
     name: 'Latif Khan',
     email: 'owner@yellowhouse.com',
     label: 'Tenant Owner',
-    color: 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10',
+    badgeVariant: 'gold' as const,
   },
   {
     role: 'MASTER_TAILOR',
     name: 'Master Latif',
     email: 'master@yellowhouse.com',
     label: 'Master Tailor',
-    color: 'border-amber-500/40 text-amber-400 bg-amber-500/10',
+    badgeVariant: 'warning' as const,
   },
   {
     role: 'BRANCH_MANAGER',
     name: 'Sarah Jenkins',
     email: 'manager@yellowhouse.com',
     label: 'Branch Manager',
-    color: 'border-blue-500/40 text-blue-400 bg-blue-500/10',
+    badgeVariant: 'info' as const,
   },
   {
     role: 'KARIGAR',
     name: 'Rafi Craftsman',
     email: 'karigar@yellowhouse.com',
     label: 'Karigar Artisan',
-    color: 'border-purple-500/40 text-purple-400 bg-purple-500/10',
+    badgeVariant: 'neutral' as const,
   },
   {
     role: 'SYSTEM_ADMIN',
     name: 'Admin Director',
     email: 'admin@yellowhouse.com',
     label: 'System Admin',
-    color: 'border-rose-500/40 text-rose-400 bg-rose-500/10',
+    badgeVariant: 'gold' as const,
   },
 ];
 
@@ -127,14 +110,13 @@ export default function LoginPage() {
     setLoading(true);
 
     setTimeout(() => {
-      // Determine role based on email if matched demo, else default to TENANT_OWNER
-      const matchedDemo = DEMO_ACCOUNTS.find(
+      const matchedDemo = DEMO_PERSONAS.find(
         (acc) => acc.email.toLowerCase() === email.toLowerCase()
       );
-      
+
       const role = matchedDemo ? matchedDemo.role : 'TENANT_OWNER';
-      const userName = matchedDemo 
-        ? matchedDemo.name 
+      const userName = matchedDemo
+        ? matchedDemo.name
         : email.split('@')[0].replace('.', ' ').toUpperCase();
 
       const userObject: StoredUser = {
@@ -150,25 +132,24 @@ export default function LoginPage() {
         loggedInAt: new Date().toISOString(),
       };
 
-      // Mock auth store in localStorage
       setLocalStorage('yh_auth_user', userObject);
       setActiveUser(userObject);
       setLoading(false);
-      
-      if (role === 'SYSTEM_ADMIN') {
+
+      if (role === 'SYSTEM_ADMIN' || role === 'SUPER_ADMIN') {
         router.push('/admin');
       } else {
         router.push('/dashboard');
       }
-    }, 600);
+    }, 450);
   };
 
-  const handleQuickLogin = (demo: typeof DEMO_ACCOUNTS[0]) => {
+  const handleQuickLogin = (demo: typeof DEMO_PERSONAS[0]) => {
     setEmail(demo.email);
     setPassword('password123');
     setErrorMessage('');
-    
     setLoading(true);
+
     setTimeout(() => {
       const userObject: StoredUser = {
         id: `usr_${Date.now().toString(36)}`,
@@ -186,13 +167,12 @@ export default function LoginPage() {
       setLocalStorage('yh_auth_user', userObject);
       setActiveUser(userObject);
       setLoading(false);
-      
-      if (demo.role === 'SYSTEM_ADMIN') {
+      if (demo.role === 'SYSTEM_ADMIN' || demo.role === 'SUPER_ADMIN') {
         router.push('/admin');
       } else {
         router.push('/dashboard');
       }
-    }, 400);
+    }, 350);
   };
 
   const handleSignOut = () => {
@@ -202,82 +182,108 @@ export default function LoginPage() {
     setPassword('');
   };
 
+  const getBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'TENANT_OWNER':
+        return 'gold';
+      case 'BRANCH_MANAGER':
+        return 'info';
+      case 'MASTER_TAILOR':
+        return 'warning';
+      case 'RECEPTIONIST':
+        return 'success';
+      case 'KARIGAR':
+        return 'neutral';
+      case 'ACCOUNTANT':
+        return 'info';
+      default:
+        return 'gold';
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* If User is already signed in, show Role Badge & Session Summary */}
+    <div className="space-y-6 w-full">
+      {/* If User is already signed in, show Apple-grade Demo Session Status Card */}
       {activeUser ? (
-        <div className="glass-card-gold rounded-2xl p-6 sm:p-8 space-y-6 border border-yellow-500/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-xl bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 flex items-center justify-center font-bold text-lg shadow-lg">
+        <Card variant="gold" padding="lg" className="rounded-3xl border-[#D4AF37]/40 shadow-ios-gold-lg space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between border-b border-white/10 pb-5">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-yellow-500/20 border border-[#D4AF37]/40 text-yellow-400 flex items-center justify-center font-display font-bold text-base shadow-ios-sm">
                 {activeUser.name.slice(0, 2).toUpperCase()}
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <h2 className="font-display text-base sm:text-lg font-bold text-white flex items-center gap-1.5 tracking-tight">
                   <span>{activeUser.name}</span>
                   <UserCheck className="w-4 h-4 text-emerald-400" />
                 </h2>
-                <p className="text-xs text-slate-400">{activeUser.email}</p>
+                <p className="text-xs text-slate-400 font-mono">{activeUser.email}</p>
               </div>
             </div>
             {/* Role Badge */}
-            <span className={getRoleBadgeClass(activeUser.role)}>
+            <Badge variant={getBadgeVariant(activeUser.role)} size="sm">
               {activeUser.role}
-            </span>
+            </Badge>
           </div>
 
-          <div className="bg-slate-900/90 rounded-xl p-4 border border-slate-800 space-y-2 text-xs">
+          <div className="bg-slate-900/80 rounded-2xl p-4 border border-white/10 space-y-2.5 text-xs shadow-ios-sm">
             <div className="flex items-center justify-between text-slate-400">
               <span className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-yellow-400" />
                 Tenant Atelier:
               </span>
-              <span className="font-semibold text-slate-200">
+              <span className="font-semibold text-slate-100">
                 {activeUser.tenant.name} ({activeUser.tenant.code})
               </span>
             </div>
             <div className="flex items-center justify-between text-slate-400">
               <span>Assigned Role:</span>
-              <span className="font-semibold text-yellow-400">{activeUser.role}</span>
+              <span className="font-semibold text-yellow-400 font-mono">{activeUser.role}</span>
             </div>
             <div className="flex items-center justify-between text-slate-400">
               <span>Session Status:</span>
-              <span className="text-emerald-400 font-mono">ACTIVE_LOCAL_AUTH</span>
+              <span className="text-emerald-400 font-mono font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                ACTIVE_LOCAL_AUTH
+              </span>
             </div>
           </div>
 
-          <div className="space-y-3 pt-2">
-            <button
+          <div className="space-y-3 pt-1">
+            <Button
+              variant="gold"
+              size="lg"
               onClick={() => router.push('/dashboard')}
-              className="btn-gold w-full flex items-center justify-center space-x-2 py-3"
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+              className="w-full shadow-ios-gold"
             >
-              <span>Go to Atelier Dashboard</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              Go to Atelier Dashboard
+            </Button>
 
-            <button
+            <Button
+              variant="ghost"
+              size="md"
               onClick={handleSignOut}
-              className="btn-ghost w-full flex items-center justify-center space-x-2 py-2.5 text-slate-400 hover:text-white"
+              leftIcon={<LogOut className="w-4 h-4" />}
+              className="w-full text-slate-400 hover:text-white"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Switch Account / Sign Out</span>
-            </button>
+              Switch Account / Sign Out
+            </Button>
           </div>
-        </div>
+        </Card>
       ) : (
         /* Sign In Card */
-        <div className="glass-card rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl border border-slate-800/80">
-          <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight text-center">
+        <Card variant="glass" padding="lg" className="rounded-3xl shadow-ios-xl border-white/10 space-y-6">
+          <div className="text-center space-y-1">
+            <h2 className="font-display text-2xl font-bold text-white tracking-tight">
               Sign In to Your Atelier
             </h2>
-            <p className="text-xs text-slate-400 text-center mt-1.5">
+            <p className="text-xs text-slate-400">
               Enter your credentials to access YellowHouse Tailoring OS
             </p>
           </div>
 
           {errorMessage && (
-            <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 flex items-start space-x-2.5 text-rose-400 text-xs animate-fade-in">
+            <div className="bg-rose-500/15 border border-rose-500/30 rounded-2xl p-3 flex items-start space-x-2.5 text-rose-300 text-xs animate-fade-in shadow-ios-sm">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
               <span>{errorMessage}</span>
             </div>
@@ -285,70 +291,58 @@ export default function LoginPage() {
 
           <form onSubmit={handleSignIn} className="space-y-4">
             {/* Email Field */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-300">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="master@yellowhouse.com"
-                  className="input-dark pl-10"
-                  required
-                />
-              </div>
-            </div>
+            <Input
+              label="Email Address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="master@yellowhouse.com"
+              leftIcon={<Mail className="w-4 h-4" />}
+              required
+            />
 
             {/* Password Field */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold text-slate-300">
+                <label className="block text-xs font-semibold text-slate-300 tracking-tight">
                   Password
                 </label>
-                <div className="flex flex-col items-end">
-                  <a
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setForgotPasswordMsg('Password reset instructions sent to your email');
-                      setTimeout(() => setForgotPasswordMsg(''), 3000);
-                    }}
-                    className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors"
-                  >
-                    Forgot password?
-                  </a>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotPasswordMsg('Password reset link sent to your email.');
+                    setTimeout(() => setForgotPasswordMsg(''), 3500);
+                  }}
+                  className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors font-medium"
+                >
+                  Forgot password?
+                </button>
               </div>
+
               {forgotPasswordMsg && (
-                <div className="text-emerald-400 text-[10px] text-right animate-fade-in">
+                <div className="text-emerald-400 text-[11px] text-right animate-fade-in font-medium">
                   {forgotPasswordMsg}
                 </div>
               )}
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="input-dark pl-10 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
+
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••"
+                leftIcon={<Lock className="w-4 h-4" />}
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-slate-400 hover:text-slate-200 transition-colors pointer-events-auto"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                }
+                required
+              />
             </div>
 
             {/* Remember Me Checkbox */}
@@ -358,50 +352,68 @@ export default function LoginPage() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-yellow-500 focus:ring-yellow-500/30 accent-yellow-500"
+                  className="w-4 h-4 rounded bg-slate-900 border-white/20 text-yellow-500 focus:ring-yellow-500/30 accent-yellow-500"
                 />
-                <span>Remember me on this atelier workstation</span>
+                <span>Remember this atelier workstation</span>
               </label>
             </div>
 
             {/* Sign In Button */}
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="btn-gold w-full flex items-center justify-center space-x-2 py-3 mt-2 disabled:opacity-50"
+              variant="gold"
+              size="lg"
+              isLoading={loading}
+              rightIcon={<ArrowRight className="w-4 h-4" />}
+              className="w-full mt-2 shadow-ios-gold"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              Sign In
+            </Button>
           </form>
 
-          {/* New Atelier Registration CTA */}
-          <div className="pt-4 border-t border-slate-800/80 text-center text-xs text-slate-400">
-            Don't have an atelier workspace yet?{' '}
-            <Link href="/onboarding" className="text-yellow-400 font-semibold hover:underline">
-              Start Free Onboarding
-            </Link>
+          {/* Quick Demo Personas 1-Click Access */}
+          <div className="pt-4 border-t border-white/5 space-y-2.5">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <Crown className="w-3.5 h-3.5 text-yellow-400" />
+                <span>1-Click Demo Sandbox:</span>
+              </span>
+              <span className="text-[10px] text-slate-500">Instant test login</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {DEMO_PERSONAS.map((demo) => (
+                <button
+                  key={demo.role}
+                  type="button"
+                  onClick={() => handleQuickLogin(demo)}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/10 hover:border-yellow-400/40 text-[11px] font-medium transition-all text-left flex items-center justify-between"
+                >
+                  <span className="truncate">{demo.label}</span>
+                  <ArrowRight className="w-3 h-3 text-yellow-400 shrink-0" />
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Link to Register */}
-          <div className="text-center pt-2">
-            <p className="text-xs text-slate-400">
-              Don't have an atelier account?{' '}
+          {/* New Atelier Registration CTA */}
+          <div className="pt-3 border-t border-white/5 text-center text-xs text-slate-400 space-y-1.5">
+            <div>
+              Don't have an atelier workspace yet?{' '}
+              <Link href="/onboarding" className="text-yellow-400 font-semibold hover:underline">
+                Start Free Onboarding
+              </Link>
+            </div>
+            <div>
+              Need to create a team account?{' '}
               <Link
                 href="/register"
-                className="font-semibold text-yellow-400 hover:text-yellow-300 underline underline-offset-4 transition-colors"
+                className="text-slate-300 font-semibold hover:text-yellow-300 underline underline-offset-4 transition-colors"
               >
                 Register Atelier Account
               </Link>
-            </p>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

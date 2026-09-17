@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import QRCode from 'qrcode';
 
 /**
- * Clean SVG-rendered QR Code Component
- * Generates an authentic visual 2D matrix QR code representation for any text/ID string
+ * Production ISO/IEC 18004 Standard Scannable QR Code Component
+ * Generates an authentic, fully scannable vector SVG QR code with error correction.
  */
 export function QRCodeSVG({ 
   value, 
@@ -15,57 +16,31 @@ export function QRCodeSVG({
   size?: number; 
   className?: string 
 }) {
-  // Simple deterministic hash to create a realistic 2D matrix pattern based on string ID
-  const generateMatrix = (str: string) => {
-    const size = 15;
-    const grid: boolean[][] = Array(size).fill(false).map(() => Array(size).fill(false));
-    
-    // Create fixed position locator squares (top-left, top-right, bottom-left)
-    const addFinderPattern = (startR: number, startC: number) => {
-      for (let r = 0; r < 5; r++) {
-        for (let c = 0; c < 5; c++) {
-          if (r === 0 || r === 4 || c === 0 || c === 4 || (r === 2 && c === 2)) {
-            grid[startR + r][startC + c] = true;
+  const qr = useMemo(() => {
+    try {
+      const code = QRCode.create(value || 'YH-ID', { errorCorrectionLevel: 'M' });
+      const modSize = code.modules.size;
+      const cells: { r: number; c: number }[] = [];
+      for (let r = 0; r < modSize; r++) {
+        for (let c = 0; c < modSize; c++) {
+          if (code.modules.get(r, c)) {
+            cells.push({ r, c });
           }
         }
       }
-    };
-
-    addFinderPattern(0, 0);
-    addFinderPattern(0, 10);
-    addFinderPattern(10, 0);
-
-    // Hash string into data bits
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash << 5) - hash + str.charCodeAt(i);
-      hash |= 0;
+      return { size: modSize, cells };
+    } catch {
+      return { size: 21, cells: [] };
     }
-
-    // Fill data grid
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        // Skip finder pattern areas
-        if ((r < 5 && c < 5) || (r < 5 && c >= 10) || (r >= 10 && c < 5)) continue;
-        const bit = Math.abs((hash ^ (r * 17 + c * 31)) % 3) === 0;
-        grid[r][c] = bit;
-      }
-    }
-    return grid;
-  };
-
-  const matrix = generateMatrix(value || 'YH-ID');
+  }, [value]);
 
   return (
-    <div className={`inline-flex flex-col items-center bg-white p-1 rounded border border-gray-300 ${className}`}>
-      <svg width={size} height={size} viewBox="0 0 15 15" className="shape-rendering-crisp">
-        {matrix.map((row, r) =>
-          row.map((cell, c) => (
-            cell ? (
-              <rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#000000" />
-            ) : null
-          ))
-        )}
+    <div className={`inline-flex flex-col items-center bg-white p-1.5 rounded-lg shadow-sm border border-slate-200/80 dark:border-white/10 ${className}`}>
+      <svg width={size} height={size} viewBox={`0 0 ${qr.size} ${qr.size}`} className="shape-rendering-crisp">
+        <rect width={qr.size} height={qr.size} fill="#ffffff" />
+        {qr.cells.map(({ r, c }) => (
+          <rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#000000" />
+        ))}
       </svg>
     </div>
   );

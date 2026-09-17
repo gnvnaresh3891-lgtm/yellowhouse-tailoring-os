@@ -7,7 +7,7 @@
  * core YellowHouse Tailoring OS operations.
  */
 
-import { getLocalStorage, setLocalStorage } from '@/lib/storage-utils';
+import { getLocalStorage, setLocalStorage } from './storage-utils';
 
 export type PluginCategory = 'DESIGN' | 'EQUIPMENT' | 'SUPPLY' | 'PRODUCTION' | 'SERVICES' | 'CUSTOM';
 
@@ -141,7 +141,7 @@ export function setPluginEnabledState(pluginId: string, enabled: boolean): Recor
   const updated = { ...current, [pluginId]: enabled };
   setLocalStorage(STORAGE_KEY, updated);
   
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
     window.dispatchEvent(new CustomEvent('redhouse_plugins_updated', { detail: updated }));
   }
   return updated;
